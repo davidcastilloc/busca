@@ -1,17 +1,17 @@
 ---
 ---
 
-<div class="card bg-base-100 border border-neutral-content p-4 shadow-sm">
-  <label class="label font-bold text-sm text-base-content/80 mb-2">📸 Foto Evidencia (Opcional)</label>
+<div class="bg-canvas border border-canvas-soft p-4 rounded-xl shadow-sm">
+  <label class="block font-uber-text uber-body-sm-strong text-body mb-2">📸 Foto Evidencia (Opcional)</label>
   
   <div class="flex flex-col items-center gap-3">
     <!-- Vista previa de imagen -->
-    <div id="foto-preview-container" class="hidden w-32 h-32 rounded-lg border-2 border-dashed border-base-300 overflow-hidden relative group">
+    <div id="foto-preview-container" class="hidden w-32 h-32 rounded-lg border-2 border-dashed border-canvas-soft overflow-hidden relative group">
       <img id="foto-preview" class="w-full h-full object-cover" src="" alt="Vista previa" />
       <button 
         type="button" 
         id="btn-quitar-foto" 
-        class="btn btn-circle btn-error btn-xs absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+        class="btn btn-circle bg-primary text-white w-8 h-8 min-h-0 absolute top-1 right-1 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity"
       >
         ✕
       </button>
@@ -22,13 +22,14 @@
       type="file" 
       id="foto-file" 
       accept="image/*" 
-      class="file-input file-input-bordered file-input-error file-input-sm w-full" 
+      capture="environment"
+      class="file-input w-full min-h-[48px] bg-canvas-soft border-none font-uber-text" 
     />
     
     <!-- Hidden input con la clave de R2 o el base64 de la foto -->
     <input type="hidden" name="foto_key" id="foto_key" />
     
-    <p id="upload-status" class="text-xs text-base-content/60 text-center"></p>
+    <p id="upload-status" class="text-xs text-body text-center font-uber-text"></p>
   </div>
 </div>
 
@@ -40,58 +41,133 @@
   const removeBtn = document.getElementById("btn-quitar-foto");
   const statusText = document.getElementById("upload-status");
 
+  // Comprimir imagen client-side para red 3G
+  async function comprimirImagen(file: File, maxAncho = 1200, calidad = 0.7): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+
+        // Redimensionar si excede maxAncho
+        if (w > maxAncho) {
+          h = Math.round((h * maxAncho) / w);
+          w = maxAncho;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("No canvas context")); return; }
+
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("No se pudo comprimir"));
+          },
+          "image/jpeg",
+          calidad
+        );
+      };
+      img.onerror = () => reject(new Error("Error leyendo imagen"));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  function formatearTamaño(bytes: number): string {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1048576) return (bytes / 1024).toFixed(0) + " KB";
+    return (bytes / 1048576).toFixed(1) + " MB";
+  }
+
   if (fileInput && hiddenInput && previewContainer && previewImg && removeBtn && statusText) {
     fileInput.addEventListener("change", async () => {
       const files = fileInput.files;
       if (!files || files.length === 0) return;
 
       const file = files[0];
-      
-      // Mostrar vista previa local
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          previewImg.src = e.target.result as string;
-          previewContainer.classList.remove("hidden");
-        }
-      };
-      reader.readAsDataURL(file);
+      const tamañoOriginal = file.size;
 
-      // Si hay conexión, subir inmediatamente a R2
-      if (navigator.onLine) {
-        statusText.textContent = "Subiendo imagen al servidor...";
-        statusText.className = "text-xs text-info font-medium";
+      statusText.textContent = "Comprimiendo imagen...";
+      statusText.className = "text-xs text-body font-uber-text text-center";
 
-        try {
-          const formData = new FormData();
-          formData.append("foto", file);
+      try {
+        // Comprimir imagen
+        const blobComprimido = await comprimirImagen(file);
+        const tamañoFinal = blobComprimido.size;
 
-          const response = await fetch("/api/upload", {
-            method: "POST",
-            body: formData
-          });
+        // Mostrar vista previa del blob comprimido
+        const previewUrl = URL.createObjectURL(blobComprimido);
+        previewImg.src = previewUrl;
+        previewContainer.classList.remove("hidden");
 
-          if (response.ok) {
-            const data = await response.json();
-            hiddenInput.value = data.key;
-            statusText.textContent = "Imagen subida exitosamente.";
-            statusText.className = "text-xs text-success font-medium";
-          } else {
-            throw new Error("Fallo al subir archivo");
+        const ahorro = Math.round((1 - tamañoFinal / tamañoOriginal) * 100);
+        statusText.textContent = `Comprimida: ${formatearTamaño(tamañoOriginal)} → ${formatearTamaño(tamañoFinal)} (${ahorro}% menos)`;
+
+        // Si hay conexión, subir inmediatamente a R2
+        if (navigator.onLine) {
+          statusText.textContent += " | Subiendo...";
+
+          try {
+            const formData = new FormData();
+            formData.append("foto", blobComprimido, "foto.jpg");
+
+            const response = await fetch("/api/upload", {
+              method: "POST",
+              body: formData
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              hiddenInput.value = data.key;
+              statusText.textContent = `✓ Subida OK (${formatearTamaño(tamañoFinal)})`;
+              statusText.className = "text-xs text-body font-uber-text text-center font-medium";
+            } else {
+              throw new Error("Fallo al subir");
+            }
+          } catch (err) {
+            console.error(err);
+            statusText.textContent = `⚠ Sin conexión. Guardada localmente (${formatearTamaño(tamañoFinal)})`;
+            statusText.className = "text-xs text-body font-uber-text text-center";
+            guardarBase64Comprimido(blobComprimido);
           }
-        } catch (err) {
-          console.error(err);
-          statusText.textContent = "Error al subir imagen. Se guardará localmente.";
-          statusText.className = "text-xs text-warning font-medium";
-          
-          // Fallback offline: Guardar base64 en hidden input
+        } else {
+          statusText.textContent = `⚠ Offline. Encolada (${formatearTamaño(tamañoFinal)})`;
+          statusText.className = "text-xs text-body font-uber-text text-center";
+          guardarBase64Comprimido(blobComprimido);
+        }
+      } catch (err) {
+        console.error("Error comprimiendo:", err);
+        // Fallback: usar archivo original
+        statusText.textContent = "Usando imagen original (sin comprimir)";
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            previewImg.src = e.target.result as string;
+            previewContainer.classList.remove("hidden");
+          }
+        };
+        reader.readAsDataURL(file);
+
+        if (navigator.onLine) {
+          try {
+            const formData = new FormData();
+            formData.append("foto", file);
+            const response = await fetch("/api/upload", { method: "POST", body: formData });
+            if (response.ok) {
+              const data = await response.json();
+              hiddenInput.value = data.key;
+              statusText.textContent = "✓ Subida OK (original)";
+            }
+          } catch (e) {
+            guardarBase64(file);
+          }
+        } else {
           guardarBase64(file);
         }
-      } else {
-        // Guardar base64 directamente para cola offline
-        statusText.textContent = "Sin conexión. Imagen encolada localmente.";
-        statusText.className = "text-xs text-warning font-medium";
-        guardarBase64(file);
       }
     });
 
@@ -103,12 +179,21 @@
       statusText.textContent = "";
     });
 
-    // Helper para convertir archivo a base64
+    function guardarBase64Comprimido(blob: Blob) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          hiddenInput.value = e.target.result as string;
+        }
+      };
+      reader.readAsDataURL(blob);
+    }
+
     function guardarBase64(file: File) {
       const reader = new FileReader();
       reader.onload = (e) => {
         if (e.target?.result) {
-          hiddenInput.value = e.target.result as string; // Contiene "data:image/jpeg;base64,..."
+          hiddenInput.value = e.target.result as string;
         }
       };
       reader.readAsDataURL(file);
