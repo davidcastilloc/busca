@@ -19,25 +19,41 @@ export const PATCH: APIRoute = async (context) => {
     const body = await context.request.json();
     const estadoValidos = ["vivo", "herido", "fallecido", "desconocido"];
 
-    if (!body.estado || !estadoValidos.includes(body.estado)) {
+    if (body.estado && !estadoValidos.includes(body.estado)) {
       return new Response(JSON.stringify({ error: "Estado inválido. Usar: vivo, herido, fallecido, desconocido" }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    const result = await DB.prepare(
-      "UPDATE personas SET estado = ?, updated_at = datetime('now') WHERE id = ?"
-    ).bind(body.estado, Number(id)).run();
-
-    if (result.meta.changes === 0) {
+    const existente: any = await DB.prepare("SELECT * FROM personas WHERE id = ?").bind(Number(id)).first();
+    if (!existente) {
       return new Response(JSON.stringify({ error: "Persona no encontrada" }), {
         status: 404,
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    return new Response(JSON.stringify({ ok: true, id: Number(id), estado: body.estado }), {
+    const nuevoEstado = body.estado || existente.estado;
+    const nuevoRefugio = body.refugio !== undefined ? body.refugio : existente.refugio;
+    const nuevoContacto = body.contacto !== undefined ? body.contacto : existente.contacto;
+    const nuevaLat = body.latitud !== undefined ? body.latitud : existente.latitud;
+    const nuevaLon = body.longitud !== undefined ? body.longitud : existente.longitud;
+    const nuevaUbiNombre = body.ubicacion_nombre !== undefined ? body.ubicacion_nombre : existente.ubicacion_nombre;
+
+    await DB.prepare(`
+      UPDATE personas 
+      SET estado = ?, 
+          refugio = ?, 
+          contacto = ?, 
+          latitud = ?, 
+          longitud = ?, 
+          ubicacion_nombre = ?, 
+          updated_at = datetime('now') 
+      WHERE id = ?
+    `).bind(nuevoEstado, nuevoRefugio, nuevoContacto, nuevaLat, nuevaLon, nuevaUbiNombre, Number(id)).run();
+
+    return new Response(JSON.stringify({ ok: true, id: Number(id), estado: nuevoEstado }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });

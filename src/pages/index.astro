@@ -215,6 +215,67 @@ try {
         Registrarme como a salvo
       </a>
     </div>
+
+    <!-- Contenedor secundario para confirmar datos, contacto y GPS -->
+    <div id="salvo-confirmar-container" class="hidden space-y-4 border-t border-canvas-soft pt-4 animate-fade-in">
+      <h4 class="font-uber-display text-base text-ink font-semibold">📍 Completar datos de ubicación y contacto</h4>
+      <p class="text-xs text-body font-uber-text">
+        Ingresa información real para notificar y reconectar con tus familiares.
+      </p>
+      
+      <div class="space-y-3">
+        <div>
+          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="salvo-contacto">Tu Teléfono / Contacto Actual *</label>
+          <input 
+            type="text" 
+            id="salvo-contacto" 
+            required 
+            class="input w-full font-uber-text uber-body-md" 
+            placeholder="Ej: 0412-1234567, telegram, email..."
+          />
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="salvo-refugio">¿Dónde te encuentras? / Refugio</label>
+          <input 
+            type="text" 
+            id="salvo-refugio" 
+            class="input w-full font-uber-text uber-body-md" 
+            placeholder="Ej: Albergue Polideportivo, casa de familiares..."
+          />
+        </div>
+        
+        <!-- GPS Status Panel -->
+        <div class="p-3 bg-canvas-soft rounded-xl flex flex-col gap-1 border border-canvas-soft">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-semibold text-ink font-uber-text">📍 Coordenadas de GPS</span>
+            <button id="btn-salvo-gps" type="button" class="btn btn-xs bg-primary text-white font-uber-text px-2 py-0.5 rounded text-[11px] cursor-pointer">
+              Recargar GPS
+            </button>
+          </div>
+          <div id="salvo-gps-status" class="text-xs text-mute font-uber-text italic">Iniciando búsqueda...</div>
+          <input type="hidden" id="salvo-latitud" />
+          <input type="hidden" id="salvo-longitud" />
+        </div>
+
+        <!-- Checkbox de confirmación -->
+        <div class="flex items-start gap-2 pt-1">
+          <input 
+            type="checkbox" 
+            id="chk-salvo-confirmacion" 
+            class="w-4 h-4 rounded border-2 border-primary bg-canvas text-primary focus:ring-0 focus:ring-offset-0 mt-0.5 accent-black cursor-pointer" 
+            required 
+          />
+          <label for="chk-salvo-confirmacion" class="text-xs text-body font-uber-text select-none cursor-pointer">
+            Confirmo que estos datos de contacto y ubicación son correctos para mis familiares.
+          </label>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button id="btn-salvo-confirmar-enviar" class="btn bg-success text-white flex-1 font-uber-text uber-body-md-strong">Confirmar "A salvo"</button>
+        <button id="btn-salvo-confirmar-cancelar" type="button" class="btn bg-canvas-soft text-ink flex-1 font-uber-text uber-body-md-strong">Atrás</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -229,6 +290,20 @@ try {
   const salvoNoResults = document.getElementById("salvo-no-results");
   const btnSalvoRegistrar = document.getElementById("btn-salvo-registrar") as HTMLAnchorElement;
 
+  // Confirmar form elements
+  const salvoConfirmarContainer = document.getElementById("salvo-confirmar-container");
+  const salvoContacto = document.getElementById("salvo-contacto") as HTMLInputElement;
+  const salvoRefugio = document.getElementById("salvo-refugio") as HTMLInputElement;
+  const btnSalvoGps = document.getElementById("btn-salvo-gps");
+  const salvoGpsStatus = document.getElementById("salvo-gps-status");
+  const salvoLatitud = document.getElementById("salvo-latitud") as HTMLInputElement;
+  const salvoLongitud = document.getElementById("salvo-longitud") as HTMLInputElement;
+  const chkSalvoConfirmacion = document.getElementById("chk-salvo-confirmacion") as HTMLInputElement;
+  const btnSalvoConfirmarEnviar = document.getElementById("btn-salvo-confirmar-enviar") as HTMLButtonElement;
+  const btnSalvoConfirmarCancelar = document.getElementById("btn-salvo-confirmar-cancelar");
+
+  let personaIdConfirmar: number | null = null;
+
   btnEstoyASalvo?.addEventListener("click", () => {
     modalSalvo?.classList.remove("hidden");
     document.body.style.overflow = "hidden";
@@ -238,14 +313,117 @@ try {
   function cerrarModalSalvo() {
     modalSalvo?.classList.add("hidden");
     document.body.style.overflow = "";
-    if (formSalvoBuscar) formSalvoBuscar.reset();
-    if (salvoResults) salvoResults.innerHTML = "";
+    if (formSalvoBuscar) {
+      formSalvoBuscar.reset();
+      formSalvoBuscar.classList.remove("hidden");
+    }
+    if (salvoResults) {
+      salvoResults.innerHTML = "";
+      salvoResults.classList.remove("hidden");
+    }
     salvoNoResults?.classList.add("hidden");
+    salvoConfirmarContainer?.classList.add("hidden");
+    personaIdConfirmar = null;
   }
 
   btnCloseSalvo?.addEventListener("click", cerrarModalSalvo);
   modalSalvo?.addEventListener("click", (e) => {
     if (e.target === modalSalvo) cerrarModalSalvo();
+  });
+
+  async function obtenerUbicacionGps() {
+    if (!salvoGpsStatus || !salvoLatitud || !salvoLongitud) return;
+    salvoGpsStatus.textContent = "Buscando ubicación GPS...";
+    salvoGpsStatus.className = "text-xs text-yellow-600 font-uber-text italic font-medium";
+    
+    if (!navigator.geolocation) {
+      salvoGpsStatus.textContent = "GPS no compatible con tu navegador";
+      salvoGpsStatus.className = "text-xs text-red-500 font-uber-text italic";
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        salvoLatitud.value = lat.toString();
+        salvoLongitud.value = lon.toString();
+        salvoGpsStatus.textContent = `Ubicación GPS obtenida: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+        salvoGpsStatus.className = "text-xs text-success font-uber-text italic font-semibold";
+      },
+      (error) => {
+        let msg = "No se pudo obtener la ubicación GPS";
+        if (error.code === error.PERMISSION_DENIED) {
+          msg = "Permiso de GPS denegado";
+        }
+        salvoGpsStatus.textContent = msg;
+        salvoGpsStatus.className = "text-xs text-red-500 font-uber-text italic";
+      },
+      { timeout: 8000, enableHighAccuracy: true }
+    );
+  }
+
+  btnSalvoGps?.addEventListener("click", obtenerUbicacionGps);
+
+  btnSalvoConfirmarCancelar?.addEventListener("click", () => {
+    personaIdConfirmar = null;
+    salvoConfirmarContainer?.classList.add("hidden");
+    formSalvoBuscar?.classList.remove("hidden");
+    if (salvoResults) salvoResults.classList.remove("hidden");
+  });
+
+  btnSalvoConfirmarEnviar?.addEventListener("click", async () => {
+    if (!personaIdConfirmar) return;
+
+    const contacto = salvoContacto?.value.trim();
+    const refugio = salvoRefugio?.value.trim() || null;
+    const lat = salvoLatitud?.value ? parseFloat(salvoLatitud.value) : null;
+    const lon = salvoLongitud?.value ? parseFloat(salvoLongitud.value) : null;
+    const confirmado = chkSalvoConfirmacion?.checked;
+
+    if (!contacto) {
+      alert("Contacto requerido para familiares.");
+      salvoContacto?.focus();
+      return;
+    }
+
+    if (!confirmado) {
+      alert("Debes confirmar que los datos son correctos.");
+      return;
+    }
+
+    btnSalvoConfirmarEnviar.disabled = true;
+    btnSalvoConfirmarEnviar.textContent = "Guardando...";
+
+    try {
+      const patchResp = await fetch(`/api/personas/${personaIdConfirmar}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          estado: "vivo",
+          contacto,
+          refugio,
+          latitud: lat,
+          longitud: lon
+        })
+      });
+
+      if (patchResp.ok) {
+        btnSalvoConfirmarEnviar.textContent = "✓ A salvo";
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        const err = await patchResp.json();
+        alert(`Error: ${err.error || "intente de nuevo"}`);
+        btnSalvoConfirmarEnviar.disabled = false;
+        btnSalvoConfirmarEnviar.textContent = 'Confirmar "A salvo"';
+      }
+    } catch {
+      alert("Error de conexión");
+      btnSalvoConfirmarEnviar.disabled = false;
+      btnSalvoConfirmarEnviar.textContent = 'Confirmar "A salvo"';
+    }
   });
 
   formSalvoBuscar?.addEventListener("submit", async (e) => {
@@ -283,15 +461,18 @@ try {
             
             let btnHtml = "";
             if (isPersona && item.estado === "desconocido") {
-              btnHtml = `<button class="btn btn-xs bg-success text-white px-2 py-1 rounded btn-salvo-marcar">
+              btnHtml = `<button class="btn btn-xs bg-success text-white px-2 py-1 rounded btn-salvo-marcar cursor-pointer">
                            ✅ A salvo
                          </button>`;
             } else if (!isPersona && item.estado_reporte === "abierto") {
-              btnHtml = `<button class="btn btn-xs bg-success text-white px-2 py-1 rounded btn-salvo-reporte-marcar">
+              btnHtml = `<button class="btn btn-xs bg-success text-white px-2 py-1 rounded btn-salvo-reporte-marcar cursor-pointer">
                            ✅ Encontrado
                          </button>`;
             } else {
-              btnHtml = `<span class="text-xs text-mute font-medium uppercase font-uber-text">${isPersona ? item.estado : item.estado_reporte}</span>`;
+              const displayState = isPersona 
+                ? (item.estado === "vivo" ? "A salvo" : item.estado)
+                : (item.estado_reporte === "resuelto" ? "Resuelto" : item.estado_reporte);
+              btnHtml = `<span class="text-xs text-mute font-medium uppercase font-uber-text">${displayState}</span>`;
             }
 
             card.innerHTML = `
@@ -303,31 +484,20 @@ try {
             `;
             
             // Eventos dinámicos
-            card.querySelector(".btn-salvo-marcar")?.addEventListener("click", async (ev) => {
-              const target = ev.currentTarget as HTMLButtonElement;
-              target.disabled = true;
-              target.textContent = "...";
-              try {
-                const patchResp = await fetch(`/api/personas/${item.id}`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ estado: "vivo" })
-                });
-                if (patchResp.ok) {
-                  target.outerHTML = `<span class="text-xs text-success font-semibold">✓ A salvo</span>`;
-                  setTimeout(() => {
-                    window.location.reload();
-                  }, 1000);
-                } else {
-                  alert("Error al actualizar");
-                  target.disabled = false;
-                  target.textContent = "✅ A salvo";
-                }
-              } catch {
-                alert("Sin conexión");
-                target.disabled = false;
-                target.textContent = "✅ A salvo";
-              }
+            card.querySelector(".btn-salvo-marcar")?.addEventListener("click", (ev) => {
+              personaIdConfirmar = item.id;
+              formSalvoBuscar?.classList.add("hidden");
+              if (salvoResults) salvoResults.classList.add("hidden");
+              salvoNoResults?.classList.add("hidden");
+
+              if (salvoContacto) salvoContacto.value = "";
+              if (salvoRefugio) salvoRefugio.value = "";
+              if (chkSalvoConfirmacion) chkSalvoConfirmacion.checked = false;
+              if (salvoLatitud) salvoLatitud.value = "";
+              if (salvoLongitud) salvoLongitud.value = "";
+
+              salvoConfirmarContainer?.classList.remove("hidden");
+              obtenerUbicacionGps();
             });
 
             card.querySelector(".btn-salvo-reporte-marcar")?.addEventListener("click", async (ev) => {
