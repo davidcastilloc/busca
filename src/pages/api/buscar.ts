@@ -59,7 +59,7 @@ export const GET: APIRoute = async (context) => {
            OR ubicacion_nombre LIKE ?
         ORDER BY updated_at DESC
         LIMIT 50
-      `).bind(query, term, term, term).all();
+      `).bind(query, term, term).all();
       
       if (reportesRes.results) {
         results.push(...reportesRes.results.map((r: any) => ({ ...r, _source: "reporte" })));
