@@ -3,8 +3,11 @@
   "type": "module",
   "version": "0.0.1",
   "scripts": {
-    "dev": "astro dev",
+    "dev": "astro dev --host 0.0.0.0",
+    "dev:core": "node core/server.js",
+    "dev:all": "node core/server.js & astro dev --host 0.0.0.0",
     "build": "astro build",
+    "indexar": "node core/indexar.js",
     "preview": "astro preview",
     "astro": "astro"
   },

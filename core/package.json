@@ -1,0 +1,13 @@
+{
+  "name": "vtb-core",
+  "type": "module",
+  "scripts": {
+    "index": "node indexar.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "meilisearch": "^0.44.0"
+  }
+}

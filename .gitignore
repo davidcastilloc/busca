@@ -26,3 +26,9 @@ pnpm-debug.log*
 # wrangler local state
 .wrangler/
 
+# monolith - core deps
+core/node_modules/
+
+# monolith - scraped data (regenerable)
+data/
+
