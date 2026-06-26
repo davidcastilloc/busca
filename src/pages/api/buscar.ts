@@ -44,8 +44,8 @@ export const GET: APIRoute = async (context) => {
 
     const responseBody = JSON.stringify(results);
 
-    // Cachear en KV por 30 segundos
-    await CACHE_KV.put(cacheKey, responseBody, { expirationTtl: 30 });
+    // Cachear en KV por 60 segundos
+    await CACHE_KV.put(cacheKey, responseBody, { expirationTtl: 60 });
 
     return new Response(responseBody, {
       status: 200,
