@@ -17,6 +17,7 @@
     "@tailwindcss/vite": "^4.3.1",
     "astro": "^7.0.3",
     "daisyui": "^5.6.0",
+    "html2canvas": "^1.4.1",
     "idb": "^8.0.3",
     "tailwindcss": "^4.3.1",
     "wrangler": "^4.105.0",
