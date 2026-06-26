@@ -1,327 +1,191 @@
----
----
-
 <div class="w-full max-w-3xl mx-auto p-4">
-  <!-- Tabs de búsqueda -->
-  <div class="flex gap-2 justify-center mb-6">
-    <button id="btn-tab-exact" class="btn btn-error text-white font-black btn-sm sm:btn-md">
-      🔍 Censo de Personas
-    </button>
-    <button id="btn-tab-semantic" class="btn btn-outline border-base-300 font-bold btn-sm sm:btn-md">
-      🧠 Búsqueda Semántica (IA)
-    </button>
+  <!-- Filtros rápidos -->
+  <div class="flex flex-wrap gap-2 justify-center mb-4">
+    <button id="filtro-todos" class="btn btn-error text-white font-black btn-sm">Todos</button>
+    <button id="filtro-missing" class="btn btn-outline border-base-300 font-bold btn-sm">Por Localizar</button>
+    <button id="filtro-found" class="btn btn-outline border-base-300 font-bold btn-sm">Localizadas</button>
   </div>
 
-  <!-- Formulario 1: Búsqueda Exacta -->
-  <div id="panel-exact" class="card bg-base-100 border border-base-300 p-6 shadow-sm">
-    <form id="form-search-exact" class="space-y-4">
+  <!-- Buscador -->
+  <div class="card bg-base-100 border border-base-300 p-6 shadow-sm">
+    <form id="form-search" class="space-y-4">
       <div class="flex flex-col sm:flex-row gap-2">
         <input 
           type="text" 
-          id="query-exact" 
+          id="query-input" 
           required
-          class="input input-bordered flex-1" 
-          placeholder="Buscar por Nombre, Cédula, Ubicación o Refugio..." 
+          class="input input-bordered flex-1 text-lg" 
+          placeholder="Buscar por nombre, cédula, ubicación..." 
+          autofocus
         />
-        <button type="submit" class="btn btn-error text-white font-bold">
-          Buscar
+        <button type="submit" class="btn btn-error text-white font-bold text-lg px-8">
+          🔍 Buscar
         </button>
       </div>
-      <p class="text-xs text-base-content/50">
-        Búsqueda exacta en el censo oficial de albergues y rescatistas.
+      <p class="text-xs text-base-content/50 text-center">
+        Búsqueda aproximada con tolerancia a errores ortográficos
       </p>
     </form>
   </div>
 
-  <!-- Formulario 2: Búsqueda Semántica (IA) -->
-  <div id="panel-semantic" class="card bg-base-100 border border-base-300 p-6 shadow-sm hidden">
-    <form id="form-search-semantic" class="space-y-4">
-      <div class="space-y-2">
-        <label class="label p-0"><span class="label-text font-bold">Descripción del Reporte de Búsqueda</span></label>
-        <textarea 
-          id="query-semantic" 
-          required
-          minlength="5"
-          rows="3"
-          class="textarea textarea-bordered w-full" 
-          placeholder="Ej: Niño de unos 8 años, jean azul, gorra roja, visto por última vez en la plaza Bolívar..."
-        ></textarea>
-      </div>
-      <button type="submit" id="btn-submit-semantic" class="btn btn-warning btn-block font-black">
-        Buscar por Similitud Semántica
-      </button>
-      <p class="text-xs text-base-content/50">
-        La IA procesará la descripción y buscará reportes con características físicas similares en la base de datos de desaparecidos.
-      </p>
-    </form>
-  </div>
-
-  <!-- Resultados de búsqueda -->
+  <!-- Resultados -->
   <div id="results-loader" class="hidden flex justify-center py-10">
     <span class="loading loading-spinner loading-lg text-error"></span>
   </div>
 
   <div id="results-header" class="hidden font-bold text-sm text-base-content/70 mt-6 mb-2"></div>
   <div id="results-container" class="space-y-4"></div>
+
+  <!-- Paginación -->
+  <div id="pagination" class="hidden flex justify-center gap-2 mt-6">
+    <button id="btn-prev" class="btn btn-outline btn-sm">&larr; Anterior</button>
+    <span id="page-info" class="btn btn-ghost btn-sm"></span>
+    <button id="btn-next" class="btn btn-outline btn-sm">Siguiente &rarr;</button>
+  </div>
 </div>
 
 <script>
-  const btnTabExact = document.getElementById("btn-tab-exact");
-  const btnTabSemantic = document.getElementById("btn-tab-semantic");
-  const panelExact = document.getElementById("panel-exact");
-  const panelSemantic = document.getElementById("panel-semantic");
+  const API = "http://localhost:3001";
+  let currentPage = 1;
+  let currentQuery = "";
+  let currentFilter = "";
+  let totalResults = 0;
+  const PER_PAGE = 20;
 
-  const formSearchExact = document.getElementById("form-search-exact") as HTMLFormElement;
-  const formSearchSemantic = document.getElementById("form-search-semantic") as HTMLFormElement;
-  
-  const queryExact = document.getElementById("query-exact") as HTMLInputElement;
-  const querySemantic = document.getElementById("query-semantic") as HTMLTextAreaElement;
-  const btnSubmitSemantic = document.getElementById("btn-submit-semantic");
-  
+  const form = document.getElementById("form-search");
+  const input = document.getElementById("query-input");
   const loader = document.getElementById("results-loader");
-  const resultsHeader = document.getElementById("results-header");
-  const resultsContainer = document.getElementById("results-container");
+  const header = document.getElementById("results-header");
+  const container = document.getElementById("results-container");
+  const pagination = document.getElementById("pagination");
+  const btnPrev = document.getElementById("btn-prev");
+  const btnNext = document.getElementById("btn-next");
+  const pageInfo = document.getElementById("page-info");
 
-  // Control de pestañas
-  if (btnTabExact && btnTabSemantic && panelExact && panelSemantic) {
-    btnTabExact.addEventListener("click", () => {
-      // Activar Exact
-      btnTabExact.className = "btn btn-error text-white font-black btn-sm sm:btn-md";
-      btnTabSemantic.className = "btn btn-outline border-base-300 font-bold btn-sm sm:btn-md";
-      panelExact.classList.remove("hidden");
-      panelSemantic.classList.add("hidden");
-    });
+  // Filtros
+  document.getElementById("filtro-todos").addEventListener("click", () => setFilter(""));
+  document.getElementById("filtro-missing").addEventListener("click", () => setFilter("missing"));
+  document.getElementById("filtro-found").addEventListener("click", () => setFilter("found"));
 
-    btnTabSemantic.addEventListener("click", () => {
-      // Activar Semantic
-      btnTabExact.className = "btn btn-outline border-base-300 font-bold btn-sm sm:btn-md";
-      btnTabSemantic.className = "btn btn-warning text-black font-black btn-sm sm:btn-md";
-      panelExact.classList.add("hidden");
-      panelSemantic.classList.remove("hidden");
-    });
+  function setFilter(f) {
+    currentFilter = f;
+    currentPage = 1;
+    doSearch();
   }
 
-  // Enviar búsqueda exacta
-  if (formSearchExact) {
-    formSearchExact.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const q = queryExact.value.trim();
-      if (!q) return;
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    currentQuery = input.value.trim();
+    currentPage = 1;
+    doSearch();
+  });
 
-      mostrarLoader(true);
-      try {
-        const resp = await fetch(`/api/buscar?q=${encodeURIComponent(q)}`);
-        if (resp.ok) {
-          const resultados = await resp.json();
-          renderizarPersonas(resultados, q);
-        } else {
-          throw new Error("Error en respuesta");
-        }
-      } catch (err) {
-        console.error(err);
-        mostrarMensajeHeader("❌ Hubo un error de conexión al buscar.", true);
-      } finally {
-        mostrarLoader(false);
-      }
-    });
-  }
+  btnPrev.addEventListener("click", () => { if (currentPage > 1) { currentPage--; doSearch(); } });
+  btnNext.addEventListener("click", () => { if (currentPage * PER_PAGE < totalResults) { currentPage++; doSearch(); } });
 
-  // Enviar búsqueda semántica
-  if (formSearchSemantic && btnSubmitSemantic) {
-    formSearchSemantic.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const desc = querySemantic.value.trim();
-      if (desc.length < 5) return;
-
-      if (!navigator.onLine) {
-        mostrarMensajeHeader("❌ La búsqueda semántica requiere conexión a internet.", true);
-        return;
-      }
-
-      mostrarLoader(true);
-      btnSubmitSemantic.classList.add("loading");
-
-      try {
-        const resp = await fetch("/api/buscar-similar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ descripcion: desc })
-        });
-
-        if (resp.ok) {
-          const resultados = await resp.json();
-          renderizarReportes(resultados);
-        } else {
-          throw new Error("Error en búsqueda semántica");
-        }
-      } catch (err) {
-        console.error(err);
-        mostrarMensajeHeader("❌ Error al procesar búsqueda inteligente.", true);
-      } finally {
-        mostrarLoader(false);
-        btnSubmitSemantic.classList.remove("loading");
-      }
-    });
-  }
-
-  function mostrarLoader(show: boolean) {
-    if (loader) {
-      if (show) loader.classList.remove("hidden");
-      else loader.classList.add("hidden");
-    }
-  }
-
-  function mostrarMensajeHeader(msg: string, isError = false) {
-    if (resultsHeader && resultsContainer) {
-      resultsHeader.textContent = msg;
-      resultsHeader.classList.remove("hidden");
-      if (isError) {
-        resultsHeader.className = "font-bold text-sm text-error mt-6 mb-2";
-        resultsContainer.innerHTML = "";
-      } else {
-        resultsHeader.className = "font-bold text-sm text-base-content/75 mt-6 mb-2";
-      }
-    }
-  }
-
-  // Render para censo (Personas)
-  function renderizarPersonas(personas: any[], q: string) {
-    if (!resultsContainer) return;
-    resultsContainer.innerHTML = "";
-
-    if (personas.length === 0) {
-      mostrarMensajeHeader(`Sin resultados exactos para "${q}". Intenta con búsqueda semántica si tienes una descripción.`);
+  async function doSearch() {
+    if (!currentQuery && !currentFilter) {
+      showHeader("Escribe algo para buscar", false);
+      container.innerHTML = "";
+      pagination.classList.add("hidden");
       return;
     }
 
-    mostrarMensajeHeader(`Se encontraron ${personas.length} registros exactos:`);
+    showLoader(true);
+    try {
+      let url = `${API}/api/search?limit=${PER_PAGE}&page=${currentPage}`;
+      if (currentQuery) url += `&q=${encodeURIComponent(currentQuery)}`;
+      if (currentFilter) url += `&status=${currentFilter}`;
 
-    personas.forEach(p => {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Error en búsqueda");
+      const data = await resp.json();
+      totalResults = data.total;
+      renderResults(data.hits);
+    } catch (err) {
+      console.error(err);
+      showHeader("❌ Error de conexión al motor de búsqueda", true);
+      container.innerHTML = "";
+      pagination.classList.add("hidden");
+    } finally {
+      showLoader(false);
+    }
+  }
+
+  function renderResults(hits) {
+    container.innerHTML = "";
+    if (!hits || hits.length === 0) {
+      showHeader(currentQuery
+        ? `Sin resultados para "${currentQuery}"`
+        : "Sin resultados con ese filtro", false);
+      pagination.classList.add("hidden");
+      return;
+    }
+
+    const from = (currentPage - 1) * PER_PAGE + 1;
+    const to = Math.min(currentPage * PER_PAGE, totalResults);
+    showHeader(`Resultados ${from}-${to} de ${totalResults.toLocaleString("es")}`, false);
+
+    for (const p of hits) {
       const card = document.createElement("div");
-      
-      const configEstado: Record<string, { badge: string, border: string, text: string }> = {
-        vivo: { badge: "badge-success text-white", border: "border-success/30", text: "Vivo / A salvo" },
-        herido: { badge: "badge-warning text-black", border: "border-warning/30", text: "Herido" },
-        fallecido: { badge: "badge-error text-white", border: "border-error/30", text: "Fallecido" },
-        desconocido: { badge: "badge-neutral text-white", border: "border-neutral/30", text: "Desconocido" }
-      };
-      
-      const config = configEstado[p.estado] || configEstado.desconocido;
-      const imgHtml = p.foto_key 
+      card.className = "card card-side bg-base-100 shadow-md border-l-4 border-error/30 flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]";
+
+      const imgHtml = p.tiene_foto
         ? `<figure class="w-full sm:w-44 h-44 sm:h-auto shrink-0 bg-base-300 relative">
-             <img src="/api/upload?key=${encodeURIComponent(p.foto_key)}" alt="Foto" class="w-full h-full object-cover" loading="lazy" />
+             <img src="${API}/api/persons/${p.id}/photo" alt="Foto" class="w-full h-full object-cover" loading="lazy" onerror="this.style.display='none'" />
            </figure>`
         : `<div class="w-full sm:w-44 h-44 shrink-0 bg-base-300 flex items-center justify-center text-4xl select-none">👤</div>`;
 
-      const fecha = formatFechaLocal(p.updated_at);
+      const statusBadge = p.status === "found"
+        ? `<div class="badge badge-success text-white font-black text-xs">Localizada</div>`
+        : `<div class="badge badge-error text-white font-black text-xs">Por Localizar</div>`;
 
-      card.className = `card card-side bg-base-100 shadow-md border-l-4 ${config.border} flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]`;
+      const hlName = p._formatted?.nombre_completo || p.nombre_completo;
+      const hlLoc = p._formatted?.ultima_ubicacion || p.ultima_ubicacion;
+      const hlDesc = p._formatted?.descripcion || p.descripcion;
+
       card.innerHTML = `
         ${imgHtml}
         <div class="card-body p-5 flex flex-col justify-between">
           <div>
             <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-              <h2 class="card-title text-xl font-bold tracking-tight">${p.nombre} ${p.apellido || ""}</h2>
-              <div class="badge font-black text-xs ${config.badge}">${config.text}</div>
+              <h2 class="card-title text-xl font-bold tracking-tight">${hlName}</h2>
+              ${statusBadge}
             </div>
-            
             <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm mb-3">
-              ${p.cedula ? `<div><span class="text-base-content/50 font-semibold">Documento:</span> <span class="font-bold">${p.cedula}</span></div>` : ""}
-              ${p.edad !== null && p.edad !== undefined ? `<div><span class="text-base-content/50 font-semibold">Edad:</span> <span class="font-bold">${p.edad} años</span></div>` : ""}
-              ${p.sexo ? `<div><span class="text-base-content/50 font-semibold">Sexo:</span> <span class="font-bold">${p.sexo}</span></div>` : ""}
-              ${p.refugio ? `<div class="col-span-2"><span class="text-base-content/50 font-semibold">📍 Refugio:</span> <span class="font-bold text-success-content bg-success/10 px-1.5 py-0.5 rounded">${p.refugio}</span></div>` : ""}
-              ${p.ubicacion_nombre ? `<div class="col-span-2"><span class="text-base-content/50 font-semibold">📍 Zona:</span> <span class="font-bold">${p.ubicacion_nombre}</span></div>` : ""}
+              ${p.cedula ? `<div><span class="text-base-content/50 font-semibold">Cédula:</span> <span class="font-bold">${p._formatted?.cedula || p.cedula}</span></div>` : ""}
+              ${p.edad ? `<div><span class="text-base-content/50 font-semibold">Edad:</span> <span class="font-bold">${p.edad} años</span></div>` : ""}
+              ${p.genero ? `<div><span class="text-base-content/50 font-semibold">Género:</span> <span class="font-bold">${p.genero}</span></div>` : ""}
+              ${hlLoc ? `<div class="col-span-2"><span class="text-base-content/50 font-semibold">📍 Ubicación:</span> <span class="font-bold">${hlLoc}</span></div>` : ""}
             </div>
-            
-            ${p.notas ? `<div class="bg-base-200 p-2.5 rounded-lg text-sm border-l-2 border-base-300 italic mb-2.5 text-base-content/90">"${p.notas}"</div>` : ""}
+            ${hlDesc ? `<div class="bg-base-200 p-2.5 rounded-lg text-sm border-l-2 border-base-300 italic mb-2.5 text-base-content/90">"${hlDesc}"</div>` : ""}
           </div>
-          
           <div class="flex flex-wrap items-center justify-between text-xs text-base-content/50 border-t border-base-200 pt-2.5 mt-auto">
-            <div>Fuente: <span class="font-bold capitalize">${p.fuente || "web"}</span></div>
-            <div>Actualizado: <span class="font-semibold">${fecha}</span></div>
+            <div>Reportante: <span class="font-bold">${p.reportante || "Anónimo"}</span></div>
+            <div>${p.created_at ? new Date(p.created_at).toLocaleDateString("es-VE") : ""}</div>
           </div>
         </div>
       `;
-      resultsContainer.appendChild(card);
-    });
-  }
-
-  // Render para reportes (Semantic matching)
-  function renderizarReportes(reportes: any[]) {
-    if (!resultsContainer) return;
-    resultsContainer.innerHTML = "";
-
-    if (reportes.length === 0) {
-      mostrarMensajeHeader("Sin coincidencia de reportes por similitud semántica.");
-      return;
+      container.appendChild(card);
     }
 
-    mostrarMensajeHeader(`Coincidencias inteligentes encontradas (${reportes.length} reportes similares):`);
-
-    reportes.forEach(r => {
-      const card = document.createElement("div");
-      
-      const configTipo: Record<string, { badge: string, border: string, text: string }> = {
-        desaparecido: { badge: "badge-error text-white", border: "border-error/30", text: "Desaparecido" },
-        encontrado: { badge: "badge-success text-white", border: "border-success/30", text: "Encontrado" },
-        refugio: { badge: "badge-info text-white", border: "border-info/30", text: "Refugio" },
-        necesidad: { badge: "badge-warning text-black", border: "border-warning/30", text: "Necesidad" }
-      };
-      
-      const config = configTipo[r.tipo] || { badge: "badge-neutral text-white", border: "border-base-300", text: "Reporte" };
-      const similarityScore = r.score ? Math.round(r.score * 100) : null;
-      
-      const imgHtml = r.foto_key 
-        ? `<figure class="w-full sm:w-44 h-44 sm:h-auto shrink-0 bg-base-300 relative">
-             <img src="/api/upload?key=${encodeURIComponent(r.foto_key)}" alt="Foto" class="w-full h-full object-cover" loading="lazy" />
-           </figure>`
-        : `<div class="w-full sm:w-44 h-44 shrink-0 bg-base-300 flex items-center justify-center text-4xl select-none">📢</div>`;
-
-      const fecha = formatFechaLocal(r.updated_at);
-
-      card.className = `card card-side bg-base-100 shadow-md border-l-4 ${config.border} flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]`;
-      card.innerHTML = `
-        ${imgHtml}
-        <div class="card-body p-5 flex flex-col justify-between">
-          <div>
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-              <h2 class="card-title text-xl font-bold tracking-tight">
-                ${r.nombre_buscado || "Persona no identificada"}
-              </h2>
-              <div class="flex items-center gap-1">
-                ${similarityScore !== null ? `<div class="badge badge-info font-black text-white text-xs">🎯 Similitud: ${similarityScore}%</div>` : ""}
-                <div class="badge font-black text-xs ${config.badge}">${config.text}</div>
-              </div>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm mb-3">
-              ${r.cedula_buscado ? `<div><span class="text-base-content/50 font-semibold">Documento:</span> <span class="font-bold">${r.cedula_buscado}</span></div>` : ""}
-              ${r.ubicacion_nombre ? `<div class="col-span-2"><span class="text-base-content/50 font-semibold">Último avistamiento:</span> <span class="font-bold">${r.ubicacion_nombre}</span></div>` : ""}
-              ${r.reportante_nombre ? `<div><span class="text-base-content/50 font-semibold">Reportado por:</span> <span class="font-bold">${r.reportante_nombre}</span></div>` : ""}
-              ${r.reportante_contacto ? `<div><span class="text-base-content/50 font-semibold">Contacto:</span> <span class="font-bold">${r.reportante_contacto}</span></div>` : ""}
-            </div>
-            
-            <div class="bg-warning/5 border-l-2 border-warning p-2.5 rounded-lg text-sm italic mb-2.5 text-base-content/95">
-              <strong>Descripción:</strong> "${r.descripcion}"
-            </div>
-          </div>
-          
-          <div class="flex flex-wrap items-center justify-between text-xs text-base-content/50 border-t border-base-200 pt-2.5 mt-auto">
-            <div>Estado Reporte: <span class="font-bold uppercase text-error">${r.estado_reporte || "abierto"}</span></div>
-            <div>Fecha: <span class="font-semibold">${fecha}</span></div>
-          </div>
-        </div>
-      `;
-      resultsContainer.appendChild(card);
-    });
+    const totalPages = Math.ceil(totalResults / PER_PAGE);
+    if (totalPages > 1) {
+      pagination.classList.remove("hidden");
+      pageInfo.textContent = `Pág. ${currentPage} de ${totalPages}`;
+      btnPrev.disabled = currentPage <= 1;
+      btnNext.disabled = currentPage >= totalPages;
+    } else {
+      pagination.classList.add("hidden");
+    }
   }
 
-  function formatFechaLocal(fechaStr: string) {
-    try {
-      const d = new Date(fechaStr + " UTC");
-      return d.toLocaleString("es-ES", { timeZone: "America/Caracas" });
-    } catch (e) {
-      return fechaStr;
-    }
+  function showLoader(s) { loader.classList.toggle("hidden", !s); }
+  function showHeader(msg, err) {
+    header.textContent = msg;
+    header.classList.remove("hidden");
+    header.className = err
+      ? "font-bold text-sm text-error mt-6 mb-2"
+      : "font-bold text-sm text-base-content/75 mt-6 mb-2";
   }
 </script>

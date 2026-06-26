@@ -2,68 +2,57 @@
 import Layout from "../layouts/Layout.astro";
 import Navbar from "../components/Navbar.astro";
 import BuscadorRapido from "../components/BuscadorRapido.astro";
-import { env } from "cloudflare:workers";
-
-export const prerender = false;
-
-let totalCensados = 0;
-let totalDesaparecidos = 0;
-let totalEncontrados = 0;
-
-try {
-  const { DB } = env;
-
-  if (DB) {
-    const censadosQuery = await DB.prepare("SELECT COUNT(*) as count FROM personas").first<{ count: number }>();
-    totalCensados = censadosQuery?.count || 0;
-
-    const desaparecidosQuery = await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE tipo = 'desaparecido' AND estado_reporte = 'abierto'").first<{ count: number }>();
-    totalDesaparecidos = desaparecidosQuery?.count || 0;
-
-    const encontradosQuery = await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE tipo = 'encontrado' AND estado_reporte = 'abierto'").first<{ count: number }>();
-    totalEncontrados = encontradosQuery?.count || 0;
-  }
-} catch (error) {
-  console.error("Error al obtener estadísticas del censo:", error);
-}
 ---
 
 <Layout title="BUSCA - Censo y Búsqueda de Emergencia">
   <Navbar />
   
   <main class="flex-grow py-8 px-4">
-    <!-- Hero Section -->
     <div class="text-center max-w-2xl mx-auto mb-8 space-y-4">
       <h1 class="text-4xl md:text-5xl font-black tracking-tight text-base-content">
         Censo y Búsqueda de Emergencia
       </h1>
       <p class="text-lg text-base-content/75">
-        Buscador unificado de personas rescatadas, albergues y reportes de desapariciones. Plataforma optimizada para baja conectividad.
+        Buscador de personas desaparecidas tras el terremoto de Venezuela 2026.
+        <br/>Datos del registro público de venezuelatebusca.com
       </p>
       
-      <!-- Stats Badges -->
-      <div class="stats bg-base-100 shadow-md border border-base-300 w-full grid grid-cols-3">
+      <div id="stats-container" class="stats bg-base-100 shadow-md border border-base-300 w-full grid grid-cols-3">
         <div class="stat p-4">
-          <div class="stat-title text-xs md:text-sm font-semibold">Total Censados</div>
-          <div class="stat-value text-xl md:text-2xl font-black text-success">{totalCensados}</div>
-          <div class="stat-desc text-[10px] md:text-xs">En refugios / a salvo</div>
+          <div class="stat-title text-xs md:text-sm font-semibold">Total Registradas</div>
+          <div id="stat-total" class="stat-value text-xl md:text-2xl font-black text-info">---</div>
         </div>
-        
         <div class="stat p-4 border-l border-base-300">
-          <div class="stat-title text-xs md:text-sm font-semibold">Desaparecidos</div>
-          <div class="stat-value text-xl md:text-2xl font-black text-error">{totalDesaparecidos}</div>
-          <div class="stat-desc text-[10px] md:text-xs">Búsquedas activas</div>
+          <div class="stat-title text-xs md:text-sm font-semibold">Por Localizar</div>
+          <div id="stat-missing" class="stat-value text-xl md:text-2xl font-black text-error">---</div>
         </div>
-        
         <div class="stat p-4 border-l border-base-300">
-          <div class="stat-title text-xs md:text-sm font-semibold">Sin Identificar</div>
-          <div class="stat-value text-xl md:text-2xl font-black text-warning">{totalEncontrados}</div>
-          <div class="stat-desc text-[10px] md:text-xs">Encontrados sin ID</div>
+          <div class="stat-title text-xs md:text-sm font-semibold">Localizadas</div>
+          <div id="stat-found" class="stat-value text-xl md:text-2xl font-black text-success">---</div>
         </div>
       </div>
     </div>
 
-    <!-- Buscador principal -->
     <BuscadorRapido />
   </main>
 </Layout>
+
+<script>
+  const API = "http://localhost:3001";
+
+  async function loadStats() {
+    try {
+      const resp = await fetch(`${API}/api/stats`);
+      if (!resp.ok) throw new Error("Error");
+      const s = await resp.json();
+      document.getElementById("stat-total").textContent = s.total.toLocaleString("es");
+      document.getElementById("stat-missing").textContent = s.missing.toLocaleString("es");
+      document.getElementById("stat-found").textContent = s.found.toLocaleString("es");
+    } catch {
+      document.getElementById("stat-total").textContent = "?";
+      document.getElementById("stat-missing").textContent = "?";
+      document.getElementById("stat-found").textContent = "?";
+    }
+  }
+  loadStats();
+</script>
