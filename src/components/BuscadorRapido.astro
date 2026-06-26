@@ -100,8 +100,8 @@
     </div>
     
     <!-- Foto -->
-    <div id="cartel-foto-wrap" style="width:100%;height:400px;background:#efefef;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-      <img id="cartel-foto" style="width:100%;height:100%;object-fit:cover;" src="" alt="" crossorigin="anonymous" />
+    <div id="cartel-foto-wrap" style="width:100%;height:400px;background:#efefef;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;">
+      <img id="cartel-foto" style="position:absolute;" src="" alt="" crossorigin="anonymous" />
     </div>
     
     <!-- Datos -->
@@ -676,17 +676,45 @@
       // Cargar foto
       const fotoKey = currentData.foto_key;
       if (fotoKey && cartelFotoWrap) {
-        cartelFotoWrap.style.flexDirection = "row";
-        cartelFotoWrap.innerHTML = `<img id="cartel-foto" style="width:100%;height:100%;object-fit:cover;" src="" alt="" crossorigin="anonymous" />`;
+        cartelFotoWrap.innerHTML = `<img id="cartel-foto" style="position:absolute;" src="" alt="" crossorigin="anonymous" />`;
         const cartelFoto = document.getElementById("cartel-foto") as HTMLImageElement;
         try {
           const fotoResp = await fetch(`/api/upload?key=${encodeURIComponent(fotoKey)}`);
           if (!fotoResp.ok) throw new Error();
           const fotoBlob = await fotoResp.blob();
-          cartelFoto.src = URL.createObjectURL(fotoBlob);
-          await new Promise(r => { 
-            cartelFoto.onload = r; 
-            setTimeout(r, 2000); 
+          const blobUrl = URL.createObjectURL(fotoBlob);
+
+          await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.src = blobUrl;
+            img.onload = () => {
+              const containerW = 600;
+              const containerH = 400;
+              const imgW = img.naturalWidth;
+              const imgH = img.naturalHeight;
+
+              const containerAspect = containerW / containerH; // 1.5
+              const imgAspect = imgW / imgH;
+
+              cartelFoto.src = blobUrl;
+              if (imgAspect > containerAspect) {
+                // Imagen más ancha (paisaje)
+                const newWidth = containerH * imgAspect;
+                cartelFoto.style.height = `${containerH}px`;
+                cartelFoto.style.width = `${newWidth}px`;
+                cartelFoto.style.top = "0px";
+                cartelFoto.style.left = `${(containerW - newWidth) / 2}px`;
+              } else {
+                // Imagen más alta (retrato)
+                const newHeight = containerW / imgAspect;
+                cartelFoto.style.width = `${containerW}px`;
+                cartelFoto.style.height = `${newHeight}px`;
+                cartelFoto.style.left = "0px";
+                cartelFoto.style.top = `${(containerH - newHeight) / 2}px`;
+              }
+              resolve(null);
+            };
+            img.onerror = () => reject();
           });
         } catch {
           cartelFotoWrap.style.flexDirection = "column";
