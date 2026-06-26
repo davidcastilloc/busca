@@ -26,16 +26,46 @@ export const PATCH: APIRoute = async (context) => {
       });
     }
 
-    const result = await DB.prepare(
-      "UPDATE reportes SET estado_reporte = ?, updated_at = datetime('now') WHERE id = ?"
-    ).bind(body.estado_reporte, Number(id)).run();
-
-    if (result.meta.changes === 0) {
+    const existente: any = await DB.prepare("SELECT * FROM reportes WHERE id = ?").bind(Number(id)).first();
+    if (!existente) {
       return new Response(JSON.stringify({ error: "Reporte no encontrado" }), {
         status: 404,
         headers: { "Content-Type": "application/json" }
       });
     }
+
+    const nuevoContacto = body.contacto !== undefined ? body.contacto : existente.reportante_contacto;
+    const nuevoRefugio = body.refugio !== undefined ? body.refugio : existente.ubicacion_nombre;
+    const nuevaLat = body.latitud !== undefined ? body.latitud : existente.latitud;
+    const nuevaLon = body.longitud !== undefined ? body.longitud : existente.longitud;
+    const nuevaFotoKey = body.foto_key !== undefined ? body.foto_key : existente.foto_key;
+    
+    let nuevaDesc = existente.descripcion;
+    if (body.notas) {
+      nuevaDesc = `${existente.descripcion}\n\n[RESOLUCIÓN / AUTO-REPORTE]: ${body.notas}`;
+    }
+
+    await DB.prepare(`
+      UPDATE reportes 
+      SET estado_reporte = ?, 
+          reportante_contacto = ?, 
+          ubicacion_nombre = ?, 
+          latitud = ?, 
+          longitud = ?, 
+          foto_key = ?, 
+          descripcion = ?, 
+          updated_at = datetime('now') 
+      WHERE id = ?
+    `).bind(
+      body.estado_reporte, 
+      nuevoContacto, 
+      nuevoRefugio, 
+      nuevaLat, 
+      nuevaLon, 
+      nuevaFotoKey, 
+      nuevaDesc, 
+      Number(id)
+    ).run();
 
     return new Response(JSON.stringify({ ok: true, id: Number(id), estado_reporte: body.estado_reporte }), {
       status: 200,

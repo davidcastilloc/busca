@@ -675,40 +675,14 @@
 
     document.getElementById("btn-marcar-encontrado")?.addEventListener("click", (e) => {
       e.stopPropagation();
-      marcarEncontrado();
+      cerrarModal();
+      abrirReporteRapido();
     });
 
-    document.getElementById("modal-btn-marcar-vivo")?.addEventListener("click", async (e) => {
+    document.getElementById("modal-btn-marcar-vivo")?.addEventListener("click", (e) => {
       e.stopPropagation();
-      if (!confirm(`¿Confirmar que esta persona está a salvo?`)) return;
-      const btn = document.getElementById("modal-btn-marcar-vivo") as HTMLButtonElement;
-      btn.disabled = true;
-      btn.textContent = "Actualizando...";
-      try {
-        const resp = await fetch(`/api/personas/${data.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ estado: "vivo" })
-        });
-        if (resp.ok) {
-          data.estado = "vivo";
-          // Actualizar también en el array principal
-          const originalIdx = currentSearchResults.findIndex(x => x._source === "persona" && x.id === data.id);
-          if (originalIdx !== -1) {
-            currentSearchResults[originalIdx].estado = "vivo";
-          }
-          cerrarModal();
-          aplicarFiltrosYRenderizar();
-        } else {
-          alert("Error al actualizar");
-          btn.disabled = false;
-          btn.textContent = "✅ A salvo";
-        }
-      } catch {
-        alert("Sin conexión");
-        btn.disabled = false;
-        btn.textContent = "✅ A salvo";
-      }
+      cerrarModal();
+      abrirReporteRapido();
     });
 
     // Mostrar modal
@@ -920,36 +894,7 @@
     });
   }
 
-  // ═══ MARCAR ENCONTRADO ═══
-  async function marcarEncontrado() {
-    if (!currentData || currentTipo !== "reporte") return;
-    
-    const btn = document.getElementById("btn-marcar-encontrado");
-    if (!btn) return;
-    
-    if (!confirm("¿Confirmar que esta persona fue encontrada?")) return;
 
-    btn.textContent = "Actualizando...";
-    btn.classList.add("opacity-50");
-
-    try {
-      const resp = await fetch(`/api/reportes/${currentData.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estado_reporte: "resuelto" })
-      });
-      if (resp.ok) {
-        btn.textContent = "✓ Marcado";
-        currentData.estado_reporte = "resuelto";
-      } else {
-        btn.textContent = "Error";
-        btn.classList.remove("opacity-50");
-      }
-    } catch {
-      btn.textContent = "Sin conexión";
-      btn.classList.remove("opacity-50");
-    }
-  }
 
   // ═══ GENERAR CARTEL "SE BUSCA" ═══
   async function generarCartel() {

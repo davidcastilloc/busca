@@ -345,7 +345,7 @@ try {
   const salvoContacto = document.getElementById("salvo-contacto") as HTMLInputElement;
   const salvoRefugio = document.getElementById("salvo-refugio") as HTMLInputElement;
   const salvoEstadoSalud = document.getElementById("salvo-estado-salud") as HTMLSelectElement;
-  const salvoNotas = document.getElementById("salvo-notes") as HTMLTextAreaElement;
+  const salvoNotas = document.getElementById("salvo-notas") as HTMLTextAreaElement;
   const salvoFotoFile = document.getElementById("salvo-foto-file") as HTMLInputElement;
   const salvoFotoKey = document.getElementById("salvo-foto-key") as HTMLInputElement;
   const salvoFotoStatus = document.getElementById("salvo-foto-status");
@@ -365,6 +365,7 @@ try {
   const btnSalvoListo = document.getElementById("btn-salvo-listo");
 
   let personaIdConfirmar: number | null = null;
+  let reporteIdConfirmar: number | null = null;
   let personaNombreConfirmar: string = "";
 
   btnEstoyASalvo?.addEventListener("click", () => {
@@ -389,6 +390,7 @@ try {
     salvoExitoContainer?.classList.add("hidden");
     btnCloseSalvo?.classList.remove("hidden");
     personaIdConfirmar = null;
+    reporteIdConfirmar = null;
     personaNombreConfirmar = "";
   }
 
@@ -472,6 +474,7 @@ try {
 
   btnSalvoConfirmarCancelar?.addEventListener("click", () => {
     personaIdConfirmar = null;
+    reporteIdConfirmar = null;
     personaNombreConfirmar = "";
     salvoConfirmarContainer?.classList.add("hidden");
     formSalvoBuscar?.classList.remove("hidden");
@@ -479,7 +482,7 @@ try {
   });
 
   btnSalvoConfirmarEnviar?.addEventListener("click", async () => {
-    if (!personaIdConfirmar) return;
+    if (!personaIdConfirmar && !reporteIdConfirmar) return;
 
     const contacto = salvoContacto?.value.trim();
     const refugio = salvoRefugio?.value.trim() || null;
@@ -505,22 +508,39 @@ try {
     btnSalvoConfirmarEnviar.textContent = "Guardando...";
 
     try {
-      const patchResp = await fetch(`/api/personas/${personaIdConfirmar}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          estado: estadoSalud,
-          contacto,
-          refugio,
-          notas,
-          foto_key: fotoKey,
-          latitud: lat,
-          longitud: lon
-        })
-      });
+      let patchResp;
+      if (personaIdConfirmar) {
+        patchResp = await fetch(`/api/personas/${personaIdConfirmar}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            estado: estadoSalud,
+            contacto,
+            refugio,
+            notas,
+            foto_key: fotoKey,
+            latitud: lat,
+            longitud: lon
+          })
+        });
+      } else {
+        patchResp = await fetch(`/api/reportes/${reporteIdConfirmar}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            estado_reporte: "resuelto",
+            contacto,
+            refugio,
+            notas,
+            foto_key: fotoKey,
+            latitud: lat,
+            longitud: lon
+          })
+        });
+      }
 
       if (patchResp.ok) {
-        btnSalvoConfirmarEnviar.textContent = "✓ A salvo";
+        btnSalvoConfirmarEnviar.textContent = "✓ Guardado";
         
         // Mostrar panel de éxito
         salvoConfirmarContainer?.classList.add("hidden");
@@ -642,31 +662,28 @@ try {
               obtenerUbicacionGps();
             });
 
-            card.querySelector(".btn-salvo-reporte-marcar")?.addEventListener("click", async (ev) => {
-              const target = ev.currentTarget as HTMLButtonElement;
-              target.disabled = true;
-              target.textContent = "...";
-              try {
-                const patchResp = await fetch(`/api/reportes/${item.id}`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ estado_reporte: "resuelto" })
-                });
-                if (patchResp.ok) {
-                  target.outerHTML = `<span class="text-xs text-success font-semibold">✓ Encontrado</span>`;
-                  setTimeout(() => {
-                    window.location.reload();
-                  }, 1000);
-                } else {
-                  alert("Error al actualizar");
-                  target.disabled = false;
-                  target.textContent = "✅ Encontrado";
-                }
-              } catch {
-                alert("Sin conexión");
-                target.disabled = false;
-                target.textContent = "✅ Encontrado";
+            card.querySelector(".btn-salvo-reporte-marcar")?.addEventListener("click", (ev) => {
+              reporteIdConfirmar = item.id;
+              personaNombreConfirmar = nombre;
+              formSalvoBuscar?.classList.add("hidden");
+              if (salvoResults) salvoResults.classList.add("hidden");
+              salvoNoResults?.classList.add("hidden");
+
+              if (salvoContacto) salvoContacto.value = "";
+              if (salvoRefugio) salvoRefugio.value = "";
+              if (salvoNotas) salvoNotas.value = "";
+              if (salvoFotoFile) salvoFotoFile.value = "";
+              if (salvoFotoKey) salvoFotoKey.value = "";
+              if (salvoFotoStatus) {
+                salvoFotoStatus.textContent = "";
+                salvoFotoStatus.classList.add("hidden");
               }
+              if (chkSalvoConfirmacion) chkSalvoConfirmacion.checked = false;
+              if (salvoLatitud) salvoLatitud.value = "";
+              if (salvoLongitud) salvoLongitud.value = "";
+
+              salvoConfirmarContainer?.classList.remove("hidden");
+              obtenerUbicacionGps();
             });
 
             salvoResults?.appendChild(card);

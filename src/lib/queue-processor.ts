@@ -100,6 +100,27 @@ export async function procesarCola(
         if (result && result.id) {
           const reporteId = result.id;
           
+          // Si el reporte es de tipo 'encontrado', resolver reportes de búsqueda relacionados
+          if (data.tipo === "encontrado") {
+            if (data.cedula_buscado) {
+              await env.DB.prepare(`
+                UPDATE reportes 
+                SET estado_reporte = 'resuelto', 
+                    updated_at = datetime('now') 
+                WHERE cedula_buscado = ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
+              `).bind(data.cedula_buscado).run();
+            }
+            
+            if (data.nombre_buscado && data.nombre_buscado.length > 3) {
+              await env.DB.prepare(`
+                UPDATE reportes 
+                SET estado_reporte = 'resuelto', 
+                    updated_at = datetime('now') 
+                WHERE nombre_buscado LIKE ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
+              `).bind(`%${data.nombre_buscado}%`).run();
+            }
+          }
+          
           try {
             // Intentar extraer entidades usando Llama 3.1
             const entidades = await extraerEntidades(env, data.descripcion);
