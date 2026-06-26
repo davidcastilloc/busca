@@ -74,8 +74,8 @@ export const PATCH: APIRoute = async (context) => {
           UPDATE reportes 
           SET estado_reporte = 'resuelto', 
               updated_at = datetime('now') 
-          WHERE (nombre_buscado LIKE ? OR ? LIKE '%' || nombre_buscado || '%') AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
-        `).bind(`%${nombreCompleto}%`, nombreCompleto).run();
+          WHERE nombre_buscado LIKE ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
+        `).bind(`%${nombreCompleto}%`).run();
       }
     }
 
