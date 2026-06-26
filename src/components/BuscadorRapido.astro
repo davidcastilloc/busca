@@ -56,6 +56,19 @@
     </form>
   </div>
 
+  <!-- Filtros de estado sub-tabs (inicialmente oculto) -->
+  <div id="filter-state-bar" class="hidden flex gap-2 justify-start mt-6 mb-2 border-b border-canvas-soft pb-3">
+    <button id="btn-filter-all" class="px-4 py-1.5 rounded-full bg-primary text-white font-uber-text text-xs font-semibold transition-colors cursor-pointer">
+      Todos
+    </button>
+    <button id="btn-filter-nocontact" class="px-4 py-1.5 rounded-full bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text text-xs font-semibold transition-colors cursor-pointer">
+      Sin contacto
+    </button>
+    <button id="btn-filter-located" class="px-4 py-1.5 rounded-full bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text text-xs font-semibold transition-colors cursor-pointer">
+      Localizados
+    </button>
+  </div>
+
   <!-- Resultados de búsqueda -->
   <div id="results-loader" class="hidden flex justify-center py-10">
     <span class="loading loading-spinner loading-lg text-primary"></span>
@@ -165,6 +178,41 @@
   // Datos del resultado actualmente abierto en modal
   let currentData: any = null;
   let currentTipo: string = "";
+  let currentSearchResults: any[] = [];
+  let currentSubTab: "todos" | "sin_contacto" | "localizados" = "todos";
+
+  const filterStateBar = document.getElementById("filter-state-bar") as HTMLDivElement;
+  const btnFilterAll = document.getElementById("btn-filter-all");
+  const btnFilterNoContact = document.getElementById("btn-filter-nocontact");
+  const btnFilterLocated = document.getElementById("btn-filter-located");
+
+  // Inicializar eventos de sub-tabs
+  btnFilterAll?.addEventListener("click", () => {
+    currentSubTab = "todos";
+    actualizarFiltroUI();
+    aplicarFiltrosYRenderizar();
+  });
+  btnFilterNoContact?.addEventListener("click", () => {
+    currentSubTab = "sin_contacto";
+    actualizarFiltroUI();
+    aplicarFiltrosYRenderizar();
+  });
+  btnFilterLocated?.addEventListener("click", () => {
+    currentSubTab = "localizados";
+    actualizarFiltroUI();
+    aplicarFiltrosYRenderizar();
+  });
+
+  function actualizarFiltroUI() {
+    if (!btnFilterAll || !btnFilterNoContact || !btnFilterLocated) return;
+    
+    const activeClass = "px-4 py-1.5 rounded-full bg-primary text-white font-uber-text text-xs font-semibold transition-colors cursor-pointer";
+    const inactiveClass = "px-4 py-1.5 rounded-full bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text text-xs font-semibold transition-colors cursor-pointer";
+    
+    btnFilterAll.className = currentSubTab === "todos" ? activeClass : inactiveClass;
+    btnFilterNoContact.className = currentSubTab === "sin_contacto" ? activeClass : inactiveClass;
+    btnFilterLocated.className = currentSubTab === "localizados" ? activeClass : inactiveClass;
+  }
 
   // ═══ TABS ═══
   if (btnTabExact && btnTabSemantic && panelExact && panelSemantic) {
@@ -190,10 +238,14 @@
       if (!q) return;
       mostrarLoader(true);
       try {
-        const resp = await fetch(`/api/buscar?q=${encodeURIComponent(q)}`);
+        const resp = await fetch(`/api/buscar?q=${encodeURIComponent(q)}&tipo=todos`);
         if (resp.ok) {
           const resultados = await resp.json();
-          renderizarPersonas(resultados, q);
+          currentSearchResults = resultados;
+          if (filterStateBar) filterStateBar.classList.remove("hidden");
+          currentSubTab = "todos";
+          actualizarFiltroUI();
+          aplicarFiltrosYRenderizar();
         } else { throw new Error("Error en respuesta"); }
       } catch (err) {
         console.error(err);
@@ -221,7 +273,12 @@
           body: JSON.stringify({ descripcion: desc })
         });
         if (resp.ok) {
-          renderizarReportes(await resp.json());
+          const resultados = await resp.json();
+          currentSearchResults = resultados.map((r: any) => ({ ...r, _source: "reporte" }));
+          if (filterStateBar) filterStateBar.classList.remove("hidden");
+          currentSubTab = "todos";
+          actualizarFiltroUI();
+          aplicarFiltrosYRenderizar();
         } else { throw new Error("Error en búsqueda"); }
       } catch (err) {
         console.error(err);
@@ -245,23 +302,93 @@
       resultsHeader.className = isError
         ? "font-uber-text uber-body-md-strong text-primary mt-8 mb-4"
         : "font-uber-text uber-body-md-strong text-body mt-8 mb-4";
-      if (isError) resultsContainer.innerHTML = "";
+      if (isError) {
+        resultsContainer.innerHTML = "";
+        if (filterStateBar) filterStateBar.classList.add("hidden");
+      }
     }
   }
 
-  // ═══ RENDER PERSONAS (Censo) ═══
-  function renderizarPersonas(personas: any[], q: string) {
+  // ═══ FILTRAR Y RENDERIZAR UNIFICADO ═══
+  function aplicarFiltrosYRenderizar() {
     if (!resultsContainer) return;
     resultsContainer.innerHTML = "";
-    if (personas.length === 0) {
-      mostrarMensajeHeader(`Sin resultados para "${q}". Prueba búsqueda IA.`);
+    
+    const filtrados = currentSearchResults.filter(item => {
+      if (currentSubTab === "todos") return true;
+      
+      const esPersona = item._source === "persona";
+      
+      if (currentSubTab === "sin_contacto") {
+        if (esPersona) {
+          return item.estado === "desconocido";
+        } else {
+          return item.tipo === "desaparecido" && item.estado_reporte === "abierto";
+        }
+      }
+      
+      if (currentSubTab === "localizados") {
+        if (esPersona) {
+          return item.estado === "vivo" || item.estado === "herido";
+        } else {
+          return item.estado_reporte === "resuelto";
+        }
+      }
+      
+      return true;
+    });
+
+    if (filtrados.length === 0) {
+      mostrarMensajeHeader("Sin resultados para este filtro.");
       return;
     }
-    mostrarMensajeHeader(`${personas.length} registros encontrados:`);
 
-    personas.forEach(p => {
-      const card = crearCardPersona(p);
-      card.addEventListener("click", () => abrirModalDetalle(p, "persona"));
+    mostrarMensajeHeader(`${filtrados.length} resultados encontrados:`);
+
+    filtrados.forEach(item => {
+      let card;
+      if (item._source === "persona") {
+        card = crearCardPersona(item);
+        card.addEventListener("click", () => abrirModalDetalle(item, "persona"));
+        
+        // Evento botón localizar
+        const btn = card.querySelector(".btn-localizar-persona");
+        if (btn) {
+          btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            if (!confirm(`¿Confirmar que ${item.nombre} ${item.apellido || ""} está a salvo?`)) return;
+            btn.textContent = "Actualizando...";
+            (btn as HTMLButtonElement).disabled = true;
+            try {
+              const resp = await fetch(`/api/personas/${item.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ estado: "vivo" })
+              });
+              if (resp.ok) {
+                item.estado = "vivo";
+                // Actualizar también en el array principal
+                const originalIdx = currentSearchResults.findIndex(x => x._source === "persona" && x.id === item.id);
+                if (originalIdx !== -1) {
+                  currentSearchResults[originalIdx].estado = "vivo";
+                }
+                aplicarFiltrosYRenderizar();
+              } else {
+                alert("Error al actualizar");
+                btn.textContent = "✅ Marcar a salvo";
+                (btn as HTMLButtonElement).disabled = false;
+              }
+            } catch {
+              alert("Sin conexión");
+              btn.textContent = "✅ Marcar a salvo";
+              (btn as HTMLButtonElement).disabled = false;
+            }
+          });
+        }
+      } else {
+        card = crearCardReporte(item);
+        card.addEventListener("click", () => abrirModalDetalle(item, "reporte"));
+      }
       resultsContainer.appendChild(card);
     });
   }
@@ -272,6 +399,12 @@
     const imgHtml = p.foto_key 
       ? `<figure class="w-full sm:w-36 h-36 sm:h-auto shrink-0 bg-canvas-soft"><img src="/api/upload?key=${encodeURIComponent(p.foto_key)}" alt="Foto" class="w-full h-full object-cover" loading="lazy" /></figure>`
       : `<div class="w-full sm:w-36 h-28 shrink-0 bg-canvas-soft flex items-center justify-center text-4xl text-mute">👤</div>`;
+
+    const btnLocalizado = p.estado === 'desconocido'
+      ? `<button class="btn-localizar-persona btn btn-sm bg-success text-white hover:bg-green-700 font-uber-text mt-2 self-start">
+           ✅ Marcar a salvo
+         </button>`
+      : "";
 
     card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98]";
     card.innerHTML = `
@@ -290,28 +423,12 @@
             ${p.ubicacion_nombre ? `<div>📍 ${p.ubicacion_nombre}</div>` : ""}
             ${p.edad ? `<div>${p.edad} años${p.sexo && p.sexo !== "X" ? ` · ${p.sexo === "M" ? "Masculino" : "Femenino"}` : ""}</div>` : ""}
           </div>
+          ${btnLocalizado}
         </div>
         <div class="text-[11px] text-mute mt-2 font-uber-text">${formatFechaLocal(p.updated_at)}</div>
       </div>
     `;
     return card;
-  }
-
-  // ═══ RENDER REPORTES (Semántica) ═══
-  function renderizarReportes(reportes: any[]) {
-    if (!resultsContainer) return;
-    resultsContainer.innerHTML = "";
-    if (reportes.length === 0) {
-      mostrarMensajeHeader("Sin coincidencias semánticas.");
-      return;
-    }
-    mostrarMensajeHeader(`${reportes.length} coincidencias IA:`);
-
-    reportes.forEach(r => {
-      const card = crearCardReporte(r);
-      card.addEventListener("click", () => abrirModalDetalle(r, "reporte"));
-      resultsContainer.appendChild(card);
-    });
   }
 
   function crearCardReporte(r: any): HTMLDivElement {
@@ -394,10 +511,11 @@
       `;
     }
 
-    const notasHtml = (tipo === "persona" && data.notas) 
+    const notasHtml = (tipo === "persona" && data.notes) // notas o notes? vamos a dejar data.notas o data.notas/notes
+      || (tipo === "persona" && data.notas)
       ? `<div class="bg-canvas-soft p-4 rounded-xl border-l-3 border-primary">
            <div class="text-xs text-mute font-uber-text font-medium mb-1 uppercase tracking-wider">Notas</div>
-           <p class="text-sm text-ink font-uber-text italic">"${data.notas}"</p>
+           <p class="text-sm text-ink font-uber-text italic">"${data.notas || data.notes || ""}"</p>
          </div>` 
       : "";
 
@@ -474,6 +592,10 @@
       actionsHtml += `<button id="btn-marcar-encontrado" class="btn bg-canvas-soft text-ink flex-1 min-w-[120px] font-uber-text uber-body-md-strong">✅ Encontrado</button>`;
     }
 
+    if (tipo === "persona" && data.estado === "desconocido") {
+      actionsHtml += `<button id="modal-btn-marcar-vivo" class="btn bg-success text-white flex-1 min-w-[120px] font-uber-text uber-body-md-strong">✅ A salvo</button>`;
+    }
+
     modalActions!.innerHTML = actionsHtml;
 
     // Event listeners de acciones
@@ -490,6 +612,39 @@
     document.getElementById("btn-marcar-encontrado")?.addEventListener("click", (e) => {
       e.stopPropagation();
       marcarEncontrado();
+    });
+
+    document.getElementById("modal-btn-marcar-vivo")?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!confirm(`¿Confirmar que esta persona está a salvo?`)) return;
+      const btn = document.getElementById("modal-btn-marcar-vivo") as HTMLButtonElement;
+      btn.disabled = true;
+      btn.textContent = "Actualizando...";
+      try {
+        const resp = await fetch(`/api/personas/${data.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ estado: "vivo" })
+        });
+        if (resp.ok) {
+          data.estado = "vivo";
+          // Actualizar también en el array principal
+          const originalIdx = currentSearchResults.findIndex(x => x._source === "persona" && x.id === data.id);
+          if (originalIdx !== -1) {
+            currentSearchResults[originalIdx].estado = "vivo";
+          }
+          cerrarModal();
+          aplicarFiltrosYRenderizar();
+        } else {
+          alert("Error al actualizar");
+          btn.disabled = false;
+          btn.textContent = "✅ A salvo";
+        }
+      } catch {
+        alert("Sin conexión");
+        btn.disabled = false;
+        btn.textContent = "✅ A salvo";
+      }
     });
 
     // Mostrar modal

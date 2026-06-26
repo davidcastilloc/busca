@@ -6,25 +6,28 @@ import { env } from "cloudflare:workers";
 
 export const prerender = false;
 
-let totalCensados = 0;
-let totalDesaparecidos = 0;
-let totalEncontrados = 0;
+let totalReportes = 0;
+let totalSinContacto = 0;
+let totalLocalizados = 0;
 
 try {
   const { DB } = env;
 
   if (DB) {
-    const censadosQuery = await DB.prepare("SELECT COUNT(*) as count FROM personas").first<{ count: number }>();
-    totalCensados = censadosQuery?.count || 0;
+    const personasCount = (await DB.prepare("SELECT COUNT(*) as count FROM personas").first<{ count: number }>())?.count || 0;
+    const reportesCount = (await DB.prepare("SELECT COUNT(*) as count FROM reportes").first<{ count: number }>())?.count || 0;
+    totalReportes = personasCount + reportesCount;
 
-    const desaparecidosQuery = await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE tipo = 'desaparecido' AND estado_reporte = 'abierto'").first<{ count: number }>();
-    totalDesaparecidos = desaparecidosQuery?.count || 0;
+    const personasDesconocido = (await DB.prepare("SELECT COUNT(*) as count FROM personas WHERE estado = 'desconocido'").first<{ count: number }>())?.count || 0;
+    const reportesAbierto = (await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE tipo = 'desaparecido' AND estado_reporte = 'abierto'").first<{ count: number }>())?.count || 0;
+    totalSinContacto = personasDesconocido + reportesAbierto;
 
-    const encontradosQuery = await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE tipo = 'encontrado' AND estado_reporte = 'abierto'").first<{ count: number }>();
-    totalEncontrados = encontradosQuery?.count || 0;
+    const personasLocalizados = (await DB.prepare("SELECT COUNT(*) as count FROM personas WHERE estado IN ('vivo','herido')").first<{ count: number }>())?.count || 0;
+    const reportesResuelto = (await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE estado_reporte = 'resuelto'").first<{ count: number }>())?.count || 0;
+    totalLocalizados = personasLocalizados + reportesResuelto;
   }
 } catch (error) {
-  console.error("Error al obtener estadísticas del censo:", error);
+  console.error("Error al obtener estadísticas del censo/reportes:", error);
 }
 ---
 
@@ -42,28 +45,327 @@ try {
       </p>
       
       <!-- Stats (tarjetas minimalistas de Uber) -->
-      <div class="grid grid-cols-3 gap-2 sm:gap-4 max-w-xl mx-auto">
+      <div class="grid grid-cols-3 gap-2 sm:gap-4 max-w-xl mx-auto mb-6">
         <div class="bg-canvas border border-canvas-soft p-3 sm:p-4 rounded-xl shadow-sm text-center">
-          <div class="text-[10px] sm:text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Censados</div>
-          <div class="font-uber-display text-xl sm:text-2xl text-ink mt-0.5">{totalCensados}</div>
-          <div class="text-[9px] sm:text-[10px] text-mute font-uber-text mt-0.5 hidden sm:block">En refugios / a salvo</div>
+          <div class="text-[10px] sm:text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Reportes totales</div>
+          <div class="font-uber-display text-xl sm:text-2xl text-ink mt-0.5">{totalReportes}</div>
+          <div class="text-[9px] sm:text-[10px] text-mute font-uber-text mt-0.5 hidden sm:block">Total registrados</div>
         </div>
         
         <div class="bg-canvas border border-canvas-soft p-3 sm:p-4 rounded-xl shadow-sm text-center">
-          <div class="text-[10px] sm:text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Desaparecidos</div>
-          <div class="font-uber-display text-xl sm:text-2xl text-ink mt-0.5">{totalDesaparecidos}</div>
+          <div class="text-[10px] sm:text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Sin contacto</div>
+          <div class="font-uber-display text-xl sm:text-2xl text-ink mt-0.5">{totalSinContacto}</div>
           <div class="text-[9px] sm:text-[10px] text-mute font-uber-text mt-0.5 hidden sm:block">Búsquedas activas</div>
         </div>
         
         <div class="bg-canvas border border-canvas-soft p-3 sm:p-4 rounded-xl shadow-sm text-center">
-          <div class="text-[10px] sm:text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Sin ID</div>
-          <div class="font-uber-display text-xl sm:text-2xl text-ink mt-0.5">{totalEncontrados}</div>
-          <div class="text-[9px] sm:text-[10px] text-mute font-uber-text mt-0.5 hidden sm:block">Encontrados sin ID</div>
+          <div class="text-[10px] sm:text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Localizados</div>
+          <div class="font-uber-display text-xl sm:text-2xl text-ink mt-0.5">{totalLocalizados}</div>
+          <div class="text-[9px] sm:text-[10px] text-mute font-uber-text mt-0.5 hidden sm:block">A salvo / Encontrados</div>
         </div>
+      </div>
+
+      <div class="flex justify-center mb-2">
+        <button id="btn-estoy-a-salvo" class="btn bg-success text-white hover:bg-green-700 font-uber-text uber-body-md-strong px-6 py-3 rounded-[36px] flex items-center gap-2 shadow-sm transition-transform active:scale-[0.98]">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-white animate-pulse"></span>
+          Estoy a salvo (Auto-reportar)
+        </button>
       </div>
     </div>
 
     <!-- Buscador principal -->
     <BuscadorRapido />
+
+    <!-- Sección informativa en Home (Acordeón de 4 bloques) -->
+    <div class="join join-vertical w-full bg-canvas border border-canvas-soft rounded-xl max-w-3xl mx-auto mt-12">
+      <div class="collapse collapse-arrow join-item border-b border-canvas-soft">
+        <input type="radio" name="info-accordion" checked="checked" /> 
+        <div class="collapse-title font-uber-display text-base text-ink font-semibold">
+          ℹ️ Sobre esta plataforma
+        </div>
+        <div class="collapse-content font-uber-text text-sm text-body space-y-2">
+          <p>
+            Plataforma ciudadana, colaborativa y voluntaria a raíz del evento sísmico del 24 de junio de 2026 en Venezuela.
+          </p>
+          <p>
+            Su objetivo principal es centralizar reportes de búsqueda y hallazgos en una interfaz accesible para facilitar la reconexión de familias y amigos, mientras las autoridades oficiales ejecutan las labores de rescate.
+          </p>
+        </div>
+      </div>
+      
+      <div class="collapse collapse-arrow join-item border-b border-canvas-soft">
+        <input type="radio" name="info-accordion" /> 
+        <div class="collapse-title font-uber-display text-base text-ink font-semibold">
+          📞 Directorio de Emergencia
+        </div>
+        <div class="collapse-content font-uber-text text-sm text-body">
+          <div class="overflow-x-auto">
+            <table class="table table-sm w-full text-left font-uber-text text-xs">
+              <thead>
+                <tr class="text-ink">
+                  <th>Servicio</th>
+                  <th>Número</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>CANTV</td>
+                  <td class="font-semibold">171</td>
+                </tr>
+                <tr>
+                  <td>Movilnet</td>
+                  <td class="font-semibold">*1</td>
+                </tr>
+                <tr>
+                  <td>Digitel</td>
+                  <td class="font-semibold">112</td>
+                </tr>
+                <tr>
+                  <td>Movistar</td>
+                  <td class="font-semibold">911</td>
+                </tr>
+                <tr>
+                  <td>Rescarven</td>
+                  <td class="text-mute">—</td>
+                </tr>
+                <tr>
+                  <td>Aeroambulancias</td>
+                  <td class="text-mute">—</td>
+                </tr>
+                <tr>
+                  <td>Ambulancias Metropolitanas</td>
+                  <td class="text-mute">—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="collapse collapse-arrow join-item border-b border-canvas-soft">
+        <input type="radio" name="info-accordion" /> 
+        <div class="collapse-title font-uber-display text-base text-ink font-semibold">
+          ⚖️ Políticas de Uso
+        </div>
+        <div class="collapse-content font-uber-text text-sm text-body space-y-2">
+          <ul class="list-disc list-inside space-y-1">
+            <li>Gratuidad total. No se solicita dinero bajo ningún concepto.</li>
+            <li>Los datos publicados son responsabilidad exclusiva de quien los comparte.</li>
+            <li>La información y fotos publicadas son de acceso público para facilitar la localización de personas.</li>
+            <li>Iniciativa no partidista, no gubernamental y de carácter civil.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="collapse collapse-arrow join-item">
+        <input type="radio" name="info-accordion" /> 
+        <div class="collapse-title font-uber-display text-base text-ink font-semibold">
+          ✉️ Contacto
+        </div>
+        <div class="collapse-content font-uber-text text-sm text-body">
+          <p>
+            Soporte técnico o retiro de información administrado por <span class="font-semibold">pc911itglobal.com</span>. Contacto: 
+            <a href="mailto:info@pc911itglobal.com" class="text-primary hover:underline font-semibold">
+              info@pc911itglobal.com
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
   </main>
 </Layout>
+
+<!-- Modal "Estoy a salvo" -->
+<div id="modal-salvo" class="fixed inset-0 z-[120] bg-black/60 hidden flex items-end sm:items-center justify-center animate-fade-in" style="backdrop-filter:blur(4px)">
+  <div class="bg-canvas w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-xl border border-canvas-soft">
+    <div class="flex justify-between items-center">
+      <h3 class="font-uber-display text-xl text-ink font-semibold">🟢 Estoy a salvo</h3>
+      <button id="btn-close-salvo" class="w-8 h-8 rounded-full bg-canvas-soft flex items-center justify-center text-ink text-sm hover:bg-surface-pressed cursor-pointer">✕</button>
+    </div>
+    <p class="text-sm text-body font-uber-text">
+      Si eres una persona reportada o deseas registrar que estás a salvo, ingresa tu cédula o nombre completo para buscarte en el censo.
+    </p>
+    
+    <form id="form-salvo-buscar" class="space-y-3">
+      <div class="flex flex-col gap-2">
+        <input 
+          type="text" 
+          id="input-salvo-query" 
+          required
+          class="input w-full font-uber-text uber-body-md" 
+          placeholder="Tu Cédula o Nombre completo..." 
+        />
+        <button type="submit" class="btn bg-primary text-white w-full font-uber-text font-semibold">
+          Buscar registro
+        </button>
+      </div>
+    </form>
+
+    <!-- Resultados del auto-reporte -->
+    <div id="salvo-results-loader" class="hidden flex justify-center py-4">
+      <span class="loading loading-spinner text-primary"></span>
+    </div>
+    <div id="salvo-results" class="space-y-3 max-h-60 overflow-y-auto"></div>
+
+    <div id="salvo-no-results" class="hidden text-center py-4 space-y-3 border-t border-canvas-soft">
+      <p class="text-sm text-body font-uber-text">
+        No encontramos un registro con tus datos en la base de datos.
+      </p>
+      <a id="btn-salvo-registrar" href="/registrar" class="btn bg-success text-white w-full font-uber-text font-semibold">
+        Registrarme como a salvo
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const btnEstoyASalvo = document.getElementById("btn-estoy-a-salvo");
+  const modalSalvo = document.getElementById("modal-salvo");
+  const btnCloseSalvo = document.getElementById("btn-close-salvo");
+  const formSalvoBuscar = document.getElementById("form-salvo-buscar") as HTMLFormElement;
+  const inputSalvoQuery = document.getElementById("input-salvo-query") as HTMLInputElement;
+  const salvoLoader = document.getElementById("salvo-results-loader");
+  const salvoResults = document.getElementById("salvo-results");
+  const salvoNoResults = document.getElementById("salvo-no-results");
+  const btnSalvoRegistrar = document.getElementById("btn-salvo-registrar") as HTMLAnchorElement;
+
+  btnEstoyASalvo?.addEventListener("click", () => {
+    modalSalvo?.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+    inputSalvoQuery?.focus();
+  });
+
+  function cerrarModalSalvo() {
+    modalSalvo?.classList.add("hidden");
+    document.body.style.overflow = "";
+    if (formSalvoBuscar) formSalvoBuscar.reset();
+    if (salvoResults) salvoResults.innerHTML = "";
+    salvoNoResults?.classList.add("hidden");
+  }
+
+  btnCloseSalvo?.addEventListener("click", cerrarModalSalvo);
+  modalSalvo?.addEventListener("click", (e) => {
+    if (e.target === modalSalvo) cerrarModalSalvo();
+  });
+
+  formSalvoBuscar?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const query = inputSalvoQuery.value.trim();
+    if (!query) return;
+
+    if (salvoLoader) salvoLoader.classList.remove("hidden");
+    if (salvoResults) salvoResults.innerHTML = "";
+    salvoNoResults?.classList.add("hidden");
+
+    try {
+      const resp = await fetch(`/api/buscar?q=${encodeURIComponent(query)}&tipo=todos`);
+      if (resp.ok) {
+        const resultados = await resp.json();
+        if (salvoLoader) salvoLoader.classList.add("hidden");
+        
+        if (resultados.length === 0) {
+          if (btnSalvoRegistrar) {
+            const esCedula = /^\d+$/.test(query.replace(/[^0-9]/g, ""));
+            if (esCedula) {
+              btnSalvoRegistrar.href = `/registrar?cedula=${encodeURIComponent(query)}`;
+            } else {
+              btnSalvoRegistrar.href = `/registrar?nombre=${encodeURIComponent(query)}`;
+            }
+          }
+          salvoNoResults?.classList.remove("hidden");
+        } else {
+          resultados.forEach((item: any) => {
+            const isPersona = item._source === "persona";
+            const nombre = isPersona ? `${item.nombre} ${item.apellido || ""}` : (item.nombre_buscado || "Persona");
+            
+            const card = document.createElement("div");
+            card.className = "p-3 bg-canvas-soft border border-canvas-soft rounded-lg flex items-center justify-between gap-3 text-sm";
+            
+            let btnHtml = "";
+            if (isPersona && item.estado === "desconocido") {
+              btnHtml = `<button class="btn btn-xs bg-success text-white px-2 py-1 rounded btn-salvo-marcar">
+                           ✅ A salvo
+                         </button>`;
+            } else if (!isPersona && item.estado_reporte === "abierto") {
+              btnHtml = `<button class="btn btn-xs bg-success text-white px-2 py-1 rounded btn-salvo-reporte-marcar">
+                           ✅ Encontrado
+                         </button>`;
+            } else {
+              btnHtml = `<span class="text-xs text-mute font-medium uppercase font-uber-text">${isPersona ? item.estado : item.estado_reporte}</span>`;
+            }
+
+            card.innerHTML = `
+              <div class="min-w-0 flex-grow">
+                <div class="font-semibold text-ink truncate">${nombre}</div>
+                <div class="text-xs text-body font-uber-text">${isPersona ? "Censo" : "Reporte"} ${item.cedula || item.cedula_buscado ? `· Doc: ${item.cedula || item.cedula_buscado}` : ""}</div>
+              </div>
+              <div class="shrink-0">${btnHtml}</div>
+            `;
+            
+            // Eventos dinámicos
+            card.querySelector(".btn-salvo-marcar")?.addEventListener("click", async (ev) => {
+              const target = ev.currentTarget as HTMLButtonElement;
+              target.disabled = true;
+              target.textContent = "...";
+              try {
+                const patchResp = await fetch(`/api/personas/${item.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ estado: "vivo" })
+                });
+                if (patchResp.ok) {
+                  target.outerHTML = `<span class="text-xs text-success font-semibold">✓ A salvo</span>`;
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1000);
+                } else {
+                  alert("Error al actualizar");
+                  target.disabled = false;
+                  target.textContent = "✅ A salvo";
+                }
+              } catch {
+                alert("Sin conexión");
+                target.disabled = false;
+                target.textContent = "✅ A salvo";
+              }
+            });
+
+            card.querySelector(".btn-salvo-reporte-marcar")?.addEventListener("click", async (ev) => {
+              const target = ev.currentTarget as HTMLButtonElement;
+              target.disabled = true;
+              target.textContent = "...";
+              try {
+                const patchResp = await fetch(`/api/reportes/${item.id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ estado_reporte: "resuelto" })
+                });
+                if (patchResp.ok) {
+                  target.outerHTML = `<span class="text-xs text-success font-semibold">✓ Encontrado</span>`;
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1000);
+                } else {
+                  alert("Error al actualizar");
+                  target.disabled = false;
+                  target.textContent = "✅ Encontrado";
+                }
+              } catch {
+                alert("Sin conexión");
+                target.disabled = false;
+                target.textContent = "✅ Encontrado";
+              }
+            });
+
+            salvoResults?.appendChild(card);
+          });
+        }
+      } else {
+        throw new Error();
+      }
+    } catch {
+      if (salvoLoader) salvoLoader.classList.add("hidden");
+      alert("Error al buscar");
+    }
+  });
+</script>

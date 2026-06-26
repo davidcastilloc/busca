@@ -21,12 +21,39 @@ import FotoUpload from "./FotoUpload.astro";
         </div>
         
         <div>
-          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Nombre de Persona Involucrada</label>
+          <label id="label-nombre-buscado" class="block font-uber-text uber-body-sm-strong text-body mb-1">Nombre de Persona Involucrada</label>
           <input type="text" name="nombre_buscado" class="input w-full font-uber-text uber-body-md" placeholder="Opcional (si se conoce)" />
         </div>
         <div>
           <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Cédula de Persona Involucrada</label>
           <input type="text" name="cedula_buscado" class="input w-full font-uber-text uber-body-md" placeholder="Opcional (si se conoce)" />
+        </div>
+
+        <!-- Campos adicionales para desaparecido -->
+        <div id="campos-desaparecido" class="md:col-span-2 space-y-4 border-t border-canvas-soft pt-4 mt-2">
+          <p class="font-uber-display text-sm text-ink font-semibold">Datos adicionales de la persona desaparecida:</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Estado (Última ubicación) *</label>
+              <input type="text" name="extra_estado" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Distrito Capital" />
+            </div>
+            <div>
+              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Ciudad *</label>
+              <input type="text" name="extra_ciudad" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Caracas" />
+            </div>
+            <div>
+              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Sector / Zona *</label>
+              <input type="text" name="extra_sector" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Los Palos Grandes" />
+            </div>
+          </div>
+          <div>
+            <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Fecha y Hora de Último Contacto *</label>
+            <input type="datetime-local" name="extra_ultimo_contacto" class="input w-full font-uber-text uber-body-md" />
+          </div>
+          <div>
+            <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Señas Particulares y Vestimenta *</label>
+            <textarea name="extra_senas" class="textarea w-full h-20 font-uber-text uber-body-md" placeholder="Ej: Cicatriz en la ceja izquierda, vestía camisa azul y jean oscuro, usa lentes..."></textarea>
+          </div>
         </div>
 
         <div class="md:col-span-2">
@@ -36,9 +63,9 @@ import FotoUpload from "./FotoUpload.astro";
             required 
             minlength="10"
             class="textarea w-full h-32 font-uber-text uber-body-md" 
-            placeholder="Ej: Hombre de unos 60 años, viste camisa de rayas azul, pantalón marrón. Visto por última vez saliendo de la panadería del centro comercial derrumbado..."
+            placeholder="Ej: Detalles de la desaparición o situación..."
           ></textarea>
-          <span class="text-xs text-mute mt-1 block font-uber-text">Describe características físicas, vestimenta, señas particulares y condiciones. La IA utilizará esta descripción para cruzar reportes.</span>
+          <span class="text-xs text-mute mt-1 block font-uber-text">La IA utilizará esta descripción para cruzar reportes.</span>
         </div>
       </div>
     </fieldset>
@@ -123,6 +150,9 @@ import FotoUpload from "./FotoUpload.astro";
     const fotoFileInput = document.getElementById("foto-file") as HTMLInputElement;
     const quitarFotoBtn = document.getElementById("btn-quitar-foto");
     const flyerOptIn = document.getElementById("flyer-opt-in");
+    const camposDesaparecido = document.getElementById("campos-desaparecido");
+    const labelNombreBuscado = document.getElementById("label-nombre-buscado");
+    const inputNombreBuscado = document.querySelector('input[name="nombre_buscado"]') as HTMLInputElement;
 
     function actualizarVisibilidadFlyer() {
       if (!tipoSelect || !flyerOptIn) return;
@@ -136,8 +166,33 @@ import FotoUpload from "./FotoUpload.astro";
       }
     }
 
+    function toggleCamposDesaparecido() {
+      if (!tipoSelect || !camposDesaparecido || !labelNombreBuscado || !inputNombreBuscado) return;
+      const esDesaparecido = tipoSelect.value === "desaparecido";
+      const labelFoto = Array.from(document.querySelectorAll("#form-reporte label")).find(el => el.textContent?.includes("Foto Evidencia"));
+
+      if (esDesaparecido) {
+        camposDesaparecido.classList.remove("hidden");
+        labelNombreBuscado.innerHTML = 'Nombre de Persona Involucrada *';
+        inputNombreBuscado.placeholder = "Nombres y apellidos completos";
+        if (labelFoto) {
+          labelFoto.innerHTML = '📸 Foto Evidencia (Requerida) *';
+        }
+      } else {
+        camposDesaparecido.classList.add("hidden");
+        labelNombreBuscado.innerHTML = 'Nombre de Persona Involucrada';
+        inputNombreBuscado.placeholder = "Opcional (si se conoce)";
+        if (labelFoto) {
+          labelFoto.innerHTML = '📸 Foto Evidencia (Opcional)';
+        }
+      }
+      
+      actualizarVisibilidadFlyer();
+    }
+
     if (tipoSelect) {
-      tipoSelect.addEventListener("change", actualizarVisibilidadFlyer);
+      tipoSelect.addEventListener("change", toggleCamposDesaparecido);
+      toggleCamposDesaparecido();
     }
     if (fotoFileInput) {
       fotoFileInput.addEventListener("change", () => {
@@ -156,7 +211,40 @@ import FotoUpload from "./FotoUpload.astro";
       const formData = new FormData(form);
       const data = Object.fromEntries(formData.entries());
 
-      if (String(data.descripcion).trim().length < 10) {
+      let descConcatenada = String(data.descripcion).trim();
+      
+      if (data.tipo === "desaparecido") {
+        if (!data.nombre_buscado || !String(data.nombre_buscado).trim()) {
+          mostrarToast("❌ El nombre de la persona desaparecida es requerido.", "border-red-500/30");
+          return;
+        }
+        if (!data.extra_estado || !String(data.extra_estado).trim() ||
+            !data.extra_ciudad || !String(data.extra_ciudad).trim() ||
+            !data.extra_sector || !String(data.extra_sector).trim()) {
+          mostrarToast("❌ El estado, ciudad y sector de la última ubicación son requeridos.", "border-red-500/30");
+          return;
+        }
+        if (!data.extra_ultimo_contacto || !String(data.extra_ultimo_contacto).trim()) {
+          mostrarToast("❌ La fecha/hora del último contacto es requerida.", "border-red-500/30");
+          return;
+        }
+        if (!data.extra_senas || !String(data.extra_senas).trim()) {
+          mostrarToast("❌ Las señas particulares y vestimenta son requeridas.", "border-red-500/30");
+          return;
+        }
+        if (!data.foto_key || !String(data.foto_key).trim()) {
+          mostrarToast("❌ La foto de la persona desaparecida es requerida.", "border-red-500/30");
+          return;
+        }
+
+        const fechaContacto = String(data.extra_ultimo_contacto).replace("T", " ");
+        const ubicacion = `${String(data.extra_estado).trim()}, ${String(data.extra_ciudad).trim()}, Sector ${String(data.extra_sector).trim()}`;
+        const senas = String(data.extra_senas).trim();
+        
+        descConcatenada = `[FECHA ÚLTIMO CONTACTO: ${fechaContacto}]\n[UBICACIÓN: ${ubicacion}]\n[SEÑAS: ${senas}]\n\n${descConcatenada}`;
+      }
+
+      if (descConcatenada.length < 10) {
         mostrarToast("❌ La descripción debe tener al menos 10 caracteres.", "border-red-500/30");
         return;
       }
@@ -165,7 +253,7 @@ import FotoUpload from "./FotoUpload.astro";
         tipo: data.tipo || "desaparecido",
         nombre_buscado: data.nombre_buscado ? String(data.nombre_buscado).trim() : null,
         cedula_buscado: data.cedula_buscado ? String(data.cedula_buscado).trim() : null,
-        descripcion: String(data.descripcion).trim(),
+        descripcion: descConcatenada,
         reportante_nombre: data.reportante_nombre ? String(data.reportante_nombre).trim() : null,
         reportante_contacto: data.reportante_contacto ? String(data.reportante_contacto).trim() : null,
         ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
@@ -224,7 +312,7 @@ import FotoUpload from "./FotoUpload.astro";
             mostrarToast("✓ Reporte emitido con éxito.", "border-green-500/30");
             form.reset();
             document.getElementById("btn-quitar-foto")?.click();
-            actualizarVisibilidadFlyer();
+            toggleCamposDesaparecido();
           } else {
             const errData = await response.json();
             throw new Error(errData.error || "Error al procesar en servidor");
@@ -244,9 +332,8 @@ import FotoUpload from "./FotoUpload.astro";
         mostrarToast("⚠️ Guardado localmente sin red. Se sincronizará automáticamente.", "border-yellow-500/30");
         form.reset();
         document.getElementById("btn-quitar-foto")?.click();
-        actualizarVisibilidadFlyer();
+        toggleCamposDesaparecido();
 
-        // Disparar evento
         const event = new CustomEvent("offline-record-added");
         window.dispatchEvent(event);
       } catch (e: any) {

@@ -106,6 +106,27 @@ import FotoUpload from "./FotoUpload.astro";
   const toastMessage = document.getElementById("toast-message");
 
   if (form && toastContainer && toastMessage) {
+    // Autocompletar desde URL params si existen
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramNombre = urlParams.get("nombre");
+    const paramCedula = urlParams.get("cedula");
+
+    if (paramNombre) {
+      const partes = paramNombre.trim().split(/\s+/);
+      const inputNombre = form.querySelector('input[name="nombre"]') as HTMLInputElement;
+      const inputApellido = form.querySelector('input[name="apellido"]') as HTMLInputElement;
+      if (partes.length > 1) {
+        if (inputNombre) inputNombre.value = partes.slice(0, Math.ceil(partes.length / 2)).join(" ");
+        if (inputApellido) inputApellido.value = partes.slice(Math.ceil(partes.length / 2)).join(" ");
+      } else {
+        if (inputNombre) inputNombre.value = paramNombre;
+      }
+    }
+    if (paramCedula) {
+      const inputCedula = form.querySelector('input[name="cedula"]') as HTMLInputElement;
+      if (inputCedula) inputCedula.value = paramCedula;
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 

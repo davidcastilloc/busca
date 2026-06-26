@@ -9,6 +9,7 @@ export const GET: APIRoute = async (context) => {
 
     const url = new URL(context.request.url);
     const query = url.searchParams.get("q")?.trim() || "";
+    const tipo = url.searchParams.get("tipo")?.trim() || "personas";
 
     if (!query) {
       return new Response(JSON.stringify([]), {
@@ -17,7 +18,7 @@ export const GET: APIRoute = async (context) => {
       });
     }
 
-    const cacheKey = `search:${query.toLowerCase()}`;
+    const cacheKey = `search:${tipo}:${query.toLowerCase()}`;
     const cached = await CACHE_KV.get(cacheKey);
 
     if (cached) {
@@ -31,16 +32,39 @@ export const GET: APIRoute = async (context) => {
     }
 
     const term = `%${query}%`;
-    const { results } = await DB.prepare(`
-      SELECT * FROM personas 
-      WHERE cedula = ? 
-         OR nombre LIKE ? 
-         OR apellido LIKE ? 
-         OR ubicacion_nombre LIKE ?
-         OR refugio LIKE ?
-      ORDER BY updated_at DESC
-      LIMIT 50
-    `).bind(query, term, term, term, term).all();
+    const results: any[] = [];
+
+    if (tipo === "personas" || tipo === "todos") {
+      const personasRes = await DB.prepare(`
+        SELECT * FROM personas 
+        WHERE cedula = ? 
+           OR nombre LIKE ? 
+           OR apellido LIKE ? 
+           OR ubicacion_nombre LIKE ?
+           OR refugio LIKE ?
+        ORDER BY updated_at DESC
+        LIMIT 50
+      `).bind(query, term, term, term, term).all();
+      
+      if (personasRes.results) {
+        results.push(...personasRes.results.map((p: any) => ({ ...p, _source: "persona" })));
+      }
+    }
+
+    if (tipo === "reportes" || tipo === "todos") {
+      const reportesRes = await DB.prepare(`
+        SELECT * FROM reportes
+        WHERE cedula_buscado = ?
+           OR nombre_buscado LIKE ?
+           OR ubicacion_nombre LIKE ?
+        ORDER BY updated_at DESC
+        LIMIT 50
+      `).bind(query, term, term, term).all();
+      
+      if (reportesRes.results) {
+        results.push(...reportesRes.results.map((r: any) => ({ ...r, _source: "reporte" })));
+      }
+    }
 
     const responseBody = JSON.stringify(results);
 
