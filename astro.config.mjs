@@ -10,8 +10,5 @@ export default defineConfig({
   }),
   vite: {
     plugins: [tailwindcss()],
-    optimizeDeps: {
-      include: ['html2canvas']
-    }
   },
 });
