@@ -913,7 +913,9 @@
 
       // Compartir
       const nombreArchivo = `SE_BUSCA_${nombre.replace(/\s+/g, "_")}.png`;
-      const shareUrl = `${window.location.origin}/?q=${encodeURIComponent(nombre)}`;
+      const shareUrl = currentTipo === "persona" 
+        ? `${window.location.origin}/?persona=${currentData.id}`
+        : `${window.location.origin}/?reporte=${currentData.id}`;
 
       // Copiar enlace al portapapeles siempre
       try {
@@ -991,11 +993,32 @@
     } catch { return fechaStr; }
   }
 
-  // Cargar búsqueda desde URL si existe
+  // Cargar búsqueda o anuncio desde URL si existe
   const urlParams = new URLSearchParams(window.location.search);
   const qParam = urlParams.get("q");
+  const personaParam = urlParams.get("persona");
+  const reporteParam = urlParams.get("reporte");
+
   if (qParam && queryExact) {
     queryExact.value = qParam;
     realizarBusquedaExacta(qParam);
+  } else if (personaParam) {
+    fetch(`/api/personas/${personaParam}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.error) {
+          abrirModalDetalle(data, "persona");
+        }
+      })
+      .catch(err => console.error(err));
+  } else if (reporteParam) {
+    fetch(`/api/reportes/${reporteParam}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.error) {
+          abrirModalDetalle(data, "reporte");
+        }
+      })
+      .catch(err => console.error(err));
   }
 </script>

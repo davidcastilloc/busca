@@ -49,3 +49,38 @@ export const PATCH: APIRoute = async (context) => {
     });
   }
 };
+
+// GET /api/personas/[id] — obtener detalles de una persona
+export const GET: APIRoute = async (context) => {
+  try {
+    const { DB } = env;
+    const id = context.params.id;
+
+    if (!id || isNaN(Number(id))) {
+      return new Response(JSON.stringify({ error: "ID inválido" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    const persona = await DB.prepare("SELECT * FROM personas WHERE id = ?").bind(Number(id)).first();
+
+    if (!persona) {
+      return new Response(JSON.stringify({ error: "Persona no encontrada" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    return new Response(JSON.stringify(persona), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (error: any) {
+    console.error("Error obteniendo persona:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+};

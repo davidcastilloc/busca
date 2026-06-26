@@ -49,3 +49,38 @@ export const PATCH: APIRoute = async (context) => {
     });
   }
 };
+
+// GET /api/reportes/[id] — obtener detalles de un reporte
+export const GET: APIRoute = async (context) => {
+  try {
+    const { DB } = env;
+    const id = context.params.id;
+
+    if (!id || isNaN(Number(id))) {
+      return new Response(JSON.stringify({ error: "ID inválido" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    const reporte = await DB.prepare("SELECT * FROM reportes WHERE id = ?").bind(Number(id)).first();
+
+    if (!reporte) {
+      return new Response(JSON.stringify({ error: "Reporte no encontrado" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    return new Response(JSON.stringify(reporte), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (error: any) {
+    console.error("Error obteniendo reporte:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+};
