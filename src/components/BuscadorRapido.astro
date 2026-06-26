@@ -2,7 +2,7 @@
 ---
 
 <div class="w-full max-w-3xl mx-auto px-4 py-4 sm:py-6">
-  <!-- Tabs de búsqueda (button-tab-translucent) -->
+  <!-- Tabs de búsqueda -->
   <div class="flex gap-2 sm:gap-3 justify-center mb-6 sm:mb-8">
     <button id="btn-tab-exact" class="flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center">
       Censo de Personas
@@ -12,7 +12,7 @@
     </button>
   </div>
 
-  <!-- Formulario 1: Búsqueda Exacta (card-elevated) -->
+  <!-- Formulario 1: Búsqueda Exacta -->
   <div id="panel-exact" class="bg-canvas border border-canvas-soft p-4 sm:p-8 rounded-xl shadow-sm">
     <form id="form-search-exact" class="space-y-3">
       <div class="flex flex-col gap-3">
@@ -33,7 +33,7 @@
     </form>
   </div>
 
-  <!-- Formulario 2: Búsqueda Semántica (IA) (card-elevated) -->
+  <!-- Formulario 2: Búsqueda Semántica (IA) -->
   <div id="panel-semantic" class="bg-canvas border border-canvas-soft p-4 sm:p-8 rounded-xl shadow-sm hidden">
     <form id="form-search-semantic" class="space-y-3">
       <div class="space-y-2">
@@ -62,7 +62,80 @@
   </div>
 
   <div id="results-header" class="hidden font-uber-text uber-body-md-strong text-body mt-8 mb-4"></div>
-  <div id="results-container" class="space-y-6"></div>
+  <div id="results-container" class="space-y-4"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL FULLSCREEN DE DETALLE
+     ═══════════════════════════════════════════════════════ -->
+<div id="modal-detalle" class="fixed inset-0 z-[100] bg-black/60 hidden" style="backdrop-filter:blur(4px)">
+  <div class="absolute inset-0 sm:inset-4 md:inset-8 bg-canvas rounded-none sm:rounded-2xl overflow-y-auto overscroll-contain flex flex-col">
+    <!-- Header fijo -->
+    <div class="sticky top-0 z-10 bg-canvas/95 border-b border-canvas-soft px-4 py-3 flex items-center justify-between" style="backdrop-filter:blur(8px)">
+      <span id="modal-tipo-badge" class="text-xs font-uber-text font-medium px-3 py-1 rounded-full"></span>
+      <button id="modal-close" class="w-10 h-10 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors text-lg cursor-pointer active:bg-surface-pressed">✕</button>
+    </div>
+
+    <!-- Contenido scrolleable -->
+    <div id="modal-body" class="flex-grow p-4 sm:p-6 pb-32">
+      <!-- Se llena dinámicamente -->
+    </div>
+
+    <!-- Barra de acciones fija abajo -->
+    <div id="modal-actions" class="sticky bottom-0 bg-canvas border-t border-canvas-soft p-4 flex flex-wrap gap-2">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     DIV OCULTO PARA GENERAR CARTEL "SE BUSCA"
+     ═══════════════════════════════════════════════════════ -->
+<div id="cartel-container" style="position:absolute;left:-9999px;top:-9999px;">
+  <div id="cartel-se-busca" style="width:600px;font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#000;">
+    <!-- Franja superior negra -->
+    <div style="background:#000;color:#fff;padding:16px 24px;text-align:center;">
+      <div style="font-size:12px;letter-spacing:4px;font-weight:500;margin-bottom:4px;">⚠️ ALERTA DE BÚSQUEDA</div>
+      <div style="font-size:36px;font-weight:700;letter-spacing:2px;">SE BUSCA</div>
+    </div>
+    
+    <!-- Foto -->
+    <div id="cartel-foto-wrap" style="width:100%;height:400px;background:#efefef;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+      <img id="cartel-foto" style="width:100%;height:100%;object-fit:cover;" src="" alt="" crossorigin="anonymous" />
+    </div>
+    
+    <!-- Datos -->
+    <div style="padding:20px 24px;">
+      <div id="cartel-nombre" style="font-size:28px;font-weight:700;line-height:1.2;margin-bottom:8px;"></div>
+      <div id="cartel-datos" style="font-size:14px;color:#5e5e5e;margin-bottom:12px;"></div>
+      <div id="cartel-descripcion" style="font-size:15px;line-height:1.5;margin-bottom:16px;border-left:3px solid #000;padding-left:12px;font-style:italic;"></div>
+      <div id="cartel-ubicacion" style="font-size:14px;color:#5e5e5e;"></div>
+    </div>
+    
+    <!-- Franja inferior negra -->
+    <div style="background:#000;color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div id="cartel-contacto" style="font-size:16px;font-weight:700;"></div>
+      </div>
+      <div style="font-size:11px;opacity:0.7;text-align:right;">
+        <div>BUSCA</div>
+        <div>busca.pc911itservices.workers.dev</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mini formulario de reporte rápido (hidden) -->
+<div id="modal-reporte-rapido" class="hidden fixed inset-0 z-[110] bg-black/60 flex items-end sm:items-center justify-center" style="backdrop-filter:blur(4px)">
+  <div class="bg-canvas w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-6 space-y-4">
+    <h3 class="font-uber-display uber-display-sm text-ink">📢 Reportar Avistamiento</h3>
+    <p class="text-sm text-body font-uber-text">Registrar que viste a esta persona. Se vinculará automáticamente al reporte.</p>
+    <textarea id="reporte-rapido-desc" rows="3" class="textarea w-full font-uber-text uber-body-md" placeholder="¿Dónde y cuándo la viste? Detalles..."></textarea>
+    <div class="flex gap-2">
+      <button id="reporte-rapido-enviar" class="btn bg-primary text-white flex-1 font-uber-text uber-body-md-strong">Enviar Reporte</button>
+      <button id="reporte-rapido-cancelar" class="btn bg-canvas-soft text-ink flex-1 font-uber-text uber-body-md-strong">Cancelar</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -82,79 +155,77 @@
   const resultsHeader = document.getElementById("results-header");
   const resultsContainer = document.getElementById("results-container");
 
-  // Control de pestañas
+  // Modal elements
+  const modalDetalle = document.getElementById("modal-detalle");
+  const modalClose = document.getElementById("modal-close");
+  const modalBody = document.getElementById("modal-body");
+  const modalActions = document.getElementById("modal-actions");
+  const modalTipoBadge = document.getElementById("modal-tipo-badge");
+
+  // Datos del resultado actualmente abierto en modal
+  let currentData: any = null;
+  let currentTipo: string = "";
+
+  // ═══ TABS ═══
   if (btnTabExact && btnTabSemantic && panelExact && panelSemantic) {
     btnTabExact.addEventListener("click", () => {
-      btnTabExact.className = "px-5 py-2.5 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer";
-      btnTabSemantic.className = "px-5 py-2.5 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer";
+      btnTabExact.className = "flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center";
+      btnTabSemantic.className = "flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center";
       panelExact.classList.remove("hidden");
       panelSemantic.classList.add("hidden");
     });
-
     btnTabSemantic.addEventListener("click", () => {
-      btnTabExact.className = "px-5 py-2.5 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer";
-      btnTabSemantic.className = "px-5 py-2.5 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer";
+      btnTabExact.className = "flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center";
+      btnTabSemantic.className = "flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center";
       panelExact.classList.add("hidden");
       panelSemantic.classList.remove("hidden");
     });
   }
 
-  // Enviar búsqueda exacta
+  // ═══ BÚSQUEDA EXACTA ═══
   if (formSearchExact) {
     formSearchExact.addEventListener("submit", async (e) => {
       e.preventDefault();
       const q = queryExact.value.trim();
       if (!q) return;
-
       mostrarLoader(true);
       try {
         const resp = await fetch(`/api/buscar?q=${encodeURIComponent(q)}`);
         if (resp.ok) {
           const resultados = await resp.json();
           renderizarPersonas(resultados, q);
-        } else {
-          throw new Error("Error en respuesta");
-        }
+        } else { throw new Error("Error en respuesta"); }
       } catch (err) {
         console.error(err);
-        mostrarMensajeHeader("❌ Hubo un error de conexión al buscar.", true);
-      } finally {
-        mostrarLoader(false);
-      }
+        mostrarMensajeHeader("❌ Error de conexión al buscar.", true);
+      } finally { mostrarLoader(false); }
     });
   }
 
-  // Enviar búsqueda semántica
+  // ═══ BÚSQUEDA SEMÁNTICA ═══
   if (formSearchSemantic && btnSubmitSemantic) {
     formSearchSemantic.addEventListener("submit", async (e) => {
       e.preventDefault();
       const desc = querySemantic.value.trim();
       if (desc.length < 5) return;
-
       if (!navigator.onLine) {
-        mostrarMensajeHeader("❌ La búsqueda semántica requiere conexión a internet.", true);
+        mostrarMensajeHeader("❌ Búsqueda semántica requiere conexión.", true);
         return;
       }
-
       mostrarLoader(true);
       btnSubmitSemantic.classList.add("opacity-50");
-
       try {
         const resp = await fetch("/api/buscar-similar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ descripcion: desc })
         });
-
         if (resp.ok) {
-          const resultados = await resp.json();
-          renderizarReportes(resultados);
-        } else {
-          throw new Error("Error en búsqueda semántica");
-        }
+          renderizarReportes(await resp.json());
+        } else { throw new Error("Error en búsqueda"); }
       } catch (err) {
         console.error(err);
-        mostrarMensajeHeader("❌ Error al procesar búsqueda inteligente.", true);
+        mostrarMensajeHeader("❌ Error al procesar búsqueda.", true);
       } finally {
         mostrarLoader(false);
         btnSubmitSemantic.classList.remove("opacity-50");
@@ -162,170 +233,551 @@
     });
   }
 
+  // ═══ UTILIDADES ═══
   function mostrarLoader(show: boolean) {
-    if (loader) {
-      if (show) loader.classList.remove("hidden");
-      else loader.classList.add("hidden");
-    }
+    if (loader) { show ? loader.classList.remove("hidden") : loader.classList.add("hidden"); }
   }
 
   function mostrarMensajeHeader(msg: string, isError = false) {
     if (resultsHeader && resultsContainer) {
       resultsHeader.textContent = msg;
       resultsHeader.classList.remove("hidden");
-      if (isError) {
-        resultsHeader.className = "font-uber-text uber-body-md-strong text-primary mt-8 mb-4";
-        resultsContainer.innerHTML = "";
-      } else {
-        resultsHeader.className = "font-uber-text uber-body-md-strong text-body mt-8 mb-4";
-      }
+      resultsHeader.className = isError
+        ? "font-uber-text uber-body-md-strong text-primary mt-8 mb-4"
+        : "font-uber-text uber-body-md-strong text-body mt-8 mb-4";
+      if (isError) resultsContainer.innerHTML = "";
     }
   }
 
-  // Render para censo (Personas)
+  // ═══ RENDER PERSONAS (Censo) ═══
   function renderizarPersonas(personas: any[], q: string) {
     if (!resultsContainer) return;
     resultsContainer.innerHTML = "";
-
     if (personas.length === 0) {
-      mostrarMensajeHeader(`Sin resultados exactos para "${q}". Intenta con búsqueda semántica si tienes una descripción.`);
+      mostrarMensajeHeader(`Sin resultados para "${q}". Prueba búsqueda IA.`);
       return;
     }
-
-    mostrarMensajeHeader(`Se encontraron ${personas.length} registros exactos:`);
+    mostrarMensajeHeader(`${personas.length} registros encontrados:`);
 
     personas.forEach(p => {
-      const card = document.createElement("div");
-      
-      const configEstado: Record<string, { badge: string, dot: string, text: string }> = {
-        vivo: { badge: "border border-green-500/30 text-ink bg-canvas", dot: "bg-green-500", text: "Vivo / A salvo" },
-        herido: { badge: "border border-yellow-500/30 text-ink bg-canvas", dot: "bg-yellow-500", text: "Herido" },
-        fallecido: { badge: "border border-red-500/30 text-ink bg-canvas", dot: "bg-red-500", text: "Fallecido" },
-        desconocido: { badge: "border border-canvas-soft text-ink bg-canvas", dot: "bg-mute", text: "Desconocido" }
-      };
-      
-      const config = configEstado[p.estado] || configEstado.desconocido;
-      const imgHtml = p.foto_key 
-        ? `<figure class="w-full sm:w-44 h-44 sm:h-auto shrink-0 bg-canvas-soft relative">
-             <img src="/api/upload?key=${encodeURIComponent(p.foto_key)}" alt="Foto" class="w-full h-full object-cover" loading="lazy" />
-           </figure>`
-        : `<div class="w-full sm:w-44 h-44 shrink-0 bg-canvas-soft flex items-center justify-center text-4xl select-none text-mute">👤</div>`;
-
-      const fecha = formatFechaLocal(p.updated_at);
-
-      card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]";
-      card.innerHTML = `
-        ${imgHtml}
-        <div class="p-6 flex flex-col justify-between flex-grow">
-          <div>
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <h2 class="font-uber-display text-xl text-ink leading-snug">${p.nombre} ${p.apellido || ""}</h2>
-              <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-uber-text font-medium ${config.badge}">
-                <span class="w-1.5 h-1.5 rounded-full ${config.dot}"></span>
-                <span>${config.text}</span>
-              </div>
-            </div>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-body mb-4 font-uber-text">
-              ${p.cedula ? `<div>Documento: <span class="font-semibold text-ink">${p.cedula}</span></div>` : ""}
-              ${p.edad !== null && p.edad !== undefined ? `<div>Edad: <span class="font-semibold text-ink">${p.edad} años</span></div>` : ""}
-              ${p.sexo ? `<div>Sexo: <span class="font-semibold text-ink">${p.sexo}</span></div>` : ""}
-              ${p.refugio ? `<div class="sm:col-span-2">📍 Refugio: <span class="font-semibold text-ink bg-canvas-soft px-2 py-0.5 rounded">${p.refugio}</span></div>` : ""}
-              ${p.ubicacion_nombre ? `<div class="sm:col-span-2">📍 Zona: <span class="font-semibold text-ink">${p.ubicacion_nombre}</span></div>` : ""}
-            </div>
-            
-            ${p.notas ? `<div class="bg-canvas-soft p-3 rounded-lg text-sm border-l-2 border-primary italic mb-4 text-ink font-uber-text">"${p.notas}"</div>` : ""}
-          </div>
-          
-          <div class="flex flex-wrap items-center justify-between text-xs text-mute border-t border-canvas-soft pt-3 mt-auto font-uber-text">
-            <div>Fuente: <span class="font-semibold capitalize text-body">${p.fuente || "web"}</span></div>
-            <div>Actualizado: <span class="font-semibold text-body">${fecha}</span></div>
-          </div>
-        </div>
-      `;
+      const card = crearCardPersona(p);
+      card.addEventListener("click", () => abrirModalDetalle(p, "persona"));
       resultsContainer.appendChild(card);
     });
   }
 
-  // Render para reportes (Semantic matching)
+  function crearCardPersona(p: any): HTMLDivElement {
+    const card = document.createElement("div");
+    const config = getEstadoConfig(p.estado);
+    const imgHtml = p.foto_key 
+      ? `<figure class="w-full sm:w-36 h-36 sm:h-auto shrink-0 bg-canvas-soft"><img src="/api/upload?key=${encodeURIComponent(p.foto_key)}" alt="Foto" class="w-full h-full object-cover" loading="lazy" /></figure>`
+      : `<div class="w-full sm:w-36 h-28 shrink-0 bg-canvas-soft flex items-center justify-center text-4xl text-mute">👤</div>`;
+
+    card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98]";
+    card.innerHTML = `
+      ${imgHtml}
+      <div class="p-4 flex flex-col justify-between flex-grow min-w-0">
+        <div>
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <h2 class="font-uber-display text-lg text-ink truncate">${p.nombre} ${p.apellido || ""}</h2>
+            <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-uber-text font-medium shrink-0 ${config.badge}">
+              <span class="w-1.5 h-1.5 rounded-full ${config.dot}"></span>
+              <span>${config.text}</span>
+            </div>
+          </div>
+          <div class="text-sm text-body font-uber-text space-y-0.5">
+            ${p.refugio ? `<div>📍 ${p.refugio}</div>` : ""}
+            ${p.ubicacion_nombre ? `<div>📍 ${p.ubicacion_nombre}</div>` : ""}
+            ${p.edad ? `<div>${p.edad} años${p.sexo && p.sexo !== "X" ? ` · ${p.sexo === "M" ? "Masculino" : "Femenino"}` : ""}</div>` : ""}
+          </div>
+        </div>
+        <div class="text-[11px] text-mute mt-2 font-uber-text">${formatFechaLocal(p.updated_at)}</div>
+      </div>
+    `;
+    return card;
+  }
+
+  // ═══ RENDER REPORTES (Semántica) ═══
   function renderizarReportes(reportes: any[]) {
     if (!resultsContainer) return;
     resultsContainer.innerHTML = "";
-
     if (reportes.length === 0) {
-      mostrarMensajeHeader("Sin coincidencia de reportes por similitud semántica.");
+      mostrarMensajeHeader("Sin coincidencias semánticas.");
       return;
     }
-
-    mostrarMensajeHeader(`Coincidencias inteligentes encontradas (${reportes.length} reportes similares):`);
+    mostrarMensajeHeader(`${reportes.length} coincidencias IA:`);
 
     reportes.forEach(r => {
-      const card = document.createElement("div");
-      
-      const configTipo: Record<string, { badge: string, dot: string, text: string }> = {
-        desaparecido: { badge: "border border-red-500/30 text-ink bg-canvas", dot: "bg-red-500", text: "Desaparecido" },
-        encontrado: { badge: "border border-green-500/30 text-ink bg-canvas", dot: "bg-green-500", text: "Encontrado" },
-        refugio: { badge: "border border-blue-500/30 text-ink bg-canvas", dot: "bg-blue-500", text: "Refugio" },
-        necesidad: { badge: "border border-yellow-500/30 text-ink bg-canvas", dot: "bg-yellow-500", text: "Necesidad" }
-      };
-      
-      const config = configTipo[r.tipo] || { badge: "border border-canvas-soft text-ink bg-canvas", dot: "bg-mute", text: "Reporte" };
-      const similarityScore = r.score ? Math.round(r.score * 100) : null;
-      
-      const imgHtml = r.foto_key 
-        ? `<figure class="w-full sm:w-44 h-44 sm:h-auto shrink-0 bg-canvas-soft relative">
-             <img src="/api/upload?key=${encodeURIComponent(r.foto_key)}" alt="Foto" class="w-full h-full object-cover" loading="lazy" />
-           </figure>`
-        : `<div class="w-full sm:w-44 h-44 shrink-0 bg-canvas-soft flex items-center justify-center text-4xl select-none text-mute">📢</div>`;
-
-      const fecha = formatFechaLocal(r.updated_at);
-
-      card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]";
-      card.innerHTML = `
-        ${imgHtml}
-        <div class="p-6 flex flex-col justify-between flex-grow">
-          <div>
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <h2 class="font-uber-display text-xl text-ink leading-snug">
-                ${r.nombre_buscado || "Persona no identificada"}
-              </h2>
-              <div class="flex items-center gap-2">
-                ${similarityScore !== null ? `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary text-white text-xs font-uber-text font-medium">🎯 Coincidencia: ${similarityScore}%</div>` : ""}
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-uber-text font-medium ${config.badge}">
-                  <span class="w-1.5 h-1.5 rounded-full ${config.dot}"></span>
-                  <span>${config.text}</span>
-                </div>
-              </div>
-            </div>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-body mb-4 font-uber-text">
-              ${r.cedula_buscado ? `<div>Documento: <span class="font-semibold text-ink">${r.cedula_buscado}</span></div>` : ""}
-              ${r.ubicacion_nombre ? `<div class="sm:col-span-2">Último avistamiento: <span class="font-semibold text-ink">${r.ubicacion_nombre}</span></div>` : ""}
-              ${r.reportante_nombre ? `<div>Reportado por: <span class="font-semibold text-ink">${r.reportante_nombre}</span></div>` : ""}
-              ${r.reportante_contacto ? `<div>Contacto: <span class="font-semibold text-ink">${r.reportante_contacto}</span></div>` : ""}
-            </div>
-            
-            <div class="bg-canvas-soft border-l-2 border-primary p-3 rounded-lg text-sm italic mb-4 text-ink font-uber-text">
-              <strong>Descripción:</strong> "${r.descripcion}"
-            </div>
-          </div>
-          
-          <div class="flex flex-wrap items-center justify-between text-xs text-mute border-t border-canvas-soft pt-3 mt-auto font-uber-text">
-            <div>Estado Reporte: <span class="font-semibold uppercase text-primary">${r.estado_reporte || "abierto"}</span></div>
-            <div>Fecha: <span class="font-semibold text-body">${fecha}</span></div>
-          </div>
-        </div>
-      `;
+      const card = crearCardReporte(r);
+      card.addEventListener("click", () => abrirModalDetalle(r, "reporte"));
       resultsContainer.appendChild(card);
     });
+  }
+
+  function crearCardReporte(r: any): HTMLDivElement {
+    const card = document.createElement("div");
+    const config = getTipoConfig(r.tipo);
+    const score = r.score ? Math.round(r.score * 100) : null;
+    const imgHtml = r.foto_key 
+      ? `<figure class="w-full sm:w-36 h-36 sm:h-auto shrink-0 bg-canvas-soft"><img src="/api/upload?key=${encodeURIComponent(r.foto_key)}" alt="Foto" class="w-full h-full object-cover" loading="lazy" /></figure>`
+      : `<div class="w-full sm:w-36 h-28 shrink-0 bg-canvas-soft flex items-center justify-center text-4xl text-mute">📢</div>`;
+
+    card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98]";
+    card.innerHTML = `
+      ${imgHtml}
+      <div class="p-4 flex flex-col justify-between flex-grow min-w-0">
+        <div>
+          <div class="flex items-center justify-between gap-2 mb-1">
+            <h2 class="font-uber-display text-lg text-ink truncate">${r.nombre_buscado || "Sin identificar"}</h2>
+            <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-uber-text font-medium shrink-0 ${config.badge}">
+              <span class="w-1.5 h-1.5 rounded-full ${config.dot}"></span>
+              <span>${config.text}</span>
+            </div>
+          </div>
+          ${score !== null ? `<div class="text-xs font-uber-text font-medium bg-primary text-white px-2 py-0.5 rounded-full inline-block mb-1">🎯 ${score}% match</div>` : ""}
+          <p class="text-sm text-body font-uber-text line-clamp-2">${r.descripcion || ""}</p>
+        </div>
+        <div class="text-[11px] text-mute mt-2 font-uber-text">${formatFechaLocal(r.updated_at)}</div>
+      </div>
+    `;
+    return card;
+  }
+
+  // ═══ MODAL DE DETALLE ═══
+  function abrirModalDetalle(data: any, tipo: string) {
+    if (!modalDetalle || !modalBody || !modalActions || !modalTipoBadge) return;
+    currentData = data;
+    currentTipo = tipo;
+
+    // Badge tipo
+    if (tipo === "persona") {
+      const cfg = getEstadoConfig(data.estado);
+      modalTipoBadge.className = `text-xs font-uber-text font-medium px-3 py-1 rounded-full ${cfg.badge}`;
+      modalTipoBadge.innerHTML = `<span class="inline-block w-1.5 h-1.5 rounded-full ${cfg.dot} mr-1"></span>${cfg.text}`;
+    } else {
+      const cfg = getTipoConfig(data.tipo);
+      modalTipoBadge.className = `text-xs font-uber-text font-medium px-3 py-1 rounded-full ${cfg.badge}`;
+      modalTipoBadge.innerHTML = `<span class="inline-block w-1.5 h-1.5 rounded-full ${cfg.dot} mr-1"></span>${cfg.text}`;
+    }
+
+    // Body
+    const nombre = tipo === "persona" 
+      ? `${data.nombre} ${data.apellido || ""}` 
+      : (data.nombre_buscado || "Persona no identificada");
+
+    const fotoHtml = data.foto_key 
+      ? `<img src="/api/upload?key=${encodeURIComponent(data.foto_key)}" alt="Foto" class="w-full max-h-[50vh] object-cover rounded-xl bg-canvas-soft" />`
+      : `<div class="w-full h-48 bg-canvas-soft rounded-xl flex items-center justify-center text-6xl text-mute">${tipo === "persona" ? "👤" : "📢"}</div>`;
+
+    let datosHtml = "";
+    if (tipo === "persona") {
+      datosHtml = `
+        ${campo("Documento", data.cedula)}
+        ${campo("Edad", data.edad ? `${data.edad} años` : null)}
+        ${campo("Sexo", data.sexo === "M" ? "Masculino" : data.sexo === "F" ? "Femenino" : data.sexo === "X" ? "No especifica" : null)}
+        ${campo("Refugio", data.refugio)}
+        ${campo("Zona / Sector", data.ubicacion_nombre)}
+        ${campo("Contacto", data.contacto)}
+        ${campo("Fuente", data.fuente)}
+        ${campo("Registrado", formatFechaLocal(data.created_at))}
+        ${campo("Actualizado", formatFechaLocal(data.updated_at))}
+      `;
+    } else {
+      datosHtml = `
+        ${campo("Tipo", getTipoConfig(data.tipo).text)}
+        ${campo("Documento", data.cedula_buscado)}
+        ${campo("Ubicación", data.ubicacion_nombre)}
+        ${campo("Reportado por", data.reportante_nombre)}
+        ${campo("Contacto", data.reportante_contacto)}
+        ${campo("Estado", (data.estado_reporte || "abierto").toUpperCase())}
+        ${campo("Fecha", formatFechaLocal(data.created_at))}
+      `;
+    }
+
+    const notasHtml = (tipo === "persona" && data.notas) 
+      ? `<div class="bg-canvas-soft p-4 rounded-xl border-l-3 border-primary">
+           <div class="text-xs text-mute font-uber-text font-medium mb-1 uppercase tracking-wider">Notas</div>
+           <p class="text-sm text-ink font-uber-text italic">"${data.notas}"</p>
+         </div>` 
+      : "";
+
+    const descripcionHtml = (tipo === "reporte" && data.descripcion)
+      ? `<div class="bg-canvas-soft p-4 rounded-xl border-l-3 border-primary">
+           <div class="text-xs text-mute font-uber-text font-medium mb-1 uppercase tracking-wider">Descripción</div>
+           <p class="text-sm text-ink font-uber-text italic">"${data.descripcion}"</p>
+         </div>`
+      : "";
+
+    const lat = data.latitud;
+    const lon = data.longitud;
+    let mapaHtml = "";
+    if (lat && lon) {
+      const z = 15;
+      const tileX = Math.floor((lon + 180) / 360 * Math.pow(2, z));
+      const tileY = Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, z));
+      mapaHtml = `
+        <div class="space-y-2">
+          <div class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">📍 Ubicación GPS</div>
+          <div class="rounded-xl overflow-hidden border border-canvas-soft">
+            <img src="https://tile.openstreetmap.org/${z}/${tileX}/${tileY}.png" 
+                 alt="Mapa" class="w-full h-48 object-cover" loading="lazy" />
+          </div>
+          <div class="flex gap-2">
+            <a href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener" 
+               class="btn bg-canvas-soft text-ink flex-1 text-sm font-uber-text">
+              🗺️ Abrir en Google Maps
+            </a>
+          </div>
+          <div class="text-xs text-mute font-uber-text text-center">${lat.toFixed(6)}, ${lon.toFixed(6)}</div>
+        </div>`;
+    }
+
+    modalBody.innerHTML = `
+      <div class="space-y-5 max-w-lg mx-auto">
+        ${fotoHtml}
+        <div>
+          <h1 class="font-uber-display text-2xl text-ink mb-1">${nombre}</h1>
+          ${data.score ? `<div class="text-xs font-uber-text font-medium bg-primary text-white px-2.5 py-1 rounded-full inline-block">🎯 Coincidencia: ${Math.round(data.score * 100)}%</div>` : ""}
+        </div>
+        <div class="grid grid-cols-1 gap-0 divide-y divide-canvas-soft bg-canvas-soft rounded-xl overflow-hidden">
+          ${datosHtml}
+        </div>
+        ${notasHtml}
+        ${descripcionHtml}
+        ${mapaHtml}
+      </div>
+    `;
+
+    // Acciones
+    let actionsHtml = "";
+    const contacto = data.contacto || data.reportante_contacto;
+    let telValido = false;
+    let tel = "";
+    if (contacto) {
+      tel = contacto.replace(/[^0-9+]/g, "");
+      if (tel.length >= 7) {
+        telValido = true;
+      }
+    }
+
+    if (telValido) {
+      actionsHtml += `<a href="tel:${tel}" class="btn bg-canvas-soft text-ink flex-1 min-w-[120px] font-uber-text uber-body-md-strong text-center justify-center items-center flex">📞 Llamar</a>`;
+    } else {
+      actionsHtml += `<button class="btn bg-canvas-soft text-mute flex-1 min-w-[120px] font-uber-text uber-body-md-strong opacity-50 cursor-not-allowed flex items-center justify-center" disabled>📞 Llamar</button>`;
+    }
+
+    actionsHtml += `<button id="btn-reportar-vi" class="btn bg-canvas-soft text-ink flex-1 min-w-[120px] font-uber-text uber-body-md-strong">📢 Lo vi</button>`;
+
+    actionsHtml += `<button id="btn-compartir-cartel" class="btn bg-primary text-white flex-1 min-w-[120px] font-uber-text uber-body-md-strong">📷 Compartir</button>`;
+
+    if (tipo === "reporte" && data.estado_reporte !== "resuelto") {
+      actionsHtml += `<button id="btn-marcar-encontrado" class="btn bg-canvas-soft text-ink flex-1 min-w-[120px] font-uber-text uber-body-md-strong">✅ Encontrado</button>`;
+    }
+
+    modalActions!.innerHTML = actionsHtml;
+
+    // Event listeners de acciones
+    document.getElementById("btn-reportar-vi")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      abrirReporteRapido();
+    });
+
+    document.getElementById("btn-compartir-cartel")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      generarCartel();
+    });
+
+    document.getElementById("btn-marcar-encontrado")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      marcarEncontrado();
+    });
+
+    // Mostrar modal
+    modalDetalle!.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
+
+  function cerrarModal() {
+    if (!modalDetalle) return;
+    modalDetalle.classList.add("hidden");
+    document.body.style.overflow = "";
+    currentData = null;
+    currentTipo = "";
+  }
+
+  // Close handlers
+  modalClose?.addEventListener("click", cerrarModal);
+  modalDetalle?.addEventListener("click", (e) => {
+    if (e.target === modalDetalle) cerrarModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") cerrarModal();
+  });
+
+  // ═══ CAMPO HELPER ═══
+  function campo(label: string, value: string | null | undefined): string {
+    if (!value) return "";
+    return `<div class="px-4 py-3 flex justify-between items-center">
+      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">${label}</span>
+      <span class="text-sm text-ink font-uber-text font-medium text-right">${value}</span>
+    </div>`;
+  }
+
+  // ═══ REPORTE RÁPIDO "LO VI" ═══
+  function abrirReporteRapido() {
+    const modal = document.getElementById("modal-reporte-rapido");
+    if (!modal) return;
+    modal.classList.remove("hidden");
+
+    const enviar = document.getElementById("reporte-rapido-enviar");
+    const cancelar = document.getElementById("reporte-rapido-cancelar");
+    const desc = document.getElementById("reporte-rapido-desc") as HTMLTextAreaElement;
+
+    cancelar?.addEventListener("click", () => modal.classList.add("hidden"), { once: true });
+    
+    enviar?.addEventListener("click", async () => {
+      if (!desc.value.trim()) return;
+
+      enviar.textContent = "Enviando...";
+      enviar.classList.add("opacity-50");
+
+      // Obtener GPS si es posible
+      let lat: number | null = null, lon: number | null = null;
+      try {
+        const pos = await new Promise<GeolocationPosition>((res, rej) => {
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 });
+        });
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+      } catch {}
+
+      const nombre = currentTipo === "persona" 
+        ? `${currentData.nombre} ${currentData.apellido || ""}` 
+        : (currentData.nombre_buscado || "Persona");
+
+      const payload = {
+        tipo: "encontrado",
+        nombre_buscado: nombre,
+        descripcion: desc.value.trim(),
+        ubicacion_nombre: null,
+        latitud: lat,
+        longitud: lon,
+        reportante_nombre: null,
+        reportante_contacto: null,
+        cedula_buscado: currentData.cedula || currentData.cedula_buscado || null,
+        foto_key: null
+      };
+
+      try {
+        const resp = await fetch("/api/reportes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (resp.ok) {
+          enviar.textContent = "✓ Enviado";
+          setTimeout(() => modal.classList.add("hidden"), 1000);
+        } else {
+          enviar.textContent = "Error. Reintentar";
+          enviar.classList.remove("opacity-50");
+        }
+      } catch {
+        enviar.textContent = "Sin conexión";
+        enviar.classList.remove("opacity-50");
+      }
+    }, { once: true });
+  }
+
+  // ═══ MARCAR ENCONTRADO ═══
+  async function marcarEncontrado() {
+    if (!currentData || currentTipo !== "reporte") return;
+    
+    const btn = document.getElementById("btn-marcar-encontrado");
+    if (!btn) return;
+    
+    if (!confirm("¿Confirmar que esta persona fue encontrada?")) return;
+
+    btn.textContent = "Actualizando...";
+    btn.classList.add("opacity-50");
+
+    try {
+      const resp = await fetch(`/api/reportes/${currentData.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado_reporte: "resuelto" })
+      });
+      if (resp.ok) {
+        btn.textContent = "✓ Marcado";
+        currentData.estado_reporte = "resuelto";
+      } else {
+        btn.textContent = "Error";
+        btn.classList.remove("opacity-50");
+      }
+    } catch {
+      btn.textContent = "Sin conexión";
+      btn.classList.remove("opacity-50");
+    }
+  }
+
+  // ═══ GENERAR CARTEL "SE BUSCA" ═══
+  async function generarCartel() {
+    if (!currentData) return;
+    
+    const btn = document.getElementById("btn-compartir-cartel");
+    if (!btn) return;
+    btn.textContent = "Generando...";
+    btn.classList.add("opacity-50");
+
+    try {
+      // Llenar datos del cartel
+      const cartelNombre = document.getElementById("cartel-nombre");
+      const cartelDatos = document.getElementById("cartel-datos");
+      const cartelDescripcion = document.getElementById("cartel-descripcion");
+      const cartelUbicacion = document.getElementById("cartel-ubicacion");
+      const cartelContacto = document.getElementById("cartel-contacto");
+      const cartelFotoWrap = document.getElementById("cartel-foto-wrap");
+
+      const esReporte = currentTipo === "reporte";
+      const nombre = esReporte 
+        ? (currentData.nombre_buscado || "PERSONA DESAPARECIDA")
+        : `${currentData.nombre} ${currentData.apellido || ""}`;
+
+      if (cartelNombre) cartelNombre.textContent = nombre;
+
+      if (cartelDatos) {
+        const parts = [];
+        const cedula = esReporte ? currentData.cedula_buscado : currentData.cedula;
+        if (cedula) parts.push(`Doc: ${cedula}`);
+        
+        if (esReporte) {
+          parts.push(`Reportado: ${formatFechaLocal(currentData.created_at)}`);
+        } else {
+          if (currentData.refugio) parts.push(`Refugio: ${currentData.refugio}`);
+        }
+        cartelDatos.textContent = parts.join(" | ");
+      }
+
+      if (cartelDescripcion) {
+        cartelDescripcion.textContent = esReporte 
+          ? (currentData.descripcion || "") 
+          : (currentData.notas || "");
+      }
+
+      if (cartelUbicacion) {
+        const ubicacion = currentData.ubicacion_nombre;
+        cartelUbicacion.textContent = ubicacion ? `📍 Última ubicación: ${ubicacion}` : "";
+      }
+
+      const contactoVal = esReporte ? currentData.reportante_contacto : currentData.contacto;
+      if (cartelContacto) {
+        cartelContacto.textContent = contactoVal ? `CONTACTO: ${contactoVal}` : "CONTACTE AUTORIDADES";
+      }
+
+      // Cargar foto
+      const fotoKey = currentData.foto_key;
+      if (fotoKey && cartelFotoWrap) {
+        cartelFotoWrap.style.flexDirection = "row";
+        cartelFotoWrap.innerHTML = `<img id="cartel-foto" style="width:100%;height:100%;object-fit:cover;" src="" alt="" crossorigin="anonymous" />`;
+        const cartelFoto = document.getElementById("cartel-foto") as HTMLImageElement;
+        try {
+          const fotoResp = await fetch(`/api/upload?key=${encodeURIComponent(fotoKey)}`);
+          if (!fotoResp.ok) throw new Error();
+          const fotoBlob = await fotoResp.blob();
+          cartelFoto.src = URL.createObjectURL(fotoBlob);
+          await new Promise(r => { 
+            cartelFoto.onload = r; 
+            setTimeout(r, 2000); 
+          });
+        } catch {
+          cartelFotoWrap.style.flexDirection = "column";
+          cartelFotoWrap.innerHTML = `<div style="font-size:72px;color:#afafaf;">👤</div><div style="font-size:16px;color:#5e5e5e;font-weight:bold;margin-top:8px;">SIN FOTO</div>`;
+        }
+      } else if (cartelFotoWrap) {
+        cartelFotoWrap.style.flexDirection = "column";
+        cartelFotoWrap.innerHTML = `<div style="font-size:72px;color:#afafaf;">👤</div><div style="font-size:16px;color:#5e5e5e;font-weight:bold;margin-top:8px;">SIN FOTO DISPONIBLE</div>`;
+      }
+
+      // Import dinámico html2canvas
+      const { default: html2canvas } = await import("html2canvas");
+      
+      const cartelEl = document.getElementById("cartel-se-busca");
+      if (!cartelEl) throw new Error("Cartel element not found");
+
+      const canvas = await html2canvas(cartelEl, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff"
+      });
+
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((b) => resolve(b!), "image/png");
+      });
+
+      // Compartir
+      const nombreArchivo = `SE_BUSCA_${nombre.replace(/\s+/g, "_")}.png`;
+
+      if (navigator.share && navigator.canShare) {
+        const file = new File([blob], nombreArchivo, { type: "image/png" });
+        const shareData = { files: [file], title: "SE BUSCA", text: `SE BUSCA: ${nombre}` };
+        
+        if (navigator.canShare(shareData)) {
+          await navigator.share(shareData);
+          btn.textContent = "📷 Compartir";
+          btn.classList.remove("opacity-50");
+          return;
+        }
+      }
+
+      // Fallback: descarga directa
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nombreArchivo;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      btn.textContent = "✓ Descargado";
+      setTimeout(() => {
+        btn.textContent = "📷 Compartir";
+        btn.classList.remove("opacity-50");
+      }, 2000);
+
+    } catch (err) {
+      console.error("Error generando cartel:", err);
+      btn.textContent = "Error";
+      setTimeout(() => {
+        btn.textContent = "📷 Compartir";
+        btn.classList.remove("opacity-50");
+      }, 2000);
+    }
+  }
+
+  // ═══ CONFIGS DE ESTADO/TIPO ═══
+  function getEstadoConfig(estado: string) {
+    const configs: Record<string, { badge: string, dot: string, text: string }> = {
+      vivo: { badge: "border border-green-500/30 text-ink bg-canvas", dot: "bg-green-500", text: "A salvo" },
+      herido: { badge: "border border-yellow-500/30 text-ink bg-canvas", dot: "bg-yellow-500", text: "Herido" },
+      fallecido: { badge: "border border-red-500/30 text-ink bg-canvas", dot: "bg-red-500", text: "Fallecido" },
+      desconocido: { badge: "border border-canvas-soft text-ink bg-canvas", dot: "bg-mute", text: "Desconocido" }
+    };
+    return configs[estado] || configs.desconocido;
+  }
+
+  function getTipoConfig(tipo: string) {
+    const configs: Record<string, { badge: string, dot: string, text: string }> = {
+      desaparecido: { badge: "border border-red-500/30 text-ink bg-canvas", dot: "bg-red-500", text: "Desaparecido" },
+      encontrado: { badge: "border border-green-500/30 text-ink bg-canvas", dot: "bg-green-500", text: "Encontrado" },
+      refugio: { badge: "border border-blue-500/30 text-ink bg-canvas", dot: "bg-blue-500", text: "Refugio" },
+      necesidad: { badge: "border border-yellow-500/30 text-ink bg-canvas", dot: "bg-yellow-500", text: "Necesidad" }
+    };
+    return configs[tipo] || { badge: "border border-canvas-soft text-ink bg-canvas", dot: "bg-mute", text: "Reporte" };
   }
 
   function formatFechaLocal(fechaStr: string) {
     try {
       const d = new Date(fechaStr + " UTC");
       return d.toLocaleString("es-ES", { timeZone: "America/Caracas" });
-    } catch (e) {
-      return fechaStr;
-    }
+    } catch { return fechaStr; }
   }
 </script>
