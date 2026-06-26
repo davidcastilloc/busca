@@ -1,10 +1,10 @@
 import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
 
 export const prerender = false;
 
 export const GET: APIRoute = async (context) => {
   try {
-    const env = context.locals.runtime.env;
     const { DB, CACHE_KV } = env;
 
     const url = new URL(context.request.url);

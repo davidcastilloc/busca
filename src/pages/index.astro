@@ -2,6 +2,7 @@
 import Layout from "../layouts/Layout.astro";
 import Navbar from "../components/Navbar.astro";
 import BuscadorRapido from "../components/BuscadorRapido.astro";
+import { env } from "cloudflare:workers";
 
 export const prerender = false;
 
@@ -10,7 +11,6 @@ let totalDesaparecidos = 0;
 let totalEncontrados = 0;
 
 try {
-  const env = Astro.locals.runtime.env;
   const { DB } = env;
 
   if (DB) {

@@ -1,4 +1,5 @@
 import { defineMiddleware } from "astro:middleware";
+import { env } from "cloudflare:workers";
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
@@ -6,7 +7,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Solo aplicar rate limit a rutas de API, excluyendo la visualización de fotos (GET /api/upload)
   if (url.pathname.startsWith("/api/") && !(url.pathname === "/api/upload" && context.request.method === "GET")) {
     try {
-      const env = context.locals.runtime.env;
       const { CACHE_KV } = env;
 
       if (CACHE_KV) {

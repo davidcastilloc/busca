@@ -1,6 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import Navbar from "../../components/Navbar.astro";
+import { env } from "cloudflare:workers";
 
 export const prerender = false;
 
@@ -20,7 +21,6 @@ let refugios: { refugio: string; count: number }[] = [];
 let personas: any[] = [];
 
 try {
-  const env = Astro.locals.runtime.env;
   const { DB } = env;
 
   if (DB) {

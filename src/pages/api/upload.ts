@@ -1,10 +1,11 @@
 import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
 
 export const prerender = false;
 
 export const POST: APIRoute = async (context) => {
   try {
-    const { FOTOS_BUCKET } = context.locals.runtime.env;
+    const { FOTOS_BUCKET } = env;
     const formData = await context.request.formData();
     const file = formData.get("foto");
 
@@ -38,7 +39,7 @@ export const POST: APIRoute = async (context) => {
 
 export const GET: APIRoute = async (context) => {
   try {
-    const { FOTOS_BUCKET } = context.locals.runtime.env;
+    const { FOTOS_BUCKET } = env;
     const url = new URL(context.request.url);
     const key = url.searchParams.get("key");
 

@@ -1,11 +1,11 @@
 import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
 import { generarEmbedding } from "../../lib/ai";
 
 export const prerender = false;
 
 export const POST: APIRoute = async (context) => {
   try {
-    const env = context.locals.runtime.env;
     const { DB, VECTOR_INDEX } = env;
     const body = await context.request.json();
     const { descripcion } = body;

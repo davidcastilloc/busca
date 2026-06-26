@@ -1,10 +1,10 @@
 import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
 
 export const prerender = false;
 
 export const POST: APIRoute = async (context) => {
   try {
-    const env = context.locals.runtime.env;
     const { DB, FOTOS_BUCKET } = env;
 
     const body = await context.request.json();
