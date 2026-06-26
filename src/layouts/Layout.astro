@@ -41,9 +41,9 @@ const {
   <body class="bg-canvas text-ink min-h-screen flex flex-col antialiased font-sans">
     <slot />
 
-    <!-- Registro de Service Worker para PWA -->
+    <!-- Registro de Service Worker para PWA (solo en producción) -->
     <script>
-      if ("serviceWorker" in navigator) {
+      if ("serviceWorker" in navigator && !import.meta.env.DEV) {
         window.addEventListener("load", () => {
           navigator.serviceWorker
             .register("/sw.js")
