@@ -6,7 +6,7 @@ import FotoUpload from "./FotoUpload.astro";
 <div class="max-w-2xl mx-auto px-4 py-6">
   <form id="form-reporte" class="space-y-8">
     <!-- Bloque 1: Datos Reporte -->
-    <fieldset class="fieldset bg-canvas border border-canvas-soft p-6 rounded-xl shadow-level1">
+    <fieldset class="fieldset bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm">
       <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">1. Detalles del Reporte</legend>
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -44,7 +44,7 @@ import FotoUpload from "./FotoUpload.astro";
     </fieldset>
 
     <!-- Bloque 2: Ubicación del Reporte -->
-    <fieldset class="fieldset bg-canvas border border-canvas-soft p-6 rounded-xl shadow-level1">
+    <fieldset class="fieldset bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm">
       <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">2. Lugar del Reporte</legend>
       
       <div class="space-y-4">
@@ -58,7 +58,7 @@ import FotoUpload from "./FotoUpload.astro";
     </fieldset>
 
     <!-- Bloque 3: Reportante y Evidencia -->
-    <fieldset class="fieldset bg-canvas border border-canvas-soft p-6 rounded-xl shadow-level1">
+    <fieldset class="fieldset bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm">
       <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">3. Reportante y Evidencia</legend>
       
       <div class="space-y-4">
@@ -100,7 +100,7 @@ import FotoUpload from "./FotoUpload.astro";
 
     <!-- Toast de estado estilo ex-toast -->
     <div id="toast-container-rep" class="fixed bottom-6 right-6 z-50 hidden">
-      <div id="toast-message-rep" class="bg-canvas border border-canvas-soft text-ink rounded-xl p-4 shadow-level2 font-uber-text uber-body-sm flex items-center gap-2">
+      <div id="toast-message-rep" class="bg-canvas border border-canvas-soft text-ink rounded-xl p-4 shadow-md font-uber-text uber-body-sm flex items-center gap-2">
         <span>Guardando...</span>
       </div>
     </div>
@@ -257,7 +257,7 @@ import FotoUpload from "./FotoUpload.astro";
     function mostrarToast(text: string, borderClass: string) {
       if (!toastContainer || !toastMessage) return;
 
-      toastMessage.className = `bg-canvas border ${borderClass} text-ink rounded-xl p-4 shadow-level2 font-uber-text uber-body-sm flex items-center gap-2`;
+      toastMessage.className = `bg-canvas border ${borderClass} text-ink rounded-xl p-4 shadow-md font-uber-text uber-body-sm flex items-center gap-2`;
       toastMessage.innerHTML = `<span>${text}</span>`;
       toastContainer.classList.remove("hidden");
 

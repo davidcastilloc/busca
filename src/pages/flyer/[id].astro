@@ -50,7 +50,7 @@ const formatFecha = (fechaStr: string) => {
     {flyer ? (
       <div class="space-y-6">
         {esCreado && (
-          <div class="bg-canvas-soft border border-canvas-soft rounded-xl p-5 shadow-level1 font-uber-text uber-body-sm text-ink">
+          <div class="bg-canvas-soft border border-canvas-soft rounded-xl p-5 shadow-sm font-uber-text uber-body-sm text-ink">
             <div class="font-bold text-base mb-1">🎉 Reporte registrado con éxito</div>
             <p class="text-body">
               La Inteligencia Artificial de BUSCA ya está procesando y cruzando los datos. Guarda este enlace o descarga la imagen abajo.
@@ -59,7 +59,7 @@ const formatFecha = (fechaStr: string) => {
         )}
 
         <!-- Banner informativo (estilo card-soft-tinted) -->
-        <div class="bg-canvas-soft border border-canvas-soft p-4 rounded-xl text-ink font-uber-text uber-body-sm shadow-level1">
+        <div class="bg-canvas-soft border border-canvas-soft p-4 rounded-xl text-ink font-uber-text uber-body-sm shadow-sm">
           <strong>ℹ️ IMPORTANTE:</strong> Guarda este enlace para compartir el cartel digital, o descárgalo como imagen para difundirlo por Whatsapp o imprimirlo.
         </div>
 
@@ -68,13 +68,13 @@ const formatFecha = (fechaStr: string) => {
           <button id="btn-download" class="btn bg-primary text-white hover:bg-black-elevated flex-1 font-uber-text uber-body-md-strong">
             Descargar Imagen
           </button>
-          <button id="btn-copy" class="btn bg-canvas text-ink border border-canvas-soft shadow-level3 hover:bg-canvas-soft flex-1 font-uber-text uber-body-md-strong">
+          <button id="btn-copy" class="btn bg-canvas text-ink border border-canvas-soft shadow-lg hover:bg-canvas-soft flex-1 font-uber-text uber-body-md-strong">
             Copiar Enlace
           </button>
         </div>
 
         <!-- Contenedor del Cartel Imprimible (html2canvas, diseño premium blanco y negro) -->
-        <div id="flyer-card" class="bg-white text-black p-6 rounded-none shadow-level2 border-8 border-primary font-sans flex flex-col justify-between max-w-md mx-auto aspect-[3/4]">
+        <div id="flyer-card" class="bg-white text-black p-6 rounded-none shadow-md border-8 border-primary font-sans flex flex-col justify-between max-w-md mx-auto aspect-[3/4]">
           <div>
             <!-- Cabecera del Cartel -->
             <div class="text-center bg-primary text-white py-3 px-4 -mx-6 -mt-6 mb-5 font-uber-display text-xl tracking-widest uppercase">

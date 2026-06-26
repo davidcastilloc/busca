@@ -101,23 +101,23 @@ const formatFecha = (fechaStr: string) => {
 
     <!-- Indicadores de Estado (cards minimalistas) -->
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-      <div class="bg-canvas border border-canvas-soft p-5 rounded-xl shadow-level1 text-center">
+      <div class="bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm text-center">
         <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Registros Totales</div>
         <div class="font-uber-display text-3xl text-ink mt-2">{stats.total}</div>
       </div>
-      <div class="bg-canvas border border-green-500/20 p-5 rounded-xl shadow-level1 text-center border-l-4">
+      <div class="bg-canvas border border-green-500/20 p-5 rounded-xl shadow-sm text-center border-l-4">
         <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Vivo / A Salvo</div>
         <div class="font-uber-display text-3xl text-ink mt-2">{stats.vivo}</div>
       </div>
-      <div class="bg-canvas border border-yellow-500/20 p-5 rounded-xl shadow-level1 text-center border-l-4">
+      <div class="bg-canvas border border-yellow-500/20 p-5 rounded-xl shadow-sm text-center border-l-4">
         <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Heridos</div>
         <div class="font-uber-display text-3xl text-ink mt-2">{stats.herido}</div>
       </div>
-      <div class="bg-canvas border border-red-500/20 p-5 rounded-xl shadow-level1 text-center border-l-4">
+      <div class="bg-canvas border border-red-500/20 p-5 rounded-xl shadow-sm text-center border-l-4">
         <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Fallecidos</div>
         <div class="font-uber-display text-3xl text-ink mt-2">{stats.fallecido}</div>
       </div>
-      <div class="bg-canvas border border-canvas-soft p-5 rounded-xl shadow-level1 text-center border-l-4">
+      <div class="bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm text-center border-l-4">
         <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Desconocido</div>
         <div class="font-uber-display text-3xl text-ink mt-2">{stats.desconocido}</div>
       </div>
@@ -127,7 +127,7 @@ const formatFecha = (fechaStr: string) => {
       <!-- Columna Izquierda: Filtros y Albergues -->
       <div class="space-y-6 lg:col-span-1">
         <!-- Filtros (card-content) -->
-        <div class="bg-canvas border border-canvas-soft p-6 rounded-xl shadow-level1">
+        <div class="bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm">
           <h3 class="font-uber-display text-sm text-ink mb-4 uppercase tracking-wider">Filtrar Censo</h3>
           
           <form method="GET" class="space-y-4">
@@ -166,7 +166,7 @@ const formatFecha = (fechaStr: string) => {
         </div>
 
         <!-- Lista de albergues con recuento (card-content) -->
-        <div class="bg-canvas border border-canvas-soft p-6 rounded-xl shadow-level1">
+        <div class="bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm">
           <h3 class="font-uber-display text-sm text-ink mb-4 uppercase tracking-wider">Albergues Activos</h3>
           <div class="divide-y divide-canvas-soft">
             {refugios.length === 0 ? (
@@ -187,7 +187,7 @@ const formatFecha = (fechaStr: string) => {
 
       <!-- Columna Derecha: Tabla de registros (ex-data-table-cell) -->
       <div class="lg:col-span-3">
-        <div class="bg-canvas border border-canvas-soft rounded-xl shadow-level1 overflow-hidden">
+        <div class="bg-canvas border border-canvas-soft rounded-xl shadow-sm overflow-hidden">
           <div class="p-6 border-b border-canvas-soft flex justify-between items-center bg-canvas">
             <h3 class="font-uber-display text-lg text-ink">Sobrevivientes y Registros Recientes</h3>
             <span class="text-xs font-uber-text font-medium text-body">Mostrando {personas.length} registros</span>

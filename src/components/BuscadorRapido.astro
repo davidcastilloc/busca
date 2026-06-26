@@ -13,7 +13,7 @@
   </div>
 
   <!-- Formulario 1: Búsqueda Exacta (card-elevated) -->
-  <div id="panel-exact" class="bg-canvas border border-canvas-soft p-6 sm:p-8 rounded-xl shadow-level1">
+  <div id="panel-exact" class="bg-canvas border border-canvas-soft p-6 sm:p-8 rounded-xl shadow-sm">
     <form id="form-search-exact" class="space-y-4">
       <div class="flex flex-col sm:flex-row gap-3">
         <input 
@@ -34,7 +34,7 @@
   </div>
 
   <!-- Formulario 2: Búsqueda Semántica (IA) (card-elevated) -->
-  <div id="panel-semantic" class="bg-canvas border border-canvas-soft p-6 sm:p-8 rounded-xl shadow-level1 hidden">
+  <div id="panel-semantic" class="bg-canvas border border-canvas-soft p-6 sm:p-8 rounded-xl shadow-sm hidden">
     <form id="form-search-semantic" class="space-y-4">
       <div class="space-y-2">
         <label class="block font-uber-text uber-body-md-strong text-ink">Descripción del Reporte de Búsqueda</label>
@@ -213,7 +213,7 @@
 
       const fecha = formatFechaLocal(p.updated_at);
 
-      card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-level1 flex flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]";
+      card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]";
       card.innerHTML = `
         ${imgHtml}
         <div class="p-6 flex flex-col justify-between flex-grow">
@@ -280,7 +280,7 @@
 
       const fecha = formatFechaLocal(r.updated_at);
 
-      card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-level1 flex flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]";
+      card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]";
       card.innerHTML = `
         ${imgHtml}
         <div class="p-6 flex flex-col justify-between flex-grow">

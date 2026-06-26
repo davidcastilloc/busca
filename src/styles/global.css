@@ -37,9 +37,9 @@
   --spacing-2xl: 24px;
   --spacing-3xl: 32px;
 
-  --shadow-level1: 0px 4px 16px 0px rgba(0, 0, 0, 0.12);
-  --shadow-level2: 0px 4px 16px 0px rgba(0, 0, 0, 0.16);
-  --shadow-level3: 0px 2px 8px 0px rgba(0, 0, 0, 0.16);
+  --shadow-sm: 0px 4px 16px 0px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0px 4px 16px 0px rgba(0, 0, 0, 0.16);
+  --shadow-lg: 0px 2px 8px 0px rgba(0, 0, 0, 0.16);
 }
 
 /* Tipografía UberMove y UberMoveText usando Inter */
@@ -222,10 +222,8 @@ body {
   background-color: var(--color-canvas-soft) !important;
   color: var(--color-ink) !important;
   border: none !important;
-  padding: 16px !important;
   font-size: 16px;
   line-height: 24px;
-  height: auto !important;
   box-shadow: none !important;
   transition: background-color 0.2s ease;
 }
@@ -247,7 +245,7 @@ body {
   border: 1px solid var(--color-canvas-soft) !important;
   padding: 24px !important;
   margin-bottom: 24px;
-  box-shadow: var(--shadow-level1) !important;
+  box-shadow: 0px 4px 16px 0px rgba(0, 0, 0, 0.12) !important;
 }
 
 .fieldset-legend {
