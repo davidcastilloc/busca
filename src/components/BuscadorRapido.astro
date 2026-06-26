@@ -698,19 +698,19 @@
 
               cartelFoto.src = blobUrl;
               if (imgAspect > containerAspect) {
-                // Imagen más ancha (paisaje)
-                const newWidth = containerH * imgAspect;
-                cartelFoto.style.height = `${containerH}px`;
-                cartelFoto.style.width = `${newWidth}px`;
-                cartelFoto.style.top = "0px";
-                cartelFoto.style.left = `${(containerW - newWidth) / 2}px`;
-              } else {
-                // Imagen más alta (retrato)
+                // Imagen muy ancha: limitar por ancho (600px) para que no se corte
                 const newHeight = containerW / imgAspect;
                 cartelFoto.style.width = `${containerW}px`;
                 cartelFoto.style.height = `${newHeight}px`;
                 cartelFoto.style.left = "0px";
                 cartelFoto.style.top = `${(containerH - newHeight) / 2}px`;
+              } else {
+                // Imagen muy alta o cuadrada: limitar por alto (400px) para que no se corte
+                const newWidth = containerH * imgAspect;
+                cartelFoto.style.height = `${containerH}px`;
+                cartelFoto.style.width = `${newWidth}px`;
+                cartelFoto.style.top = "0px";
+                cartelFoto.style.left = `${(containerW - newWidth) / 2}px`;
               }
               resolve(null);
             };
