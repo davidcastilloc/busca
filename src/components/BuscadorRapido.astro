@@ -1,29 +1,29 @@
 ---
 ---
 
-<div class="w-full max-w-3xl mx-auto px-4 py-6">
+<div class="w-full max-w-3xl mx-auto px-4 py-4 sm:py-6">
   <!-- Tabs de búsqueda (button-tab-translucent) -->
-  <div class="flex gap-3 justify-center mb-8">
-    <button id="btn-tab-exact" class="px-5 py-2.5 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer">
+  <div class="flex gap-2 sm:gap-3 justify-center mb-6 sm:mb-8">
+    <button id="btn-tab-exact" class="flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center">
       Censo de Personas
     </button>
-    <button id="btn-tab-semantic" class="px-5 py-2.5 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer">
-      Búsqueda Semántica (IA)
+    <button id="btn-tab-semantic" class="flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center">
+      Búsqueda IA
     </button>
   </div>
 
   <!-- Formulario 1: Búsqueda Exacta (card-elevated) -->
-  <div id="panel-exact" class="bg-canvas border border-canvas-soft p-6 sm:p-8 rounded-xl shadow-sm">
-    <form id="form-search-exact" class="space-y-4">
-      <div class="flex flex-col sm:flex-row gap-3">
+  <div id="panel-exact" class="bg-canvas border border-canvas-soft p-4 sm:p-8 rounded-xl shadow-sm">
+    <form id="form-search-exact" class="space-y-3">
+      <div class="flex flex-col gap-3">
         <input 
           type="text" 
           id="query-exact" 
           required
-          class="input flex-1 font-uber-text uber-body-md" 
-          placeholder="Buscar por Nombre, Cédula, Ubicación o Refugio..." 
+          class="input w-full font-uber-text uber-body-md" 
+          placeholder="Nombre, Cédula, Ubicación o Refugio..." 
         />
-        <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong">
+        <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated w-full sm:w-auto font-uber-text uber-body-md-strong">
           Buscar
         </button>
       </div>
@@ -34,24 +34,24 @@
   </div>
 
   <!-- Formulario 2: Búsqueda Semántica (IA) (card-elevated) -->
-  <div id="panel-semantic" class="bg-canvas border border-canvas-soft p-6 sm:p-8 rounded-xl shadow-sm hidden">
-    <form id="form-search-semantic" class="space-y-4">
+  <div id="panel-semantic" class="bg-canvas border border-canvas-soft p-4 sm:p-8 rounded-xl shadow-sm hidden">
+    <form id="form-search-semantic" class="space-y-3">
       <div class="space-y-2">
-        <label class="block font-uber-text uber-body-md-strong text-ink">Descripción del Reporte de Búsqueda</label>
+        <label class="block font-uber-text uber-body-md-strong text-ink">Descripción del Reporte</label>
         <textarea 
           id="query-semantic" 
           required
           minlength="5"
-          rows="3"
+          rows="4"
           class="textarea w-full font-uber-text uber-body-md" 
           placeholder="Ej: Niño de unos 8 años, jean azul, gorra roja, visto por última vez en la plaza Bolívar..."
         ></textarea>
       </div>
       <button type="submit" id="btn-submit-semantic" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text uber-body-md-strong">
-        Buscar por Similitud Semántica
+        Buscar por Similitud IA
       </button>
       <p class="text-xs text-body font-uber-text">
-        La IA procesará la descripción y buscará reportes con características físicas similares en la base de datos de desaparecidos.
+        La IA procesará la descripción y buscará reportes con características físicas similares.
       </p>
     </form>
   </div>

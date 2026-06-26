@@ -3,13 +3,13 @@ import MapaUbicacion from "./MapaUbicacion.astro";
 import FotoUpload from "./FotoUpload.astro";
 ---
 
-<div class="max-w-2xl mx-auto px-4 py-6">
+<div class="max-w-2xl mx-auto px-4 py-4 sm:py-6">
   <form id="form-persona" class="space-y-8">
     <!-- Bloque 1: Datos Identificación -->
-    <fieldset class="fieldset bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm">
+    <fieldset class="fieldset bg-canvas border border-canvas-soft p-4 sm:p-6 rounded-xl shadow-sm">
       <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">1. Identificación de la Persona</legend>
       
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 gap-4">
         <div>
           <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Cédula / Documento</label>
           <input type="text" name="cedula" class="input w-full font-uber-text uber-body-md" placeholder="Opcional (ej. V-1234567)" />
@@ -47,7 +47,7 @@ import FotoUpload from "./FotoUpload.astro";
     </fieldset>
 
     <!-- Bloque 2: Ubicación -->
-    <fieldset class="fieldset bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm">
+    <fieldset class="fieldset bg-canvas border border-canvas-soft p-4 sm:p-6 rounded-xl shadow-sm">
       <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">2. Ubicación y Contacto</legend>
       
       <div class="space-y-4">
@@ -58,7 +58,7 @@ import FotoUpload from "./FotoUpload.astro";
         
         <MapaUbicacion />
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 gap-4">
           <div>
             <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Refugio / Albergue</label>
             <input type="text" name="refugio" class="input w-full font-uber-text uber-body-md" placeholder="Nombre del refugio actual (si aplica)" />
@@ -72,7 +72,7 @@ import FotoUpload from "./FotoUpload.astro";
     </fieldset>
 
     <!-- Bloque 3: Evidencia y Detalles -->
-    <fieldset class="fieldset bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm">
+    <fieldset class="fieldset bg-canvas border border-canvas-soft p-4 sm:p-6 rounded-xl shadow-sm">
       <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">3. Detalles y Evidencia</legend>
       
       <div class="space-y-4">
@@ -86,13 +86,13 @@ import FotoUpload from "./FotoUpload.astro";
     </fieldset>
 
     <!-- Notificación emergente (Toast estilo ex-toast de Uber) -->
-    <div id="toast-container" class="fixed bottom-6 right-6 z-50 hidden">
+    <div id="toast-container" class="toast-mobile hidden">
       <div id="toast-message" class="bg-canvas border border-canvas-soft text-ink rounded-xl p-4 shadow-md font-uber-text uber-body-sm flex items-center gap-2">
         <span>Guardando...</span>
       </div>
     </div>
 
-    <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text uber-body-md-strong py-4">
+    <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text uber-button-large py-4">
       Registrar en censo
     </button>
   </form>

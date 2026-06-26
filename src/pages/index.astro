@@ -31,34 +31,34 @@ try {
 <Layout title="BUSCA - Censo y Búsqueda de Emergencia">
   <Navbar />
   
-  <main class="flex-grow py-12 px-4 bg-canvas">
+  <main class="flex-grow py-6 sm:py-12 px-4 bg-canvas">
     <!-- Hero Section (estilo hero-band-light de Uber) -->
     <div class="text-center max-w-2xl mx-auto mb-10">
-      <h1 class="font-uber-display text-4xl md:text-5xl text-ink tracking-tight mb-4">
+      <h1 class="font-uber-display text-3xl sm:text-4xl md:text-5xl text-ink tracking-tight mb-3">
         Censo y búsqueda de emergencia
       </h1>
-      <p class="text-lg text-body font-uber-text max-w-xl mx-auto mb-8">
+      <p class="text-base sm:text-lg text-body font-uber-text max-w-xl mx-auto mb-6">
         Buscador unificado de personas rescatadas, albergues y reportes de desapariciones. Plataforma optimizada para baja conectividad.
       </p>
       
       <!-- Stats (tarjetas minimalistas de Uber) -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-xl mx-auto">
-        <div class="bg-canvas border border-canvas-soft p-4 rounded-xl shadow-sm text-center">
-          <div class="text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Total Censados</div>
-          <div class="font-uber-display text-2xl text-ink mt-1">{totalCensados}</div>
-          <div class="text-[10px] text-mute font-uber-text mt-0.5">En refugios / a salvo</div>
+      <div class="grid grid-cols-3 gap-2 sm:gap-4 max-w-xl mx-auto">
+        <div class="bg-canvas border border-canvas-soft p-3 sm:p-4 rounded-xl shadow-sm text-center">
+          <div class="text-[10px] sm:text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Censados</div>
+          <div class="font-uber-display text-xl sm:text-2xl text-ink mt-0.5">{totalCensados}</div>
+          <div class="text-[9px] sm:text-[10px] text-mute font-uber-text mt-0.5 hidden sm:block">En refugios / a salvo</div>
         </div>
         
-        <div class="bg-canvas border border-canvas-soft p-4 rounded-xl shadow-sm text-center">
-          <div class="text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Desaparecidos</div>
-          <div class="font-uber-display text-2xl text-ink mt-1">{totalDesaparecidos}</div>
-          <div class="text-[10px] text-mute font-uber-text mt-0.5">Búsquedas activas</div>
+        <div class="bg-canvas border border-canvas-soft p-3 sm:p-4 rounded-xl shadow-sm text-center">
+          <div class="text-[10px] sm:text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Desaparecidos</div>
+          <div class="font-uber-display text-xl sm:text-2xl text-ink mt-0.5">{totalDesaparecidos}</div>
+          <div class="text-[9px] sm:text-[10px] text-mute font-uber-text mt-0.5 hidden sm:block">Búsquedas activas</div>
         </div>
         
-        <div class="bg-canvas border border-canvas-soft p-4 rounded-xl shadow-sm text-center">
-          <div class="text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Sin Identificar</div>
-          <div class="font-uber-display text-2xl text-ink mt-1">{totalEncontrados}</div>
-          <div class="text-[10px] text-mute font-uber-text mt-0.5">Encontrados sin ID</div>
+        <div class="bg-canvas border border-canvas-soft p-3 sm:p-4 rounded-xl shadow-sm text-center">
+          <div class="text-[10px] sm:text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Sin ID</div>
+          <div class="font-uber-display text-xl sm:text-2xl text-ink mt-0.5">{totalEncontrados}</div>
+          <div class="text-[9px] sm:text-[10px] text-mute font-uber-text mt-0.5 hidden sm:block">Encontrados sin ID</div>
         </div>
       </div>
     </div>

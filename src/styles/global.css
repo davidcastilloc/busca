@@ -52,13 +52,15 @@ body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: #ffffff;
   color: #000000;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Adaptaciones de DaisyUI al estilo Uber
+   MOBILE-FIRST: Diseño para uso en calle con emergencias
+   Touch targets ≥ 48px, font-size ≥ 16px (evita zoom iOS)
    ═══════════════════════════════════════════════════════════ */
 
-/* Botones → Píldora 999px */
+/* Botones → Píldora 999px, min-height 48px mobile */
 .btn {
   border-radius: 999px !important;
   font-family: "Inter", system-ui, sans-serif;
@@ -67,6 +69,16 @@ body {
   border: none !important;
   transition: all 0.2s ease-in-out;
   cursor: pointer;
+  min-height: 48px;
+  font-size: 16px;
+  padding: 12px 20px !important;
+}
+
+@media (min-width: 640px) {
+  .btn {
+    min-height: 44px;
+    padding: 10px 20px !important;
+  }
 }
 
 /* Botón primario: Negro puro */
@@ -100,7 +112,7 @@ body {
   color: #000000 !important;
 }
 
-/* Inputs, Selects y Textareas → Esquinas cuadradas, fondo gris */
+/* Inputs, Selects y Textareas → Mobile-first sizing */
 .input, .select, .textarea {
   border-radius: 0px !important;
   background-color: #efefef !important;
@@ -108,6 +120,13 @@ body {
   border: none !important;
   box-shadow: none !important;
   transition: background-color 0.2s ease;
+  font-size: 16px !important; /* Previene zoom iOS */
+  min-height: 48px;
+  padding: 14px 16px !important;
+}
+
+.textarea {
+  min-height: 100px;
 }
 
 .input:focus, .select:focus, .textarea:focus {
@@ -116,25 +135,49 @@ body {
   outline-offset: -2px;
 }
 
-/* Fieldset y Contenedores → Esquinas 16px */
+.select {
+  padding-right: 40px !important;
+}
+
+/* Labels → Espacio táctil generoso */
+label {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+/* Fieldset → Padding adaptativo */
 .fieldset {
   border-radius: 16px !important;
   background-color: #ffffff !important;
   border: 1px solid #efefef !important;
-  padding: 24px !important;
-  margin-bottom: 24px;
+  padding: 16px !important;
+  margin-bottom: 20px;
   box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+@media (min-width: 640px) {
+  .fieldset {
+    padding: 24px !important;
+    margin-bottom: 24px;
+  }
 }
 
 .fieldset-legend {
   font-family: "Inter", system-ui, sans-serif;
   font-feature-settings: "ss01" on;
-  font-size: 20px !important;
+  font-size: 18px !important;
   font-weight: 700 !important;
-  line-height: 28px !important;
+  line-height: 24px !important;
   color: #000000 !important;
   padding: 0 8px !important;
   background-color: #ffffff !important;
+}
+
+@media (min-width: 640px) {
+  .fieldset-legend {
+    font-size: 20px !important;
+    line-height: 28px !important;
+  }
 }
 
 /* Badges → Píldoras sutiles */
@@ -143,6 +186,7 @@ body {
   font-family: "Inter", system-ui, sans-serif;
   font-weight: 500;
   font-size: 12px;
+  min-height: 28px;
 }
 
 .badge-success {
@@ -169,7 +213,7 @@ body {
   border: 1px solid #3b82f6 !important;
 }
 
-/* Tablas */
+/* Tablas → Scroll horizontal en mobile */
 .table th {
   background-color: #efefef !important;
   color: #000000 !important;
@@ -178,6 +222,7 @@ body {
   font-size: 14px !important;
   text-transform: none !important;
   border-bottom: 1px solid #e2e2e2 !important;
+  white-space: nowrap;
 }
 
 .table td {
@@ -196,4 +241,34 @@ a.link-blue {
 }
 a.link-blue:hover {
   opacity: 0.8;
+}
+
+/* Toast → Centrado abajo en mobile, esquina en desktop */
+.toast-mobile {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 50;
+}
+
+@media (min-width: 640px) {
+  .toast-mobile {
+    left: auto;
+    right: 24px;
+    bottom: 24px;
+    max-width: 400px;
+  }
+}
+
+/* Dropdown menu → Más ancho en mobile */
+.dropdown-content {
+  min-width: 200px;
+}
+
+/* Checkbox y Radio → Más grandes para touch */
+input[type="checkbox"],
+input[type="radio"] {
+  min-width: 22px;
+  min-height: 22px;
 }
