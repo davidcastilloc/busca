@@ -8,36 +8,40 @@ export const POST: APIRoute = async (context) => {
     const { DB, FOTOS_BUCKET } = env;
 
     const body = await context.request.json();
-    const { title, description, photo, phones, socials, registrarEnBusca } = body;
+    const { title, description, photo, foto_key: input_foto_key, phones, socials, registrarEnBusca } = body;
 
-    if (!title || !description || !photo) {
+    if (!title || !description || (!photo && !input_foto_key)) {
       return new Response(JSON.stringify({ error: "Título, descripción y foto son obligatorios" }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    // Procesar la foto en base64 para subirla a R2
-    const parts = photo.split(",");
-    const match = parts[0].match(/:(.*?);/);
-    const mime = match ? match[1] : "image/jpeg";
-    const base64Data = parts[1];
-    
-    // Decodificar base64
-    const binaryStr = atob(base64Data);
-    const len = binaryStr.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
+    let foto_key = input_foto_key || "";
+
+    if (photo && !foto_key) {
+      // Procesar la foto en base64 para subirla a R2
+      const parts = photo.split(",");
+      const match = parts[0].match(/:(.*?);/);
+      const mime = match ? match[1] : "image/jpeg";
+      const base64Data = parts[1];
+      
+      // Decodificar base64
+      const binaryStr = atob(base64Data);
+      const len = binaryStr.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+
+      const fileExt = mime.split("/")[1] || "jpg";
+      foto_key = `flyers/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
+
+      // Subir a R2
+      await FOTOS_BUCKET.put(foto_key, bytes.buffer, {
+        httpMetadata: { contentType: mime }
+      });
     }
-
-    const fileExt = mime.split("/")[1] || "jpg";
-    const foto_key = `flyers/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
-
-    // Subir a R2
-    await FOTOS_BUCKET.put(foto_key, bytes.buffer, {
-      httpMetadata: { contentType: mime }
-    });
 
     // Generar un ID amigable de 6 caracteres alfanuméricos
     const chars = "abcdefghijklmnopqrstuvwxyz0123456789";

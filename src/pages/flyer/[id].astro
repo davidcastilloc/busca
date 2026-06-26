@@ -6,6 +6,8 @@ import { env } from "cloudflare:workers";
 export const prerender = false;
 
 const { id } = Astro.params;
+const url = new URL(Astro.request.url);
+const esCreado = url.searchParams.has("creado") || url.searchParams.has("new");
 
 let flyer: any = null;
 let phones: string[] = [];
@@ -47,6 +49,17 @@ const formatFecha = (fechaStr: string) => {
   <main class="flex-grow py-8 px-4 max-w-xl mx-auto w-full">
     {flyer ? (
       <div class="space-y-6">
+        {esCreado && (
+          <div class="alert alert-success shadow-md text-white font-extrabold text-sm text-start border-none">
+            <div>
+              🎉 ¡Reporte registrado y cartel de búsqueda autogenerado con éxito!
+              <span class="block text-xs font-semibold opacity-90 mt-1">
+                La Inteligencia Artificial de BUSCA ya está procesando y cruzando los datos. Guarda este enlace o descarga la imagen abajo.
+              </span>
+            </div>
+          </div>
+        )}
+
         <!-- Banner informativo -->
         <div class="alert alert-warning shadow-sm font-semibold text-xs text-start">
           <div>

@@ -64,6 +64,27 @@ import FotoUpload from "./FotoUpload.astro";
       <div class="space-y-4">
         <FotoUpload />
 
+        <!-- Opción de Flyer de Emergencia (solo se muestra para tipo=desaparecido si se cargó foto) -->
+        <div id="flyer-opt-in" class="hidden border border-error/20 bg-error/5 p-4 rounded-xl mt-2">
+          <label class="label cursor-pointer flex items-start gap-3">
+            <input 
+              type="checkbox" 
+              name="generar_flyer" 
+              id="generar-flyer-chk" 
+              checked 
+              class="checkbox checkbox-error mt-0.5" 
+            />
+            <div class="flex-grow">
+              <span class="label-text font-extrabold text-error block text-sm">
+                🖼️ Generar cartel (flyer) de búsqueda descargable
+              </span>
+              <span class="text-xs text-base-content/70 mt-1 block">
+                Al enviar el reporte, crearemos un cartel de difusión rápido en formato imagen listo para compartir en redes sociales y WhatsApp.
+              </span>
+            </div>
+          </label>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="label"><span class="label-text font-bold">Tu Nombre (Reportante)</span></label>
@@ -98,6 +119,37 @@ import FotoUpload from "./FotoUpload.astro";
   const toastMessage = document.getElementById("toast-message-rep");
 
   if (form && toastContainer && toastMessage) {
+    const tipoSelect = document.querySelector('select[name="tipo"]') as HTMLSelectElement;
+    const fotoFileInput = document.getElementById("foto-file") as HTMLInputElement;
+    const quitarFotoBtn = document.getElementById("btn-quitar-foto");
+    const flyerOptIn = document.getElementById("flyer-opt-in");
+
+    function actualizarVisibilidadFlyer() {
+      if (!tipoSelect || !flyerOptIn) return;
+      const esDesaparecido = tipoSelect.value === "desaparecido";
+      const tieneFoto = fotoFileInput && fotoFileInput.files && fotoFileInput.files.length > 0;
+
+      if (esDesaparecido && tieneFoto) {
+        flyerOptIn.classList.remove("hidden");
+      } else {
+        flyerOptIn.classList.add("hidden");
+      }
+    }
+
+    if (tipoSelect) {
+      tipoSelect.addEventListener("change", actualizarVisibilidadFlyer);
+    }
+    if (fotoFileInput) {
+      fotoFileInput.addEventListener("change", () => {
+        setTimeout(actualizarVisibilidadFlyer, 150);
+      });
+    }
+    if (quitarFotoBtn) {
+      quitarFotoBtn.addEventListener("click", () => {
+        setTimeout(actualizarVisibilidadFlyer, 150);
+      });
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
@@ -135,9 +187,46 @@ import FotoUpload from "./FotoUpload.astro";
           });
 
           if (response.ok) {
+            const generarFlyerChk = document.getElementById("generar-flyer-chk") as HTMLInputElement;
+            const quiereFlyer = generarFlyerChk && generarFlyerChk.checked && payload.tipo === "desaparecido";
+
+            if (quiereFlyer && payload.foto_key && !payload.foto_key.startsWith("data:")) {
+              mostrarToast("Reporte creado. Generando cartel de búsqueda...", "alert-info");
+              try {
+                const flyerPayload = {
+                  title: `SE BUSCA: ${payload.nombre_buscado || "Persona Desaparecida"}`,
+                  description: payload.descripcion,
+                  foto_key: payload.foto_key,
+                  phones: payload.reportante_contacto ? [payload.reportante_contacto] : [],
+                  socials: [],
+                  registrarEnBusca: false // Ya se esta registrando ahora mismo
+                };
+
+                const flyerResponse = await fetch("/api/flyers", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(flyerPayload)
+                });
+
+                if (flyerResponse.ok) {
+                  const flyerData = await flyerResponse.json();
+                  mostrarToast("✓ Cartel generado. Redirigiendo...", "alert-success");
+                  setTimeout(() => {
+                    window.location.href = `/flyer/${flyerData.id}?creado=true`;
+                  }, 1200);
+                  return;
+                } else {
+                  console.error("Fallo al crear flyer desde reporte");
+                }
+              } catch (flyerErr) {
+                console.error("Error al generar flyer:", flyerErr);
+              }
+            }
+
             mostrarToast("✓ Reporte emitido con éxito.", "alert-success");
             form.reset();
             document.getElementById("btn-quitar-foto")?.click();
+            actualizarVisibilidadFlyer();
           } else {
             const errData = await response.json();
             throw new Error(errData.error || "Error al procesar en servidor");
@@ -157,6 +246,7 @@ import FotoUpload from "./FotoUpload.astro";
         mostrarToast("⚠️ Sin red. Reporte guardado localmente. Se sincronizará al recuperar conexión.", "alert-warning");
         form.reset();
         document.getElementById("btn-quitar-foto")?.click();
+        actualizarVisibilidadFlyer();
 
         // Disparar evento
         const event = new CustomEvent("offline-record-added");
