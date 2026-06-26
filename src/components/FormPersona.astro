@@ -3,97 +3,97 @@ import MapaUbicacion from "./MapaUbicacion.astro";
 import FotoUpload from "./FotoUpload.astro";
 ---
 
-<div class="max-w-2xl mx-auto p-4">
-  <form id="form-persona" class="space-y-6">
+<div class="max-w-2xl mx-auto px-4 py-6">
+  <form id="form-persona" class="space-y-8">
     <!-- Bloque 1: Datos Identificación -->
-    <fieldset class="fieldset bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
-      <legend class="fieldset-legend font-black text-lg text-error px-2">1. Identificación de la Persona</legend>
+    <fieldset class="fieldset bg-canvas border border-canvas-soft p-6 rounded-xl shadow-level1">
+      <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">1. Identificación de la Persona</legend>
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label class="label"><span class="label-text font-bold">Cédula / Documento</span></label>
-          <input type="text" name="cedula" class="input input-bordered w-full" placeholder="Opcional (ej. V-1234567)" />
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Cédula / Documento</label>
+          <input type="text" name="cedula" class="input w-full font-uber-text uber-body-md" placeholder="Opcional (ej. V-1234567)" />
         </div>
         <div>
-          <label class="label"><span class="label-text font-bold">Nombres *</span></label>
-          <input type="text" name="nombre" required class="input input-bordered w-full" placeholder="Nombres completos" />
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Nombres *</label>
+          <input type="text" name="nombre" required class="input w-full font-uber-text uber-body-md" placeholder="Nombres completos" />
         </div>
         <div>
-          <label class="label"><span class="label-text font-bold">Apellidos</span></label>
-          <input type="text" name="apellido" class="input input-bordered w-full" placeholder="Apellidos completos" />
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Apellidos</label>
+          <input type="text" name="apellido" class="input w-full font-uber-text uber-body-md" placeholder="Apellidos completos" />
         </div>
         <div>
-          <label class="label"><span class="label-text font-bold">Edad</span></label>
-          <input type="number" name="edad" min="0" max="120" class="input input-bordered w-full" placeholder="Años" />
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Edad</label>
+          <input type="number" name="edad" min="0" max="120" class="input w-full font-uber-text uber-body-md" placeholder="Años" />
         </div>
         <div>
-          <label class="label"><span class="label-text font-bold">Sexo *</span></label>
-          <select name="sexo" class="select select-bordered w-full">
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Sexo *</label>
+          <select name="sexo" class="select w-full font-uber-text uber-body-md">
             <option value="X">No especifica / Otro</option>
             <option value="M">Masculino</option>
             <option value="F">Femenino</option>
           </select>
         </div>
         <div>
-          <label class="label"><span class="label-text font-bold">Estado Actual *</span></label>
-          <select name="estado" class="select select-bordered w-full font-semibold">
-            <option value="vivo" class="text-success">Vivo / A salvo</option>
-            <option value="herido" class="text-warning">Herido</option>
-            <option value="fallecido" class="text-error">Fallecido</option>
-            <option value="desconocido" class="text-neutral">Desconocido</option>
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Estado Actual *</label>
+          <select name="estado" class="select w-full font-uber-text uber-body-md-strong">
+            <option value="vivo">Vivo / A salvo</option>
+            <option value="herido">Herido</option>
+            <option value="fallecido">Fallecido</option>
+            <option value="desconocido">Desconocido</option>
           </select>
         </div>
       </div>
     </fieldset>
 
     <!-- Bloque 2: Ubicación -->
-    <fieldset class="fieldset bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
-      <legend class="fieldset-legend font-black text-lg text-error px-2">2. Ubicación y Contacto</legend>
+    <fieldset class="fieldset bg-canvas border border-canvas-soft p-6 rounded-xl shadow-level1">
+      <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">2. Ubicación y Contacto</legend>
       
       <div class="space-y-4">
         <div>
-          <label class="label"><span class="label-text font-bold">Lugar / Sector del Censo</span></label>
-          <input type="text" name="ubicacion_nombre" class="input input-bordered w-full" placeholder="Nombre de calle, sector, plaza o punto de referencia" />
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Lugar / Sector del Censo</label>
+          <input type="text" name="ubicacion_nombre" class="input w-full font-uber-text uber-body-md" placeholder="Nombre de calle, sector, plaza o punto de referencia" />
         </div>
         
         <MapaUbicacion />
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="label"><span class="label-text font-bold">Refugio / Albergue</span></label>
-            <input type="text" name="refugio" class="input input-bordered w-full" placeholder="Nombre del refugio actual (si aplica)" />
+            <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Refugio / Albergue</label>
+            <input type="text" name="refugio" class="input w-full font-uber-text uber-body-md" placeholder="Nombre del refugio actual (si aplica)" />
           </div>
           <div>
-            <label class="label"><span class="label-text font-bold">Contacto de la Persona</span></label>
-            <input type="text" name="contacto" class="input input-bordered w-full" placeholder="Teléfono o contacto cercano" />
+            <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Contacto de la Persona</label>
+            <input type="text" name="contacto" class="input w-full font-uber-text uber-body-md" placeholder="Teléfono o contacto cercano" />
           </div>
         </div>
       </div>
     </fieldset>
 
     <!-- Bloque 3: Evidencia y Detalles -->
-    <fieldset class="fieldset bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
-      <legend class="fieldset-legend font-black text-lg text-error px-2">3. Detalles y Evidencia</legend>
+    <fieldset class="fieldset bg-canvas border border-canvas-soft p-6 rounded-xl shadow-level1">
+      <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">3. Detalles y Evidencia</legend>
       
       <div class="space-y-4">
         <FotoUpload />
         
         <div>
-          <label class="label"><span class="label-text font-bold">Notas adicionales / Observaciones</span></label>
-          <textarea name="notas" class="textarea textarea-bordered w-full h-24" placeholder="Cualquier información relevante: estado médico, vestimenta, necesidades..."></textarea>
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Notas adicionales / Observaciones</label>
+          <textarea name="notas" class="textarea w-full h-24 font-uber-text uber-body-md" placeholder="Cualquier información relevante: estado médico, vestimenta, necesidades..."></textarea>
         </div>
       </div>
     </fieldset>
 
-    <!-- Notificación emergente (Toast) -->
-    <div id="toast-container" class="toast toast-end toast-bottom z-50 hidden">
-      <div id="toast-message" class="alert alert-info font-semibold">
+    <!-- Notificación emergente (Toast estilo ex-toast de Uber) -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 hidden">
+      <div id="toast-message" class="bg-canvas border border-canvas-soft text-ink rounded-xl p-4 shadow-level2 font-uber-text uber-body-sm flex items-center gap-2">
         <span>Guardando...</span>
       </div>
     </div>
 
-    <button type="submit" class="btn btn-error btn-block text-white font-bold text-lg shadow-md">
-      💾 Registrar en Censo
+    <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text uber-body-md-strong py-4">
+      Registrar en censo
     </button>
   </form>
 </div>
@@ -130,7 +130,7 @@ import FotoUpload from "./FotoUpload.astro";
         fuente: "web"
       };
 
-      mostrarToast("Procesando registro...", "alert-info");
+      mostrarToast("Procesando registro...", "border-blue-500/30");
 
       if (navigator.onLine) {
         try {
@@ -143,9 +143,8 @@ import FotoUpload from "./FotoUpload.astro";
           });
 
           if (response.ok) {
-            mostrarToast("✓ Registro enviado con éxito.", "alert-success");
+            mostrarToast("✓ Registro enviado con éxito.", "border-green-500/30");
             form.reset();
-            // Limpiar foto preview si existe
             document.getElementById("btn-quitar-foto")?.click();
           } else {
             const errData = await response.json();
@@ -153,7 +152,6 @@ import FotoUpload from "./FotoUpload.astro";
           }
         } catch (err: any) {
           console.error(err);
-          // Fallback a offline en caso de error de red
           await guardarOffline(payload);
         }
       } else {
@@ -164,7 +162,7 @@ import FotoUpload from "./FotoUpload.astro";
     async function guardarOffline(payload: any) {
       try {
         await encolarRegistro("persona", payload);
-        mostrarToast("⚠️ Sin red. Guardado localmente. Se sincronizará automáticamente.", "alert-warning");
+        mostrarToast("⚠️ Guardado localmente sin red. Se sincronizará automáticamente.", "border-yellow-500/30");
         form.reset();
         document.getElementById("btn-quitar-foto")?.click();
 
@@ -172,14 +170,14 @@ import FotoUpload from "./FotoUpload.astro";
         const event = new CustomEvent("offline-record-added");
         window.dispatchEvent(event);
       } catch (e: any) {
-        mostrarToast("❌ Error al guardar localmente: " + e.message, "alert-error");
+        mostrarToast("❌ Error al guardar localmente: " + e.message, "border-red-500/30");
       }
     }
 
-    function mostrarToast(text: string, typeClass: string) {
+    function mostrarToast(text: string, borderClass: string) {
       if (!toastContainer || !toastMessage) return;
       
-      toastMessage.className = `alert ${typeClass} font-semibold shadow-lg border`;
+      toastMessage.className = `bg-canvas border ${borderClass} text-ink rounded-xl p-4 shadow-level2 font-uber-text uber-body-sm flex items-center gap-2`;
       toastMessage.innerHTML = `<span>${text}</span>`;
       toastContainer.classList.remove("hidden");
 

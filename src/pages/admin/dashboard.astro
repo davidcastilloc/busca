@@ -85,55 +85,55 @@ const formatFecha = (fechaStr: string) => {
     <!-- Encabezado de Administración -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
       <div>
-        <h1 class="text-3xl font-black text-base-content flex items-center gap-2">
-          📊 Panel de Triage y Censo
+        <h1 class="font-uber-display text-3xl text-ink tracking-tight flex items-center gap-2">
+          Panel de Triage y Censo
         </h1>
-        <p class="text-sm text-base-content/70 mt-1">
+        <p class="text-sm text-body font-uber-text mt-1">
           Visualización y gestión de sobrevivientes. Acceso exclusivo para personal de rescate.
         </p>
       </div>
       <div class="flex gap-2">
-        <a href="/registrar" class="btn btn-error text-white font-bold btn-sm">
-          ➕ Censo Rápido
+        <a href="/registrar" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong">
+          Registrar en Censo
         </a>
       </div>
     </div>
 
-    <!-- Indicadores de Estado -->
+    <!-- Indicadores de Estado (cards minimalistas) -->
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-      <div class="card bg-base-100 border border-base-300 p-4 shadow-sm text-center">
-        <div class="text-xs text-base-content/60 font-bold uppercase">Registros Totales</div>
-        <div class="text-3xl font-black text-base-content mt-1">{stats.total}</div>
+      <div class="bg-canvas border border-canvas-soft p-5 rounded-xl shadow-level1 text-center">
+        <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Registros Totales</div>
+        <div class="font-uber-display text-3xl text-ink mt-2">{stats.total}</div>
       </div>
-      <div class="card bg-base-100 border border-base-300 p-4 shadow-sm text-center border-l-4 border-success">
-        <div class="text-xs text-base-content/60 font-bold uppercase text-success">Vivo / A Salvo</div>
-        <div class="text-3xl font-black text-success mt-1">{stats.vivo}</div>
+      <div class="bg-canvas border border-green-500/20 p-5 rounded-xl shadow-level1 text-center border-l-4">
+        <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Vivo / A Salvo</div>
+        <div class="font-uber-display text-3xl text-ink mt-2">{stats.vivo}</div>
       </div>
-      <div class="card bg-base-100 border border-base-300 p-4 shadow-sm text-center border-l-4 border-warning">
-        <div class="text-xs text-base-content/60 font-bold uppercase text-warning">Heridos</div>
-        <div class="text-3xl font-black text-warning mt-1">{stats.herido}</div>
+      <div class="bg-canvas border border-yellow-500/20 p-5 rounded-xl shadow-level1 text-center border-l-4">
+        <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Heridos</div>
+        <div class="font-uber-display text-3xl text-ink mt-2">{stats.herido}</div>
       </div>
-      <div class="card bg-base-100 border border-base-300 p-4 shadow-sm text-center border-l-4 border-error">
-        <div class="text-xs text-base-content/60 font-bold uppercase text-error">Fallecidos</div>
-        <div class="text-3xl font-black text-error mt-1">{stats.fallecido}</div>
+      <div class="bg-canvas border border-red-500/20 p-5 rounded-xl shadow-level1 text-center border-l-4">
+        <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Fallecidos</div>
+        <div class="font-uber-display text-3xl text-ink mt-2">{stats.fallecido}</div>
       </div>
-      <div class="card bg-base-100 border border-base-300 p-4 shadow-sm text-center border-l-4 border-neutral">
-        <div class="text-xs text-base-content/60 font-bold uppercase">Desconocido</div>
-        <div class="text-3xl font-black text-neutral mt-1">{stats.desconocido}</div>
+      <div class="bg-canvas border border-canvas-soft p-5 rounded-xl shadow-level1 text-center border-l-4">
+        <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Desconocido</div>
+        <div class="font-uber-display text-3xl text-ink mt-2">{stats.desconocido}</div>
       </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
       <!-- Columna Izquierda: Filtros y Albergues -->
       <div class="space-y-6 lg:col-span-1">
-        <!-- Filtros -->
-        <div class="card bg-base-100 border border-base-300 p-5 shadow-sm">
-          <h3 class="font-black text-sm text-base-content/80 mb-4 uppercase">Filtrar Censo</h3>
+        <!-- Filtros (card-content) -->
+        <div class="bg-canvas border border-canvas-soft p-6 rounded-xl shadow-level1">
+          <h3 class="font-uber-display text-sm text-ink mb-4 uppercase tracking-wider">Filtrar Censo</h3>
           
           <form method="GET" class="space-y-4">
             <div>
-              <label class="label font-bold text-xs p-0 mb-1">Estado Médico</label>
-              <select name="estado" class="select select-bordered select-sm w-full">
+              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Estado Médico</label>
+              <select name="estado" class="select select-sm w-full font-uber-text">
                 <option value="">Todos</option>
                 <option value="vivo" selected={filterEstado === "vivo"}>Vivo / A Salvo</option>
                 <option value="herido" selected={filterEstado === "herido"}>Herido</option>
@@ -143,8 +143,8 @@ const formatFecha = (fechaStr: string) => {
             </div>
 
             <div>
-              <label class="label font-bold text-xs p-0 mb-1">Refugio / Albergue</label>
-              <select name="refugio" class="select select-bordered select-sm w-full">
+              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Refugio / Albergue</label>
+              <select name="refugio" class="select select-sm w-full font-uber-text">
                 <option value="">Todos</option>
                 {refugios.map(r => (
                   <option value={r.refugio} selected={filterRefugio === r.refugio}>
@@ -154,30 +154,30 @@ const formatFecha = (fechaStr: string) => {
               </select>
             </div>
 
-            <div class="flex gap-2 pt-2">
-              <button type="submit" class="btn btn-error text-white btn-sm flex-1 font-bold">
+            <div class="flex flex-col gap-2 pt-2">
+              <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text uber-body-md-strong">
                 Filtrar
               </button>
-              <a href="/admin/dashboard" class="btn btn-outline border-base-300 btn-sm font-bold">
+              <a href="/admin/dashboard" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed w-full font-uber-text uber-body-md-strong text-center">
                 Limpiar
               </a>
             </div>
           </form>
         </div>
 
-        <!-- Lista de albergues con recuento -->
-        <div class="card bg-base-100 border border-base-300 p-5 shadow-sm">
-          <h3 class="font-black text-sm text-base-content/80 mb-3 uppercase">Albergues Activos</h3>
-          <div class="divide-y divide-base-200">
+        <!-- Lista de albergues con recuento (card-content) -->
+        <div class="bg-canvas border border-canvas-soft p-6 rounded-xl shadow-level1">
+          <h3 class="font-uber-display text-sm text-ink mb-4 uppercase tracking-wider">Albergues Activos</h3>
+          <div class="divide-y divide-canvas-soft">
             {refugios.length === 0 ? (
-              <p class="text-xs text-base-content/50 py-2">No hay albergues registrados.</p>
+              <p class="text-xs text-mute py-2 font-uber-text">No hay albergues registrados.</p>
             ) : (
               refugios.map(r => (
-                <div class="flex justify-between items-center py-2 text-sm">
-                  <a href={`?refugio=${encodeURIComponent(r.refugio)}`} class="font-semibold text-error hover:underline truncate mr-2">
+                <div class="flex justify-between items-center py-2.5 text-sm">
+                  <a href={`?refugio=${encodeURIComponent(r.refugio)}`} class="font-uber-text uber-body-sm-strong text-link hover:opacity-80 truncate mr-2">
                     {r.refugio}
                   </a>
-                  <span class="badge badge-sm font-bold bg-base-200">{r.count}</span>
+                  <span class="px-2 py-0.5 rounded bg-canvas-soft text-xs text-ink font-semibold">{r.count}</span>
                 </div>
               ))
             )}
@@ -185,71 +185,70 @@ const formatFecha = (fechaStr: string) => {
         </div>
       </div>
 
-      <!-- Columna Derecha: Tabla de registros -->
+      <!-- Columna Derecha: Tabla de registros (ex-data-table-cell) -->
       <div class="lg:col-span-3">
-        <div class="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
-          <div class="p-5 border-b border-base-200 flex justify-between items-center">
-            <h3 class="font-black text-lg text-base-content">Sobrevivientes y Registros Recientes</h3>
-            <span class="text-xs font-semibold text-base-content/60">Mostrando {personas.length} registros</span>
+        <div class="bg-canvas border border-canvas-soft rounded-xl shadow-level1 overflow-hidden">
+          <div class="p-6 border-b border-canvas-soft flex justify-between items-center bg-canvas">
+            <h3 class="font-uber-display text-lg text-ink">Sobrevivientes y Registros Recientes</h3>
+            <span class="text-xs font-uber-text font-medium text-body">Mostrando {personas.length} registros</span>
           </div>
 
           <div class="overflow-x-auto">
-            <table class="table table-zebra w-full text-left">
+            <table class="table w-full text-left">
               <thead>
-                <tr class="font-bold text-xs uppercase text-base-content/60">
-                  <th class="bg-base-200">Foto</th>
-                  <th class="bg-base-200">Nombre</th>
-                  <th class="bg-base-200">Cédula</th>
-                  <th class="bg-base-200">Estado</th>
-                  <th class="bg-base-200">Ubicación / Refugio</th>
-                  <th class="bg-base-200">Fecha</th>
+                <tr class="font-uber-text font-medium text-xs uppercase text-body">
+                  <th>Foto</th>
+                  <th>Nombre</th>
+                  <th>Cédula</th>
+                  <th>Estado</th>
+                  <th>Ubicación / Refugio</th>
+                  <th>Fecha</th>
                 </tr>
               </thead>
               <tbody>
                 {personas.length === 0 ? (
                   <tr>
-                    <td colspan="6" class="text-center py-10 font-bold text-base-content/50">
+                    <td colspan="6" class="text-center py-10 font-uber-text font-medium text-body">
                       No se encontraron personas con los filtros seleccionados.
                     </td>
                   </tr>
                 ) : (
                   personas.map(p => {
-                    const statusClass = {
-                      vivo: "badge-success text-white",
-                      herido: "badge-warning text-black",
-                      fallecido: "badge-error text-white",
-                      desconocido: "badge-neutral text-white"
-                    }[p.estado as string] || "badge-neutral text-white";
+                    const statusMap = {
+                      vivo: { badge: "border border-green-500/30 text-ink bg-canvas", dot: "bg-green-500" },
+                      herido: { badge: "border border-yellow-500/30 text-ink bg-canvas", dot: "bg-yellow-500" },
+                      fallecido: { badge: "border border-red-500/30 text-ink bg-canvas", dot: "bg-red-500" },
+                      desconocido: { badge: "border border-canvas-soft text-ink bg-canvas", dot: "bg-mute" }
+                    }[p.estado as string] || { badge: "border border-canvas-soft text-ink bg-canvas", dot: "bg-mute" };
 
                     return (
-                      <tr class="hover:bg-base-200/50">
+                      <tr class="transition-colors hover:bg-canvas-soft">
                         <td>
                           {p.foto_key ? (
-                            <div class="avatar">
-                              <div class="w-10 h-10 rounded-lg">
-                                <img src={`/api/upload?key=${encodeURIComponent(p.foto_key)}`} alt="Foto" />
-                              </div>
+                            <div class="w-10 h-10 rounded-xl overflow-hidden bg-canvas-soft">
+                              <img src={`/api/upload?key=${encodeURIComponent(p.foto_key)}`} alt="Foto" class="w-full h-full object-cover" />
                             </div>
                           ) : (
-                            <div class="w-10 h-10 bg-base-300 rounded-lg flex items-center justify-center text-lg">
+                            <div class="w-10 h-10 bg-canvas-soft rounded-xl flex items-center justify-center text-lg text-mute">
                               👤
                             </div>
                           )}
                         </td>
-                        <td class="font-bold text-base-content">
+                        <td class="font-uber-text uber-body-md-strong text-ink">
                           {p.nombre} {p.apellido || ""}
                         </td>
-                        <td class="font-mono text-sm font-semibold">{p.cedula || "-"}</td>
+                        <td class="font-mono text-sm text-body">{p.cedula || "-"}</td>
                         <td>
-                          <span class={`badge badge-sm font-black uppercase text-[10px] ${statusClass}`}>
-                            {p.estado}
+                          <span class={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-uber-text font-medium ${statusMap.badge}`}>
+                            <span class={`w-1.5 h-1.5 rounded-full ${statusMap.dot}`}></span>
+                            <span>{p.estado}</span>
                           </span>
                         </td>
                         <td>
-                          <div class="font-bold text-sm">{p.refugio || "Sin albergue"}</div>
-                          <div class="text-xs text-base-content/50 truncate max-w-xs">{p.ubicacion_nombre || "-"}</div>
+                          <div class="font-uber-text uber-body-sm-strong text-ink">{p.refugio || "Sin albergue"}</div>
+                          <div class="text-xs text-body font-uber-text truncate max-w-xs">{p.ubicacion_nombre || "-"}</div>
                         </td>
-                        <td class="text-xs font-semibold text-base-content/60">
+                        <td class="text-xs text-body font-uber-text">
                           {formatFecha(p.updated_at)}
                         </td>
                       </tr>

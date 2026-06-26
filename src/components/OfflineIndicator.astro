@@ -1,5 +1,5 @@
-<div id="offline-badge" class="badge badge-success gap-1.5 py-3.5 font-bold transition-all duration-300">
-  <span class="w-2.5 h-2.5 rounded-full bg-current"></span>
+<div id="offline-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-uber-text font-medium transition-all duration-300 bg-canvas-soft text-ink border border-canvas-soft">
+  <span id="offline-dot" class="w-2 h-2 rounded-full bg-green-500"></span>
   <span id="offline-text">Conectado</span>
 </div>
 
@@ -7,28 +7,32 @@
   import { contarPendientes, obtenerPendientes, eliminarRegistro } from "../lib/offline-queue";
 
   const badge = document.getElementById("offline-badge");
+  const dot = document.getElementById("offline-dot");
   const text = document.getElementById("offline-text");
   let sincronizando = false;
 
   async function actualizarUI() {
-    if (!badge || !text) return;
+    if (!badge || !text || !dot) return;
     const online = navigator.onLine;
     const pendientes = await contarPendientes();
 
     if (online) {
       if (pendientes > 0) {
-        badge.className = "badge badge-warning gap-1.5 py-3.5 font-bold cursor-pointer animate-pulse";
-        text.textContent = `Pendientes (${pendientes})`;
+        badge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-uber-text font-medium transition-all duration-300 bg-primary text-white cursor-pointer animate-pulse";
+        dot.className = "w-2 h-2 rounded-full bg-yellow-500";
+        text.textContent = `Pendiente (${pendientes})`;
         if (!sincronizando) {
           sincronizarCola();
         }
       } else {
-        badge.className = "badge badge-success gap-1.5 py-3.5 font-bold";
+        badge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-uber-text font-medium transition-all duration-300 bg-canvas-soft text-ink border border-canvas-soft";
+        dot.className = "w-2 h-2 rounded-full bg-green-500";
         text.textContent = "Conectado";
       }
     } else {
-      badge.className = "badge badge-error gap-1.5 py-3.5 font-bold";
-      text.textContent = `Offline (${pendientes})`;
+      badge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-uber-text font-medium transition-all duration-300 bg-primary text-white";
+      dot.className = "w-2 h-2 rounded-full bg-red-500";
+      text.textContent = `Sin red (${pendientes})`;
     }
   }
 

@@ -43,55 +43,51 @@ const formatFecha = (fechaStr: string) => {
 };
 ---
 
-<Layout title={flyer ? `${flyer.title} - Flyer de Emergencia` : "Flyer no encontrado - BUSCA"}>
+<Layout title={flyer ? `${flyer.title} - Cartel de Emergencia` : "Cartel no encontrado - BUSCA"}>
   <Navbar />
   
   <main class="flex-grow py-8 px-4 max-w-xl mx-auto w-full">
     {flyer ? (
       <div class="space-y-6">
         {esCreado && (
-          <div class="alert alert-success shadow-md text-white font-extrabold text-sm text-start border-none">
-            <div>
-              🎉 ¡Reporte registrado y cartel de búsqueda autogenerado con éxito!
-              <span class="block text-xs font-semibold opacity-90 mt-1">
-                La Inteligencia Artificial de BUSCA ya está procesando y cruzando los datos. Guarda este enlace o descarga la imagen abajo.
-              </span>
-            </div>
+          <div class="bg-canvas-soft border border-canvas-soft rounded-xl p-5 shadow-level1 font-uber-text uber-body-sm text-ink">
+            <div class="font-bold text-base mb-1">🎉 Reporte registrado con éxito</div>
+            <p class="text-body">
+              La Inteligencia Artificial de BUSCA ya está procesando y cruzando los datos. Guarda este enlace o descarga la imagen abajo.
+            </p>
           </div>
         )}
 
-        <!-- Banner informativo -->
-        <div class="alert alert-warning shadow-sm font-semibold text-xs text-start">
-          <div>
-            <strong>ℹ️ IMPORTANTE:</strong> Guarda este enlace para compartir el cartel digital, o descárgalo como imagen para difundirlo por Whatsapp o imprimirlo.
-          </div>
+        <!-- Banner informativo (estilo card-soft-tinted) -->
+        <div class="bg-canvas-soft border border-canvas-soft p-4 rounded-xl text-ink font-uber-text uber-body-sm shadow-level1">
+          <strong>ℹ️ IMPORTANTE:</strong> Guarda este enlace para compartir el cartel digital, o descárgalo como imagen para difundirlo por Whatsapp o imprimirlo.
         </div>
 
-        <!-- Botones de Acción Superiores -->
-        <div class="flex gap-2 justify-center">
-          <button id="btn-download" class="btn btn-error text-white font-black flex-1">
-            📥 Descargar Imagen
+        <!-- Botones de Acción Superiores (estilo Uber) -->
+        <div class="flex gap-3 justify-center">
+          <button id="btn-download" class="btn bg-primary text-white hover:bg-black-elevated flex-1 font-uber-text uber-body-md-strong">
+            Descargar Imagen
           </button>
-          <button id="btn-copy" class="btn btn-outline border-base-300 flex-1 font-bold">
-            🔗 Copiar Enlace
+          <button id="btn-copy" class="btn bg-canvas text-ink border border-canvas-soft shadow-level3 hover:bg-canvas-soft flex-1 font-uber-text uber-body-md-strong">
+            Copiar Enlace
           </button>
         </div>
 
-        <!-- Contenedor del Flyer Imprimible (html2canvas) -->
-        <div id="flyer-card" class="bg-white text-black p-6 rounded-none shadow-xl border-8 border-error font-sans flex flex-col justify-between max-w-md mx-auto aspect-[3/4]">
+        <!-- Contenedor del Cartel Imprimible (html2canvas, diseño premium blanco y negro) -->
+        <div id="flyer-card" class="bg-white text-black p-6 rounded-none shadow-level2 border-8 border-primary font-sans flex flex-col justify-between max-w-md mx-auto aspect-[3/4]">
           <div>
             <!-- Cabecera del Cartel -->
-            <div class="text-center bg-error text-white py-3 px-4 -mx-6 -mt-6 mb-5 font-black text-2xl tracking-widest uppercase">
-              🚨 ALERTA DE EMERGENCIA 🚨
+            <div class="text-center bg-primary text-white py-3 px-4 -mx-6 -mt-6 mb-5 font-uber-display text-xl tracking-widest uppercase">
+              🚨 ALERTA DE BÚSQUEDA 🚨
             </div>
 
             <!-- Título Principal -->
-            <h1 class="text-2xl md:text-3xl font-black tracking-tight text-center text-error uppercase break-words mb-4 leading-tight">
+            <h1 class="text-2xl md:text-3xl font-uber-display tracking-tight text-center text-ink uppercase break-words mb-4 leading-tight">
               {flyer.title}
             </h1>
 
             <!-- Foto -->
-            <div class="w-full aspect-[4/3] bg-neutral-200 border-2 border-neutral-300 rounded overflow-hidden flex items-center justify-center mb-4 relative shadow-inner">
+            <div class="w-full aspect-[4/3] bg-canvas-soft border border-canvas-soft rounded-lg overflow-hidden flex items-center justify-center mb-4 relative">
               <img 
                 src={`/api/upload?key=${encodeURIComponent(flyer.foto_key)}`} 
                 alt={flyer.title}
@@ -100,8 +96,8 @@ const formatFecha = (fechaStr: string) => {
               />
             </div>
 
-            <!-- Descripción -->
-            <div class="bg-neutral-50 border-l-4 border-error p-3 text-sm md:text-base leading-relaxed break-words font-medium text-neutral-800 mb-4 whitespace-pre-wrap">
+            <!-- Descripción (estilo blockquote minimalista) -->
+            <div class="bg-canvas-soft border-l-4 border-primary p-3 text-sm md:text-base leading-relaxed break-words font-medium text-ink mb-4 whitespace-pre-wrap font-uber-text">
               {flyer.description}
             </div>
           </div>
@@ -109,21 +105,21 @@ const formatFecha = (fechaStr: string) => {
           <!-- Contacto e Info de Cierre -->
           <div>
             {(phones.length > 0 || socials.length > 0) && (
-              <div class="border-t border-neutral-300 pt-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-bold text-neutral-700">
+              <div class="border-t border-canvas-soft pt-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-uber-text text-body">
                 {phones.length > 0 && (
                   <div>
-                    <h3 class="text-error uppercase tracking-wider mb-1 font-black text-[10px]">Llamar a:</h3>
+                    <h3 class="text-ink uppercase tracking-wider mb-1 font-bold text-[10px]">Llamar a:</h3>
                     {phones.map(phone => (
-                      <p class="text-sm font-black text-black">{phone}</p>
+                      <p class="text-sm font-bold text-ink">{phone}</p>
                     ))}
                   </div>
                 )}
                 
                 {socials.length > 0 && (
                   <div>
-                    <h3 class="text-error uppercase tracking-wider mb-1 font-black text-[10px]">Redes Sociales:</h3>
+                    <h3 class="text-ink uppercase tracking-wider mb-1 font-bold text-[10px]">Redes Sociales:</h3>
                     {socials.map(social => (
-                      <p class="text-sm font-black text-black truncate">{social}</p>
+                      <p class="text-sm font-bold text-ink truncate">{social}</p>
                     ))}
                   </div>
                 )}
@@ -131,29 +127,29 @@ const formatFecha = (fechaStr: string) => {
             )}
 
             <!-- Footer del Cartel -->
-            <div class="text-[9px] text-neutral-500 font-bold border-t border-neutral-200 pt-2 flex justify-between">
+            <div class="text-[9px] text-body border-t border-canvas-soft pt-2.5 flex justify-between font-uber-text">
               <span>Creado en BUSCA • {formatFecha(flyer.created_at)}</span>
-              <span class="text-error tracking-wider uppercase font-black">Reporte #{id}</span>
+              <span class="text-ink tracking-wider uppercase font-bold">Reporte #{id}</span>
             </div>
           </div>
         </div>
         
-        <div class="text-center pt-2">
-          <a href="/flyer/crear" class="link link-error font-bold text-sm">
+        <div class="text-center pt-4">
+          <a href="/flyer/crear" class="link-blue font-uber-text uber-body-sm-strong">
             ← Crear un nuevo cartel / flyer
           </a>
         </div>
       </div>
     ) : (
       <div class="text-center py-16 space-y-4">
-        <div class="text-6xl">⚠️</div>
-        <h1 class="text-2xl font-black text-base-content">Flyer no encontrado</h1>
-        <p class="text-sm text-base-content/70">
+        <div class="text-5xl">⚠️</div>
+        <h1 class="font-uber-display text-2xl text-ink">Cartel no encontrado</h1>
+        <p class="text-sm text-body font-uber-text">
           El cartel que buscas no existe o fue eliminado de la base de datos de emergencia.
         </p>
         <div class="pt-4">
-          <a href="/" class="btn btn-error text-white font-bold btn-sm">
-            Volver al Inicio
+          <a href="/" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong">
+            Volver al inicio
           </a>
         </div>
       </div>
@@ -170,13 +166,14 @@ const formatFecha = (fechaStr: string) => {
 
     if (btnDownload && flyerCard) {
       btnDownload.addEventListener("click", async () => {
-        btnDownload.classList.add("loading");
+        btnDownload.classList.add("opacity-50");
+        const originalText = btnDownload.textContent;
         btnDownload.textContent = "Generando...";
 
         try {
           const canvas = await html2canvas(flyerCard, {
-            scale: 2, // Calidad alta
-            useCORS: true, // Permitir R2 crossorigin
+            scale: 2,
+            useCORS: true,
             backgroundColor: "#ffffff"
           });
 
@@ -189,8 +186,8 @@ const formatFecha = (fechaStr: string) => {
           console.error("Fallo de descarga de flyer:", err);
           alert("Error al generar imagen del cartel. Toma una captura de pantalla.");
         } finally {
-          btnDownload.classList.remove("loading");
-          btnDownload.textContent = "📥 Descargar Imagen";
+          btnDownload.classList.remove("opacity-50");
+          btnDownload.textContent = originalText;
         }
       });
     }
@@ -198,12 +195,13 @@ const formatFecha = (fechaStr: string) => {
     if (btnCopy) {
       btnCopy.addEventListener("click", () => {
         navigator.clipboard.writeText(window.location.href);
+        const originalText = btnCopy.textContent;
         btnCopy.textContent = "✓ Enlace Copiado";
-        btnCopy.className = "btn btn-success text-white flex-1 font-bold animate-pulse";
+        btnCopy.classList.add("opacity-85");
         
         setTimeout(() => {
-          btnCopy.textContent = "🔗 Copiar Enlace";
-          btnCopy.className = "btn btn-outline border-base-300 flex-1 font-bold";
+          btnCopy.textContent = originalText;
+          btnCopy.classList.remove("opacity-85");
         }, 2000);
       });
     }

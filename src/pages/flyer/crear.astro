@@ -9,39 +9,44 @@ export const prerender = false;
   <Navbar />
   
   <main class="flex-grow py-8 px-4 max-w-xl mx-auto w-full">
-    <div class="text-center mb-6">
-      <h1 class="text-3xl font-black text-base-content text-error flex items-center justify-center gap-2">
-        📢 Generar Flyer de Emergencia
+    <div class="text-center mb-8">
+      <h1 class="font-uber-display text-3xl text-ink tracking-tight">
+        Generar cartel de emergencia
       </h1>
-      <p class="text-sm text-base-content/70 mt-2">
+      <p class="text-sm text-body font-uber-text mt-2">
         Crea un cartel de difusión rápida para personas desaparecidas o alertas críticas. Optimizado para bajas conexiones y descargas directas.
       </p>
     </div>
 
-    <div class="card bg-base-100 border border-base-300 p-6 shadow-sm">
+    <div class="bg-canvas border border-canvas-soft p-6 sm:p-8 rounded-xl shadow-level1">
       <form id="form-flyer" class="space-y-4">
         <!-- Título -->
         <div>
-          <label class="label"><span class="label-text font-bold">Título del Flyer *</span></label>
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Título del Cartel *</label>
           <input 
             type="text" 
             name="title" 
             required 
             maxlength="100"
-            class="input input-bordered w-full" 
+            class="input w-full font-uber-text uber-body-md" 
             placeholder="Ej: SE BUSCA: Juan Pérez o EMERGENCIA: Zona Inundada" 
           />
         </div>
 
         <!-- Foto -->
         <div>
-          <label class="label"><span class="label-text font-bold">Foto *</span></label>
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Foto *</label>
           <input 
             type="file" 
             id="photo-input" 
             accept="image/*" 
             required
-            class="file-input file-input-bordered file-input-error file-input-sm w-full" 
+            class="block w-full text-sm text-body font-uber-text
+              file:mr-4 file:py-2 file:px-4
+              file:rounded-full file:border-0
+              file:text-sm file:font-semibold
+              file:bg-canvas-soft file:text-ink
+              hover:file:bg-surface-pressed file:cursor-pointer" 
           />
           
           <!-- Hidden canvas y input base64 -->
@@ -49,72 +54,73 @@ export const prerender = false;
           <input type="hidden" name="photo" id="photo-base64" />
 
           <!-- Vista previa -->
-          <div id="preview-container" class="hidden mt-3 flex justify-center">
-            <img id="preview-img" class="max-h-48 rounded-lg shadow-sm border object-cover" src="" alt="Vista previa" />
+          <div id="preview-container" class="hidden mt-4 flex justify-center">
+            <img id="preview-img" class="max-h-48 rounded-xl shadow-level1 border border-canvas-soft object-cover" src="" alt="Vista previa" />
           </div>
         </div>
 
         <!-- Descripción -->
         <div>
-          <label class="label"><span class="label-text font-bold">Información relevante / Descripción *</span></label>
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Información relevante / Descripción *</label>
           <textarea 
             name="description" 
             required 
             maxlength="500"
-            class="textarea textarea-bordered w-full h-28" 
+            class="textarea w-full h-28 font-uber-text uber-body-md" 
             placeholder="Describe rasgos físicos, vestimenta, última ubicación vista, estado de salud o necesidades específicas..."
           ></textarea>
         </div>
 
         <!-- Teléfonos -->
         <div>
-          <label class="label"><span class="label-text font-bold">Teléfonos de contacto (Separados por coma)</span></label>
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Teléfonos de contacto (Separados por coma)</label>
           <input 
             type="text" 
             name="phones" 
-            class="input input-bordered w-full input-sm" 
+            class="input w-full font-uber-text uber-body-md" 
             placeholder="Ej: +58 414 1234567, 0212 9876543" 
           />
         </div>
 
         <!-- Redes sociales -->
         <div>
-          <label class="label"><span class="label-text font-bold">Redes sociales (Separadas por coma)</span></label>
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Redes sociales (Separadas por coma)</label>
           <input 
             type="text" 
             name="socials" 
-            class="input input-bordered w-full input-sm" 
+            class="input w-full font-uber-text uber-body-md" 
             placeholder="Ej: @UsuarioInstagram, twitter.com/usuario" 
           />
         </div>
 
         <!-- Gancho de Registro en Base de Datos de Desaparecidos -->
-        <div class="form-control border border-error/20 bg-error/5 p-4 rounded-xl mt-4">
-          <label class="label cursor-pointer flex items-start gap-3">
+        <div class="border border-canvas-soft bg-canvas-soft p-4 rounded-xl mt-4">
+          <label class="cursor-pointer flex items-start gap-3 select-none">
             <input 
               type="checkbox" 
               name="registrarEnBusca" 
               id="registrar-busca" 
               checked 
-              class="checkbox checkbox-error mt-0.5" 
+              class="w-5 h-5 rounded-md border-2 border-primary bg-canvas text-primary focus:ring-0 focus:ring-offset-0 mt-0.5 accent-black" 
             />
             <div class="flex-grow">
-              <span class="label-text font-extrabold text-error block text-sm">
-                💡 Registrar en base de datos inteligente de búsqueda
+              <span class="font-uber-display text-sm text-ink block">
+                Registrar en base de datos inteligente de búsqueda
               </span>
-              <span class="text-xs text-base-content/70 mt-1 block">
+              <span class="text-xs text-body mt-1 block font-uber-text">
                 Nuestra Inteligencia Artificial cruzará esta información con refugios, reportes de rescate y avistamientos automáticamente.
               </span>
             </div>
           </label>
         </div>
 
-        <div id="error-alert" class="alert alert-error hidden font-semibold text-xs py-2">
+        <!-- Alerta de error estilo ex-toast -->
+        <div id="error-alert" class="hidden border border-red-500/20 bg-canvas text-ink rounded-xl p-4 shadow-level2 font-uber-text uber-body-sm mt-4">
           <span>Ocurrió un error.</span>
         </div>
 
-        <button type="submit" id="btn-submit" class="btn btn-error btn-block text-white font-black mt-2">
-          Crear Flyer de Emergencia
+        <button type="submit" id="btn-submit" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text uber-body-md-strong mt-4">
+          Crear cartel de emergencia
         </button>
       </form>
     </div>
@@ -197,7 +203,7 @@ export const prerender = false;
           return;
         }
 
-        btnSubmit.classList.add("loading");
+        btnSubmit.classList.add("opacity-50");
         errorAlert.classList.add("hidden");
 
         try {
@@ -229,7 +235,7 @@ export const prerender = false;
         } catch (err: any) {
           console.error(err);
           mostrarError(err.message || "Error al procesar la solicitud.");
-          btnSubmit.classList.remove("loading");
+          btnSubmit.classList.remove("opacity-50");
         }
       });
     }

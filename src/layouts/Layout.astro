@@ -36,9 +36,11 @@ const {
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:site_name" content="BUSCA" />
+    <!-- Google Fonts Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   </head>
-  <body class="bg-base-200 text-base-content min-h-screen flex flex-col antialiased">
+  <body class="bg-canvas text-ink min-h-screen flex flex-col antialiased font-sans">
     <slot />
 
     <!-- Registro de Service Worker para PWA -->

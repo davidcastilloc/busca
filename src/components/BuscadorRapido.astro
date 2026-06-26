@@ -1,56 +1,56 @@
 ---
 ---
 
-<div class="w-full max-w-3xl mx-auto p-4">
-  <!-- Tabs de búsqueda -->
-  <div class="flex gap-2 justify-center mb-6">
-    <button id="btn-tab-exact" class="btn btn-error text-white font-black btn-sm sm:btn-md">
-      🔍 Censo de Personas
+<div class="w-full max-w-3xl mx-auto px-4 py-6">
+  <!-- Tabs de búsqueda (button-tab-translucent) -->
+  <div class="flex gap-3 justify-center mb-8">
+    <button id="btn-tab-exact" class="px-5 py-2.5 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer">
+      Censo de Personas
     </button>
-    <button id="btn-tab-semantic" class="btn btn-outline border-base-300 font-bold btn-sm sm:btn-md">
-      🧠 Búsqueda Semántica (IA)
+    <button id="btn-tab-semantic" class="px-5 py-2.5 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer">
+      Búsqueda Semántica (IA)
     </button>
   </div>
 
-  <!-- Formulario 1: Búsqueda Exacta -->
-  <div id="panel-exact" class="card bg-base-100 border border-base-300 p-6 shadow-sm">
+  <!-- Formulario 1: Búsqueda Exacta (card-elevated) -->
+  <div id="panel-exact" class="bg-canvas border border-canvas-soft p-6 sm:p-8 rounded-xl shadow-level1">
     <form id="form-search-exact" class="space-y-4">
-      <div class="flex flex-col sm:flex-row gap-2">
+      <div class="flex flex-col sm:flex-row gap-3">
         <input 
           type="text" 
           id="query-exact" 
           required
-          class="input input-bordered flex-1" 
+          class="input flex-1 font-uber-text uber-body-md" 
           placeholder="Buscar por Nombre, Cédula, Ubicación o Refugio..." 
         />
-        <button type="submit" class="btn btn-error text-white font-bold">
+        <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong">
           Buscar
         </button>
       </div>
-      <p class="text-xs text-base-content/50">
+      <p class="text-xs text-body font-uber-text">
         Búsqueda exacta en el censo oficial de albergues y rescatistas.
       </p>
     </form>
   </div>
 
-  <!-- Formulario 2: Búsqueda Semántica (IA) -->
-  <div id="panel-semantic" class="card bg-base-100 border border-base-300 p-6 shadow-sm hidden">
+  <!-- Formulario 2: Búsqueda Semántica (IA) (card-elevated) -->
+  <div id="panel-semantic" class="bg-canvas border border-canvas-soft p-6 sm:p-8 rounded-xl shadow-level1 hidden">
     <form id="form-search-semantic" class="space-y-4">
       <div class="space-y-2">
-        <label class="label p-0"><span class="label-text font-bold">Descripción del Reporte de Búsqueda</span></label>
+        <label class="block font-uber-text uber-body-md-strong text-ink">Descripción del Reporte de Búsqueda</label>
         <textarea 
           id="query-semantic" 
           required
           minlength="5"
           rows="3"
-          class="textarea textarea-bordered w-full" 
+          class="textarea w-full font-uber-text uber-body-md" 
           placeholder="Ej: Niño de unos 8 años, jean azul, gorra roja, visto por última vez en la plaza Bolívar..."
         ></textarea>
       </div>
-      <button type="submit" id="btn-submit-semantic" class="btn btn-warning btn-block font-black">
+      <button type="submit" id="btn-submit-semantic" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text uber-body-md-strong">
         Buscar por Similitud Semántica
       </button>
-      <p class="text-xs text-base-content/50">
+      <p class="text-xs text-body font-uber-text">
         La IA procesará la descripción y buscará reportes con características físicas similares en la base de datos de desaparecidos.
       </p>
     </form>
@@ -58,11 +58,11 @@
 
   <!-- Resultados de búsqueda -->
   <div id="results-loader" class="hidden flex justify-center py-10">
-    <span class="loading loading-spinner loading-lg text-error"></span>
+    <span class="loading loading-spinner loading-lg text-primary"></span>
   </div>
 
-  <div id="results-header" class="hidden font-bold text-sm text-base-content/70 mt-6 mb-2"></div>
-  <div id="results-container" class="space-y-4"></div>
+  <div id="results-header" class="hidden font-uber-text uber-body-md-strong text-body mt-8 mb-4"></div>
+  <div id="results-container" class="space-y-6"></div>
 </div>
 
 <script>
@@ -85,17 +85,15 @@
   // Control de pestañas
   if (btnTabExact && btnTabSemantic && panelExact && panelSemantic) {
     btnTabExact.addEventListener("click", () => {
-      // Activar Exact
-      btnTabExact.className = "btn btn-error text-white font-black btn-sm sm:btn-md";
-      btnTabSemantic.className = "btn btn-outline border-base-300 font-bold btn-sm sm:btn-md";
+      btnTabExact.className = "px-5 py-2.5 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer";
+      btnTabSemantic.className = "px-5 py-2.5 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer";
       panelExact.classList.remove("hidden");
       panelSemantic.classList.add("hidden");
     });
 
     btnTabSemantic.addEventListener("click", () => {
-      // Activar Semantic
-      btnTabExact.className = "btn btn-outline border-base-300 font-bold btn-sm sm:btn-md";
-      btnTabSemantic.className = "btn btn-warning text-black font-black btn-sm sm:btn-md";
+      btnTabExact.className = "px-5 py-2.5 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer";
+      btnTabSemantic.className = "px-5 py-2.5 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer";
       panelExact.classList.add("hidden");
       panelSemantic.classList.remove("hidden");
     });
@@ -139,7 +137,7 @@
       }
 
       mostrarLoader(true);
-      btnSubmitSemantic.classList.add("loading");
+      btnSubmitSemantic.classList.add("opacity-50");
 
       try {
         const resp = await fetch("/api/buscar-similar", {
@@ -159,7 +157,7 @@
         mostrarMensajeHeader("❌ Error al procesar búsqueda inteligente.", true);
       } finally {
         mostrarLoader(false);
-        btnSubmitSemantic.classList.remove("loading");
+        btnSubmitSemantic.classList.remove("opacity-50");
       }
     });
   }
@@ -176,10 +174,10 @@
       resultsHeader.textContent = msg;
       resultsHeader.classList.remove("hidden");
       if (isError) {
-        resultsHeader.className = "font-bold text-sm text-error mt-6 mb-2";
+        resultsHeader.className = "font-uber-text uber-body-md-strong text-primary mt-8 mb-4";
         resultsContainer.innerHTML = "";
       } else {
-        resultsHeader.className = "font-bold text-sm text-base-content/75 mt-6 mb-2";
+        resultsHeader.className = "font-uber-text uber-body-md-strong text-body mt-8 mb-4";
       }
     }
   }
@@ -199,46 +197,49 @@
     personas.forEach(p => {
       const card = document.createElement("div");
       
-      const configEstado: Record<string, { badge: string, border: string, text: string }> = {
-        vivo: { badge: "badge-success text-white", border: "border-success/30", text: "Vivo / A salvo" },
-        herido: { badge: "badge-warning text-black", border: "border-warning/30", text: "Herido" },
-        fallecido: { badge: "badge-error text-white", border: "border-error/30", text: "Fallecido" },
-        desconocido: { badge: "badge-neutral text-white", border: "border-neutral/30", text: "Desconocido" }
+      const configEstado: Record<string, { badge: string, dot: string, text: string }> = {
+        vivo: { badge: "border border-green-500/30 text-ink bg-canvas", dot: "bg-green-500", text: "Vivo / A salvo" },
+        herido: { badge: "border border-yellow-500/30 text-ink bg-canvas", dot: "bg-yellow-500", text: "Herido" },
+        fallecido: { badge: "border border-red-500/30 text-ink bg-canvas", dot: "bg-red-500", text: "Fallecido" },
+        desconocido: { badge: "border border-canvas-soft text-ink bg-canvas", dot: "bg-mute", text: "Desconocido" }
       };
       
       const config = configEstado[p.estado] || configEstado.desconocido;
       const imgHtml = p.foto_key 
-        ? `<figure class="w-full sm:w-44 h-44 sm:h-auto shrink-0 bg-base-300 relative">
+        ? `<figure class="w-full sm:w-44 h-44 sm:h-auto shrink-0 bg-canvas-soft relative">
              <img src="/api/upload?key=${encodeURIComponent(p.foto_key)}" alt="Foto" class="w-full h-full object-cover" loading="lazy" />
            </figure>`
-        : `<div class="w-full sm:w-44 h-44 shrink-0 bg-base-300 flex items-center justify-center text-4xl select-none">👤</div>`;
+        : `<div class="w-full sm:w-44 h-44 shrink-0 bg-canvas-soft flex items-center justify-center text-4xl select-none text-mute">👤</div>`;
 
       const fecha = formatFechaLocal(p.updated_at);
 
-      card.className = `card card-side bg-base-100 shadow-md border-l-4 ${config.border} flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]`;
+      card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-level1 flex flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]";
       card.innerHTML = `
         ${imgHtml}
-        <div class="card-body p-5 flex flex-col justify-between">
+        <div class="p-6 flex flex-col justify-between flex-grow">
           <div>
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-              <h2 class="card-title text-xl font-bold tracking-tight">${p.nombre} ${p.apellido || ""}</h2>
-              <div class="badge font-black text-xs ${config.badge}">${config.text}</div>
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <h2 class="font-uber-display text-xl text-ink leading-snug">${p.nombre} ${p.apellido || ""}</h2>
+              <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-uber-text font-medium ${config.badge}">
+                <span class="w-1.5 h-1.5 rounded-full ${config.dot}"></span>
+                <span>${config.text}</span>
+              </div>
             </div>
             
-            <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm mb-3">
-              ${p.cedula ? `<div><span class="text-base-content/50 font-semibold">Documento:</span> <span class="font-bold">${p.cedula}</span></div>` : ""}
-              ${p.edad !== null && p.edad !== undefined ? `<div><span class="text-base-content/50 font-semibold">Edad:</span> <span class="font-bold">${p.edad} años</span></div>` : ""}
-              ${p.sexo ? `<div><span class="text-base-content/50 font-semibold">Sexo:</span> <span class="font-bold">${p.sexo}</span></div>` : ""}
-              ${p.refugio ? `<div class="col-span-2"><span class="text-base-content/50 font-semibold">📍 Refugio:</span> <span class="font-bold text-success-content bg-success/10 px-1.5 py-0.5 rounded">${p.refugio}</span></div>` : ""}
-              ${p.ubicacion_nombre ? `<div class="col-span-2"><span class="text-base-content/50 font-semibold">📍 Zona:</span> <span class="font-bold">${p.ubicacion_nombre}</span></div>` : ""}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-body mb-4 font-uber-text">
+              ${p.cedula ? `<div>Documento: <span class="font-semibold text-ink">${p.cedula}</span></div>` : ""}
+              ${p.edad !== null && p.edad !== undefined ? `<div>Edad: <span class="font-semibold text-ink">${p.edad} años</span></div>` : ""}
+              ${p.sexo ? `<div>Sexo: <span class="font-semibold text-ink">${p.sexo}</span></div>` : ""}
+              ${p.refugio ? `<div class="sm:col-span-2">📍 Refugio: <span class="font-semibold text-ink bg-canvas-soft px-2 py-0.5 rounded">${p.refugio}</span></div>` : ""}
+              ${p.ubicacion_nombre ? `<div class="sm:col-span-2">📍 Zona: <span class="font-semibold text-ink">${p.ubicacion_nombre}</span></div>` : ""}
             </div>
             
-            ${p.notas ? `<div class="bg-base-200 p-2.5 rounded-lg text-sm border-l-2 border-base-300 italic mb-2.5 text-base-content/90">"${p.notas}"</div>` : ""}
+            ${p.notas ? `<div class="bg-canvas-soft p-3 rounded-lg text-sm border-l-2 border-primary italic mb-4 text-ink font-uber-text">"${p.notas}"</div>` : ""}
           </div>
           
-          <div class="flex flex-wrap items-center justify-between text-xs text-base-content/50 border-t border-base-200 pt-2.5 mt-auto">
-            <div>Fuente: <span class="font-bold capitalize">${p.fuente || "web"}</span></div>
-            <div>Actualizado: <span class="font-semibold">${fecha}</span></div>
+          <div class="flex flex-wrap items-center justify-between text-xs text-mute border-t border-canvas-soft pt-3 mt-auto font-uber-text">
+            <div>Fuente: <span class="font-semibold capitalize text-body">${p.fuente || "web"}</span></div>
+            <div>Actualizado: <span class="font-semibold text-body">${fecha}</span></div>
           </div>
         </div>
       `;
@@ -261,54 +262,57 @@
     reportes.forEach(r => {
       const card = document.createElement("div");
       
-      const configTipo: Record<string, { badge: string, border: string, text: string }> = {
-        desaparecido: { badge: "badge-error text-white", border: "border-error/30", text: "Desaparecido" },
-        encontrado: { badge: "badge-success text-white", border: "border-success/30", text: "Encontrado" },
-        refugio: { badge: "badge-info text-white", border: "border-info/30", text: "Refugio" },
-        necesidad: { badge: "badge-warning text-black", border: "border-warning/30", text: "Necesidad" }
+      const configTipo: Record<string, { badge: string, dot: string, text: string }> = {
+        desaparecido: { badge: "border border-red-500/30 text-ink bg-canvas", dot: "bg-red-500", text: "Desaparecido" },
+        encontrado: { badge: "border border-green-500/30 text-ink bg-canvas", dot: "bg-green-500", text: "Encontrado" },
+        refugio: { badge: "border border-blue-500/30 text-ink bg-canvas", dot: "bg-blue-500", text: "Refugio" },
+        necesidad: { badge: "border border-yellow-500/30 text-ink bg-canvas", dot: "bg-yellow-500", text: "Necesidad" }
       };
       
-      const config = configTipo[r.tipo] || { badge: "badge-neutral text-white", border: "border-base-300", text: "Reporte" };
+      const config = configTipo[r.tipo] || { badge: "border border-canvas-soft text-ink bg-canvas", dot: "bg-mute", text: "Reporte" };
       const similarityScore = r.score ? Math.round(r.score * 100) : null;
       
       const imgHtml = r.foto_key 
-        ? `<figure class="w-full sm:w-44 h-44 sm:h-auto shrink-0 bg-base-300 relative">
+        ? `<figure class="w-full sm:w-44 h-44 sm:h-auto shrink-0 bg-canvas-soft relative">
              <img src="/api/upload?key=${encodeURIComponent(r.foto_key)}" alt="Foto" class="w-full h-full object-cover" loading="lazy" />
            </figure>`
-        : `<div class="w-full sm:w-44 h-44 shrink-0 bg-base-300 flex items-center justify-center text-4xl select-none">📢</div>`;
+        : `<div class="w-full sm:w-44 h-44 shrink-0 bg-canvas-soft flex items-center justify-center text-4xl select-none text-mute">📢</div>`;
 
       const fecha = formatFechaLocal(r.updated_at);
 
-      card.className = `card card-side bg-base-100 shadow-md border-l-4 ${config.border} flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]`;
+      card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-level1 flex flex-col sm:flex-row overflow-hidden transition-all duration-200 hover:scale-[1.01]";
       card.innerHTML = `
         ${imgHtml}
-        <div class="card-body p-5 flex flex-col justify-between">
+        <div class="p-6 flex flex-col justify-between flex-grow">
           <div>
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-              <h2 class="card-title text-xl font-bold tracking-tight">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <h2 class="font-uber-display text-xl text-ink leading-snug">
                 ${r.nombre_buscado || "Persona no identificada"}
               </h2>
-              <div class="flex items-center gap-1">
-                ${similarityScore !== null ? `<div class="badge badge-info font-black text-white text-xs">🎯 Similitud: ${similarityScore}%</div>` : ""}
-                <div class="badge font-black text-xs ${config.badge}">${config.text}</div>
+              <div class="flex items-center gap-2">
+                ${similarityScore !== null ? `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary text-white text-xs font-uber-text font-medium">🎯 Coincidencia: ${similarityScore}%</div>` : ""}
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-uber-text font-medium ${config.badge}">
+                  <span class="w-1.5 h-1.5 rounded-full ${config.dot}"></span>
+                  <span>${config.text}</span>
+                </div>
               </div>
             </div>
             
-            <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm mb-3">
-              ${r.cedula_buscado ? `<div><span class="text-base-content/50 font-semibold">Documento:</span> <span class="font-bold">${r.cedula_buscado}</span></div>` : ""}
-              ${r.ubicacion_nombre ? `<div class="col-span-2"><span class="text-base-content/50 font-semibold">Último avistamiento:</span> <span class="font-bold">${r.ubicacion_nombre}</span></div>` : ""}
-              ${r.reportante_nombre ? `<div><span class="text-base-content/50 font-semibold">Reportado por:</span> <span class="font-bold">${r.reportante_nombre}</span></div>` : ""}
-              ${r.reportante_contacto ? `<div><span class="text-base-content/50 font-semibold">Contacto:</span> <span class="font-bold">${r.reportante_contacto}</span></div>` : ""}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-body mb-4 font-uber-text">
+              ${r.cedula_buscado ? `<div>Documento: <span class="font-semibold text-ink">${r.cedula_buscado}</span></div>` : ""}
+              ${r.ubicacion_nombre ? `<div class="sm:col-span-2">Último avistamiento: <span class="font-semibold text-ink">${r.ubicacion_nombre}</span></div>` : ""}
+              ${r.reportante_nombre ? `<div>Reportado por: <span class="font-semibold text-ink">${r.reportante_nombre}</span></div>` : ""}
+              ${r.reportante_contacto ? `<div>Contacto: <span class="font-semibold text-ink">${r.reportante_contacto}</span></div>` : ""}
             </div>
             
-            <div class="bg-warning/5 border-l-2 border-warning p-2.5 rounded-lg text-sm italic mb-2.5 text-base-content/95">
+            <div class="bg-canvas-soft border-l-2 border-primary p-3 rounded-lg text-sm italic mb-4 text-ink font-uber-text">
               <strong>Descripción:</strong> "${r.descripcion}"
             </div>
           </div>
           
-          <div class="flex flex-wrap items-center justify-between text-xs text-base-content/50 border-t border-base-200 pt-2.5 mt-auto">
-            <div>Estado Reporte: <span class="font-bold uppercase text-error">${r.estado_reporte || "abierto"}</span></div>
-            <div>Fecha: <span class="font-semibold">${fecha}</span></div>
+          <div class="flex flex-wrap items-center justify-between text-xs text-mute border-t border-canvas-soft pt-3 mt-auto font-uber-text">
+            <div>Estado Reporte: <span class="font-semibold uppercase text-primary">${r.estado_reporte || "abierto"}</span></div>
+            <div>Fecha: <span class="font-semibold text-body">${fecha}</span></div>
           </div>
         </div>
       `;
