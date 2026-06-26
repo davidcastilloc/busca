@@ -703,23 +703,21 @@
       const cartelEl = document.getElementById("cartel-se-busca");
       if (!cartelEl) throw new Error("Cartel element not found");
 
-      // Interceptar document.styleSheets para evitar error oklch de DaisyUI/Tailwind
-      Object.defineProperty(document, "styleSheets", {
-        value: [],
-        writable: true,
-        configurable: true
-      });
-
       let canvas;
       try {
         canvas = await html2canvas(cartelEl, {
           scale: 2,
           useCORS: true,
           allowTaint: true,
-          backgroundColor: "#ffffff"
+          backgroundColor: "#ffffff",
+          onclone: (clonedDoc) => {
+            // Eliminar todas las hojas de estilo del clon para evitar error oklch de DaisyUI/Tailwind
+            const styles = clonedDoc.querySelectorAll("style, link[rel='stylesheet']");
+            styles.forEach(s => s.remove());
+          }
         });
-      } finally {
-        delete (document as any).styleSheets;
+      } catch (err) {
+        throw err;
       }
 
       const blob = await new Promise<Blob>((resolve) => {
