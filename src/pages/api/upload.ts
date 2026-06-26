@@ -47,7 +47,26 @@ export const GET: APIRoute = async (context) => {
       return new Response("Falta el parámetro 'key'", { status: 400 });
     }
 
-    const object = await FOTOS_BUCKET.get(key);
+    let object = await FOTOS_BUCKET.get(key);
+
+    if (!object) {
+      // Intentar descargar bajo demanda desde venezuelatebusca.com
+      const filename = key.split("/").pop() || key;
+      const remoteUrl = `https://venezuelatebusca.com/media/photos/${filename}`;
+
+      try {
+        const fetchResp = await fetch(remoteUrl);
+        if (fetchResp.ok) {
+          const buffer = await fetchResp.arrayBuffer();
+          await FOTOS_BUCKET.put(key, buffer, {
+            httpMetadata: { contentType: fetchResp.headers.get("content-type") || "image/jpeg" }
+          });
+          object = await FOTOS_BUCKET.get(key);
+        }
+      } catch (fetchErr) {
+        console.error("Error al descargar foto remota bajo demanda:", fetchErr);
+      }
+    }
 
     if (!object) {
       return new Response("Archivo no encontrado", { status: 404 });
