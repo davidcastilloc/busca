@@ -230,27 +230,31 @@
     });
   }
 
+  async function realizarBusquedaExacta(q: string) {
+    if (!q) return;
+    mostrarLoader(true);
+    try {
+      const resp = await fetch(`/api/buscar?q=${encodeURIComponent(q)}&tipo=todos`);
+      if (resp.ok) {
+        const resultados = await resp.json();
+        currentSearchResults = resultados;
+        if (filterStateBar) filterStateBar.classList.remove("hidden");
+        currentSubTab = "todos";
+        actualizarFiltroUI();
+        aplicarFiltrosYRenderizar();
+      } else { throw new Error("Error en respuesta"); }
+    } catch (err) {
+      console.error(err);
+      mostrarMensajeHeader("❌ Error de conexión al buscar.", true);
+    } finally { mostrarLoader(false); }
+  }
+
   // ═══ BÚSQUEDA EXACTA ═══
   if (formSearchExact) {
-    formSearchExact.addEventListener("submit", async (e) => {
+    formSearchExact.addEventListener("submit", (e) => {
       e.preventDefault();
       const q = queryExact.value.trim();
-      if (!q) return;
-      mostrarLoader(true);
-      try {
-        const resp = await fetch(`/api/buscar?q=${encodeURIComponent(q)}&tipo=todos`);
-        if (resp.ok) {
-          const resultados = await resp.json();
-          currentSearchResults = resultados;
-          if (filterStateBar) filterStateBar.classList.remove("hidden");
-          currentSubTab = "todos";
-          actualizarFiltroUI();
-          aplicarFiltrosYRenderizar();
-        } else { throw new Error("Error en respuesta"); }
-      } catch (err) {
-        console.error(err);
-        mostrarMensajeHeader("❌ Error de conexión al buscar.", true);
-      } finally { mostrarLoader(false); }
+      realizarBusquedaExacta(q);
     });
   }
 
@@ -909,10 +913,23 @@
 
       // Compartir
       const nombreArchivo = `SE_BUSCA_${nombre.replace(/\s+/g, "_")}.png`;
+      const shareUrl = `${window.location.origin}/?q=${encodeURIComponent(nombre)}`;
+
+      // Copiar enlace al portapapeles siempre
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+      } catch (e) {
+        console.error("No se pudo copiar al portapapeles:", e);
+      }
 
       if (navigator.share && navigator.canShare) {
         const file = new File([blob], nombreArchivo, { type: "image/png" });
-        const shareData = { files: [file], title: "SE BUSCA", text: `SE BUSCA: ${nombre}` };
+        const shareData = { 
+          files: [file], 
+          title: "SE BUSCA", 
+          text: `SE BUSCA: ${nombre}. Ayúdanos a localizarlo. Ver reporte completo aquí: ${shareUrl}`,
+          url: shareUrl
+        };
         
         if (navigator.canShare(shareData)) {
           await navigator.share(shareData);
@@ -930,11 +947,11 @@
       a.click();
       URL.revokeObjectURL(url);
       
-      btn.textContent = "✓ Descargado";
+      btn.textContent = "✓ Descargado y Enlace Copiado";
       setTimeout(() => {
         btn.textContent = "📷 Compartir";
         btn.classList.remove("opacity-50");
-      }, 2000);
+      }, 2500);
 
     } catch (err) {
       console.error("Error generando cartel:", err);
@@ -972,5 +989,13 @@
       const d = new Date(fechaStr + " UTC");
       return d.toLocaleString("es-ES", { timeZone: "America/Caracas" });
     } catch { return fechaStr; }
+  }
+
+  // Cargar búsqueda desde URL si existe
+  const urlParams = new URLSearchParams(window.location.search);
+  const qParam = urlParams.get("q");
+  if (qParam && queryExact) {
+    queryExact.value = qParam;
+    realizarBusquedaExacta(qParam);
   }
 </script>
