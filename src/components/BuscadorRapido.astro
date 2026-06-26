@@ -703,12 +703,24 @@
       const cartelEl = document.getElementById("cartel-se-busca");
       if (!cartelEl) throw new Error("Cartel element not found");
 
-      const canvas = await html2canvas(cartelEl, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff"
+      // Interceptar document.styleSheets para evitar error oklch de DaisyUI/Tailwind
+      Object.defineProperty(document, "styleSheets", {
+        value: [],
+        writable: true,
+        configurable: true
       });
+
+      let canvas;
+      try {
+        canvas = await html2canvas(cartelEl, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: "#ffffff"
+        });
+      } finally {
+        delete (document as any).styleSheets;
+      }
 
       const blob = await new Promise<Blob>((resolve) => {
         canvas.toBlob((b) => resolve(b!), "image/png");
