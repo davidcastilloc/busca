@@ -1,0 +1,191 @@
+---
+import MapaUbicacion from "./MapaUbicacion.astro";
+import FotoUpload from "./FotoUpload.astro";
+---
+
+<div class="max-w-2xl mx-auto p-4">
+  <form id="form-persona" class="space-y-6">
+    <!-- Bloque 1: Datos Identificación -->
+    <fieldset class="fieldset bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
+      <legend class="fieldset-legend font-black text-lg text-error px-2">1. Identificación de la Persona</legend>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="label"><span class="label-text font-bold">Cédula / Documento</span></label>
+          <input type="text" name="cedula" class="input input-bordered w-full" placeholder="Opcional (ej. V-1234567)" />
+        </div>
+        <div>
+          <label class="label"><span class="label-text font-bold">Nombres *</span></label>
+          <input type="text" name="nombre" required class="input input-bordered w-full" placeholder="Nombres completos" />
+        </div>
+        <div>
+          <label class="label"><span class="label-text font-bold">Apellidos</span></label>
+          <input type="text" name="apellido" class="input input-bordered w-full" placeholder="Apellidos completos" />
+        </div>
+        <div>
+          <label class="label"><span class="label-text font-bold">Edad</span></label>
+          <input type="number" name="edad" min="0" max="120" class="input input-bordered w-full" placeholder="Años" />
+        </div>
+        <div>
+          <label class="label"><span class="label-text font-bold">Sexo *</span></label>
+          <select name="sexo" class="select select-bordered w-full">
+            <option value="X">No especifica / Otro</option>
+            <option value="M">Masculino</option>
+            <option value="F">Femenino</option>
+          </select>
+        </div>
+        <div>
+          <label class="label"><span class="label-text font-bold">Estado Actual *</span></label>
+          <select name="estado" class="select select-bordered w-full font-semibold">
+            <option value="vivo" class="text-success">Vivo / A salvo</option>
+            <option value="herido" class="text-warning">Herido</option>
+            <option value="fallecido" class="text-error">Fallecido</option>
+            <option value="desconocido" class="text-neutral">Desconocido</option>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Bloque 2: Ubicación -->
+    <fieldset class="fieldset bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
+      <legend class="fieldset-legend font-black text-lg text-error px-2">2. Ubicación y Contacto</legend>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="label"><span class="label-text font-bold">Lugar / Sector del Censo</span></label>
+          <input type="text" name="ubicacion_nombre" class="input input-bordered w-full" placeholder="Nombre de calle, sector, plaza o punto de referencia" />
+        </div>
+        
+        <MapaUbicacion />
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="label"><span class="label-text font-bold">Refugio / Albergue</span></label>
+            <input type="text" name="refugio" class="input input-bordered w-full" placeholder="Nombre del refugio actual (si aplica)" />
+          </div>
+          <div>
+            <label class="label"><span class="label-text font-bold">Contacto de la Persona</span></label>
+            <input type="text" name="contacto" class="input input-bordered w-full" placeholder="Teléfono o contacto cercano" />
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Bloque 3: Evidencia y Detalles -->
+    <fieldset class="fieldset bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
+      <legend class="fieldset-legend font-black text-lg text-error px-2">3. Detalles y Evidencia</legend>
+      
+      <div class="space-y-4">
+        <FotoUpload />
+        
+        <div>
+          <label class="label"><span class="label-text font-bold">Notas adicionales / Observaciones</span></label>
+          <textarea name="notas" class="textarea textarea-bordered w-full h-24" placeholder="Cualquier información relevante: estado médico, vestimenta, necesidades..."></textarea>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Notificación emergente (Toast) -->
+    <div id="toast-container" class="toast toast-end toast-bottom z-50 hidden">
+      <div id="toast-message" class="alert alert-info font-semibold">
+        <span>Guardando...</span>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-error btn-block text-white font-bold text-lg shadow-md">
+      💾 Registrar en Censo
+    </button>
+  </form>
+</div>
+
+<script>
+  import { encolarRegistro } from "../lib/offline-queue";
+
+  const form = document.getElementById("form-persona") as HTMLFormElement;
+  const toastContainer = document.getElementById("toast-container");
+  const toastMessage = document.getElementById("toast-message");
+
+  if (form && toastContainer && toastMessage) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+
+      // Parsear tipos
+      const payload = {
+        cedula: data.cedula ? String(data.cedula).trim() : null,
+        nombre: String(data.nombre).trim(),
+        apellido: data.apellido ? String(data.apellido).trim() : null,
+        edad: data.edad ? parseInt(String(data.edad), 10) : null,
+        sexo: data.sexo || "X",
+        estado: data.estado || "desconocido",
+        ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
+        latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
+        longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
+        refugio: data.refugio ? String(data.refugio).trim() : null,
+        contacto: data.contacto ? String(data.contacto).trim() : null,
+        notas: data.notas ? String(data.notas).trim() : null,
+        foto_key: data.foto_key ? String(data.foto_key).trim() : null,
+        fuente: "web"
+      };
+
+      mostrarToast("Procesando registro...", "alert-info");
+
+      if (navigator.onLine) {
+        try {
+          const response = await fetch("/api/personas", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (response.ok) {
+            mostrarToast("✓ Registro enviado con éxito.", "alert-success");
+            form.reset();
+            // Limpiar foto preview si existe
+            document.getElementById("btn-quitar-foto")?.click();
+          } else {
+            const errData = await response.json();
+            throw new Error(errData.error || "Error de validación del servidor");
+          }
+        } catch (err: any) {
+          console.error(err);
+          // Fallback a offline en caso de error de red
+          await guardarOffline(payload);
+        }
+      } else {
+        await guardarOffline(payload);
+      }
+    });
+
+    async function guardarOffline(payload: any) {
+      try {
+        await encolarRegistro("persona", payload);
+        mostrarToast("⚠️ Sin red. Guardado localmente. Se sincronizará automáticamente.", "alert-warning");
+        form.reset();
+        document.getElementById("btn-quitar-foto")?.click();
+
+        // Disparar evento personalizado
+        const event = new CustomEvent("offline-record-added");
+        window.dispatchEvent(event);
+      } catch (e: any) {
+        mostrarToast("❌ Error al guardar localmente: " + e.message, "alert-error");
+      }
+    }
+
+    function mostrarToast(text: string, typeClass: string) {
+      if (!toastContainer || !toastMessage) return;
+      
+      toastMessage.className = `alert ${typeClass} font-semibold shadow-lg border`;
+      toastMessage.innerHTML = `<span>${text}</span>`;
+      toastContainer.classList.remove("hidden");
+
+      setTimeout(() => {
+        toastContainer.classList.add("hidden");
+      }, 5000);
+    }
+  }
+</script>

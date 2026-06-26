@@ -1,0 +1,69 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Navbar from "../components/Navbar.astro";
+import BuscadorRapido from "../components/BuscadorRapido.astro";
+
+export const prerender = false;
+
+let totalCensados = 0;
+let totalDesaparecidos = 0;
+let totalEncontrados = 0;
+
+try {
+  const env = Astro.locals.runtime.env;
+  const { DB } = env;
+
+  if (DB) {
+    const censadosQuery = await DB.prepare("SELECT COUNT(*) as count FROM personas").first<{ count: number }>();
+    totalCensados = censadosQuery?.count || 0;
+
+    const desaparecidosQuery = await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE tipo = 'desaparecido' AND estado_reporte = 'abierto'").first<{ count: number }>();
+    totalDesaparecidos = desaparecidosQuery?.count || 0;
+
+    const encontradosQuery = await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE tipo = 'encontrado' AND estado_reporte = 'abierto'").first<{ count: number }>();
+    totalEncontrados = encontradosQuery?.count || 0;
+  }
+} catch (error) {
+  console.error("Error al obtener estadísticas del censo:", error);
+}
+---
+
+<Layout title="BUSCA - Censo y Búsqueda de Emergencia">
+  <Navbar />
+  
+  <main class="flex-grow py-8 px-4">
+    <!-- Hero Section -->
+    <div class="text-center max-w-2xl mx-auto mb-8 space-y-4">
+      <h1 class="text-4xl md:text-5xl font-black tracking-tight text-base-content">
+        Censo y Búsqueda de Emergencia
+      </h1>
+      <p class="text-lg text-base-content/75">
+        Buscador unificado de personas rescatadas, albergues y reportes de desapariciones. Plataforma optimizada para baja conectividad.
+      </p>
+      
+      <!-- Stats Badges -->
+      <div class="stats bg-base-100 shadow-md border border-base-300 w-full grid grid-cols-3">
+        <div class="stat p-4">
+          <div class="stat-title text-xs md:text-sm font-semibold">Total Censados</div>
+          <div class="stat-value text-xl md:text-2xl font-black text-success">{totalCensados}</div>
+          <div class="stat-desc text-[10px] md:text-xs">En refugios / a salvo</div>
+        </div>
+        
+        <div class="stat p-4 border-l border-base-300">
+          <div class="stat-title text-xs md:text-sm font-semibold">Desaparecidos</div>
+          <div class="stat-value text-xl md:text-2xl font-black text-error">{totalDesaparecidos}</div>
+          <div class="stat-desc text-[10px] md:text-xs">Búsquedas activas</div>
+        </div>
+        
+        <div class="stat p-4 border-l border-base-300">
+          <div class="stat-title text-xs md:text-sm font-semibold">Sin Identificar</div>
+          <div class="stat-value text-xl md:text-2xl font-black text-warning">{totalEncontrados}</div>
+          <div class="stat-desc text-[10px] md:text-xs">Encontrados sin ID</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Buscador principal -->
+    <BuscadorRapido />
+  </main>
+</Layout>

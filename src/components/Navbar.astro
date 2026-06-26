@@ -1,0 +1,41 @@
+---
+import OfflineIndicator from "./OfflineIndicator.astro";
+---
+
+<div class="navbar bg-base-100 shadow-md border-b border-neutral-content sticky top-0 z-50">
+  <div class="flex-1">
+    <a href="/" class="flex items-center gap-2 px-3 font-black text-xl tracking-wider text-error">
+      <img src="/icons/icon-192.png" alt="BUSCA" class="w-8 h-8 rounded-lg shadow-inner object-cover" />
+      <span>BUSCA</span>
+    </a>
+  </div>
+  
+  <div class="flex-none gap-2">
+    <ul class="menu menu-horizontal px-1 font-semibold gap-1">
+      <li>
+        <a href="/" class="hover:bg-neutral-content/10 rounded-lg">
+          🔍 Buscar
+        </a>
+      </li>
+      <li>
+        <a href="/registrar" class="hover:bg-neutral-content/10 rounded-lg">
+          📝 Censo
+        </a>
+      </li>
+      <li>
+        <a href="/reportar" class="hover:bg-neutral-content/10 rounded-lg text-warning">
+          📢 Reportar
+        </a>
+      </li>
+      <li>
+        <a href="/admin/dashboard" class="hover:bg-neutral-content/10 rounded-lg text-info">
+          📊 Panel
+        </a>
+      </li>
+    </ul>
+    
+    <div class="divider divider-horizontal mx-0"></div>
+    
+    <OfflineIndicator />
+  </div>
+</div>

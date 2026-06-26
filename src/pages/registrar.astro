@@ -1,0 +1,22 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Navbar from "../components/Navbar.astro";
+import FormPersona from "../components/FormPersona.astro";
+
+export const prerender = false;
+---
+
+<Layout title="Registrar Persona en Albergue - BUSCA">
+  <Navbar />
+  
+  <main class="flex-grow py-6">
+    <div class="text-center max-w-xl mx-auto mb-6 px-4">
+      <h1 class="text-3xl font-black text-base-content">Censo de Personas</h1>
+      <p class="text-sm text-base-content/70 mt-2">
+        Utiliza este formulario para registrar personas reubicadas en refugios, personas rescatadas o ciudadanos censados en terreno.
+      </p>
+    </div>
+
+    <FormPersona />
+  </main>
+</Layout>

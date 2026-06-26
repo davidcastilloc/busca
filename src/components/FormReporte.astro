@@ -1,0 +1,181 @@
+---
+import MapaUbicacion from "./MapaUbicacion.astro";
+import FotoUpload from "./FotoUpload.astro";
+---
+
+<div class="max-w-2xl mx-auto p-4">
+  <form id="form-reporte" class="space-y-6">
+    <!-- Bloque 1: Datos Reporte -->
+    <fieldset class="fieldset bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
+      <legend class="fieldset-legend font-black text-lg text-warning px-2">1. Detalles del Reporte</legend>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="md:col-span-2">
+          <label class="label"><span class="label-text font-bold">Tipo de Reporte *</span></label>
+          <select name="tipo" class="select select-bordered w-full font-semibold">
+            <option value="desaparecido" class="text-error">Persona Desaparecida (Búsqueda)</option>
+            <option value="encontrado" class="text-success">Persona Encontrada (No Identificada)</option>
+            <option value="refugio" class="text-info">Solicitud / Reporte de Refugio</option>
+            <option value="necesidad" class="text-warning">Necesidad Crítica (Médica, Agua, Comida)</option>
+          </select>
+        </div>
+        
+        <div>
+          <label class="label"><span class="label-text font-bold">Nombre de Persona Involucrada</span></label>
+          <input type="text" name="nombre_buscado" class="input input-bordered w-full" placeholder="Opcional (si se conoce)" />
+        </div>
+        <div>
+          <label class="label"><span class="label-text font-bold">Cédula de Persona Involucrada</span></label>
+          <input type="text" name="cedula_buscado" class="input input-bordered w-full" placeholder="Opcional (si se conoce)" />
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="label"><span class="label-text font-bold">Descripción Detallada *</span></label>
+          <textarea 
+            name="descripcion" 
+            required 
+            minlength="10"
+            class="textarea textarea-bordered w-full h-32" 
+            placeholder="Ej: Hombre de unos 60 años, viste camisa de rayas azul, pantalón marrón. Visto por última vez saliendo de la panadería del centro comercial derrumbado..."
+          ></textarea>
+          <span class="label-text-alt text-base-content/50">Describe características físicas, vestimenta, señas particulares y condiciones. La IA utilizará esta descripción para cruzar reportes.</span>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Bloque 2: Ubicación del Reporte -->
+    <fieldset class="fieldset bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
+      <legend class="fieldset-legend font-black text-lg text-warning px-2">2. Lugar del Reporte</legend>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="label"><span class="label-text font-bold">Dirección / Lugar de Avistamiento</span></label>
+          <input type="text" name="ubicacion_nombre" class="input input-bordered w-full" placeholder="Sector, calle o punto de referencia" />
+        </div>
+        
+        <MapaUbicacion />
+      </div>
+    </fieldset>
+
+    <!-- Bloque 3: Reportante y Evidencia -->
+    <fieldset class="fieldset bg-base-100 border border-base-300 p-6 rounded-box shadow-sm">
+      <legend class="fieldset-legend font-black text-lg text-warning px-2">3. Reportante y Evidencia</legend>
+      
+      <div class="space-y-4">
+        <FotoUpload />
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="label"><span class="label-text font-bold">Tu Nombre (Reportante)</span></label>
+            <input type="text" name="reportante_nombre" class="input input-bordered w-full" placeholder="Opcional" />
+          </div>
+          <div>
+            <label class="label"><span class="label-text font-bold">Tu Contacto (Teléfono/Email)</span></label>
+            <input type="text" name="reportante_contacto" class="input input-bordered w-full" placeholder="Para coordinar rescate" />
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- Toast de estado -->
+    <div id="toast-container-rep" class="toast toast-end toast-bottom z-50 hidden">
+      <div id="toast-message-rep" class="alert alert-info font-semibold">
+        <span>Guardando...</span>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-warning btn-block text-black font-bold text-lg shadow-md">
+      📢 Emitir Reporte de Emergencia
+    </button>
+  </form>
+</div>
+
+<script>
+  import { encolarRegistro } from "../lib/offline-queue";
+
+  const form = document.getElementById("form-reporte") as HTMLFormElement;
+  const toastContainer = document.getElementById("toast-container-rep");
+  const toastMessage = document.getElementById("toast-message-rep");
+
+  if (form && toastContainer && toastMessage) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+
+      if (String(data.descripcion).trim().length < 10) {
+        mostrarToast("❌ La descripción debe tener al menos 10 caracteres.", "alert-error");
+        return;
+      }
+
+      const payload = {
+        tipo: data.tipo || "desaparecido",
+        nombre_buscado: data.nombre_buscado ? String(data.nombre_buscado).trim() : null,
+        cedula_buscado: data.cedula_buscado ? String(data.cedula_buscado).trim() : null,
+        descripcion: String(data.descripcion).trim(),
+        reportante_nombre: data.reportante_nombre ? String(data.reportante_nombre).trim() : null,
+        reportante_contacto: data.reportante_contacto ? String(data.reportante_contacto).trim() : null,
+        ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
+        latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
+        longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
+        foto_key: data.foto_key ? String(data.foto_key).trim() : null
+      };
+
+      mostrarToast("Procesando reporte...", "alert-info");
+
+      if (navigator.onLine) {
+        try {
+          const response = await fetch("/api/reportes", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (response.ok) {
+            mostrarToast("✓ Reporte emitido con éxito.", "alert-success");
+            form.reset();
+            document.getElementById("btn-quitar-foto")?.click();
+          } else {
+            const errData = await response.json();
+            throw new Error(errData.error || "Error al procesar en servidor");
+          }
+        } catch (err: any) {
+          console.error(err);
+          await guardarOffline(payload);
+        }
+      } else {
+        await guardarOffline(payload);
+      }
+    });
+
+    async function guardarOffline(payload: any) {
+      try {
+        await encolarRegistro("reporte", payload);
+        mostrarToast("⚠️ Sin red. Reporte guardado localmente. Se sincronizará al recuperar conexión.", "alert-warning");
+        form.reset();
+        document.getElementById("btn-quitar-foto")?.click();
+
+        // Disparar evento
+        const event = new CustomEvent("offline-record-added");
+        window.dispatchEvent(event);
+      } catch (e: any) {
+        mostrarToast("❌ Error al guardar localmente: " + e.message, "alert-error");
+      }
+    }
+
+    function mostrarToast(text: string, typeClass: string) {
+      if (!toastContainer || !toastMessage) return;
+
+      toastMessage.className = `alert ${typeClass} font-semibold shadow-lg border`;
+      toastMessage.innerHTML = `<span>${text}</span>`;
+      toastContainer.classList.remove("hidden");
+
+      setTimeout(() => {
+        toastContainer.classList.add("hidden");
+      }, 5000);
+    }
+  }
+</script>
