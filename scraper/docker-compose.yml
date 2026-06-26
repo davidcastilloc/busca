@@ -1,0 +1,6 @@
+services:
+  scraper:
+    build: .
+    container_name: vtb-scraper
+    volumes:
+      - ../data:/app/data
