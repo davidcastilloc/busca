@@ -243,6 +243,35 @@ try {
             placeholder="Ej: Albergue Polideportivo, casa de familiares..."
           />
         </div>
+        <div>
+          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="salvo-estado-salud">Tu Estado de Salud *</label>
+          <select id="salvo-estado-salud" class="select w-full font-uber-text uber-body-md">
+            <option value="vivo">A salvo / Sin lesiones</option>
+            <option value="herido">Herido / Requiere asistencia médica</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="salvo-notas">Mensaje rápido o Necesidades</label>
+          <textarea 
+            id="salvo-notas" 
+            rows="2" 
+            class="textarea w-full font-uber-text uber-body-md" 
+            placeholder="Ej: Estoy bien, necesito medicamentos para la tensión."
+          ></textarea>
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text">Foto Evidencia (Opcional)</label>
+          <div class="flex items-center gap-3 bg-canvas-soft border border-canvas-soft p-3 rounded-xl">
+            <input 
+              type="file" 
+              id="salvo-foto-file" 
+              accept="image/*" 
+              class="block w-full text-xs text-mute font-uber-text file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-black-elevated file:cursor-pointer" 
+            />
+            <input type="hidden" id="salvo-foto-key" />
+          </div>
+          <div id="salvo-foto-status" class="text-[10px] text-mute font-uber-text mt-1 italic hidden">Cargando imagen...</div>
+        </div>
         
         <!-- GPS Status Panel -->
         <div class="p-3 bg-canvas-soft rounded-xl flex flex-col gap-1 border border-canvas-soft">
@@ -276,6 +305,27 @@ try {
         <button id="btn-salvo-confirmar-cancelar" type="button" class="btn bg-canvas-soft text-ink flex-1 font-uber-text uber-body-md-strong">Atrás</button>
       </div>
     </div>
+
+    <!-- Panel de Éxito y Compartir -->
+    <div id="salvo-exito-container" class="hidden text-center space-y-4 border-t border-canvas-soft pt-4 animate-fade-in">
+      <div class="text-3xl">🎉</div>
+      <h4 class="font-uber-display text-lg text-ink font-semibold">¡Estado actualizado!</h4>
+      <p class="text-xs text-body font-uber-text">
+        Tu registro ha sido marcado como a salvo. Puedes compartir este reporte con familiares y amigos.
+      </p>
+      
+      <div class="space-y-2 pt-2">
+        <button id="btn-salvo-compartir" class="btn bg-[#25D366] text-white w-full font-uber-text font-semibold flex items-center justify-center gap-2 cursor-pointer">
+          💬 Compartir por WhatsApp
+        </button>
+        <button id="btn-salvo-compartir-copiar" class="btn bg-primary text-white w-full font-uber-text font-semibold flex items-center justify-center gap-2 cursor-pointer">
+          🔗 Copiar enlace de reporte
+        </button>
+        <button id="btn-salvo-listo" class="btn bg-canvas-soft text-ink w-full font-uber-text font-semibold cursor-pointer">
+          Listo / Cerrar
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -294,6 +344,12 @@ try {
   const salvoConfirmarContainer = document.getElementById("salvo-confirmar-container");
   const salvoContacto = document.getElementById("salvo-contacto") as HTMLInputElement;
   const salvoRefugio = document.getElementById("salvo-refugio") as HTMLInputElement;
+  const salvoEstadoSalud = document.getElementById("salvo-estado-salud") as HTMLSelectElement;
+  const salvoNotas = document.getElementById("salvo-notes") as HTMLTextAreaElement;
+  const salvoFotoFile = document.getElementById("salvo-foto-file") as HTMLInputElement;
+  const salvoFotoKey = document.getElementById("salvo-foto-key") as HTMLInputElement;
+  const salvoFotoStatus = document.getElementById("salvo-foto-status");
+
   const btnSalvoGps = document.getElementById("btn-salvo-gps");
   const salvoGpsStatus = document.getElementById("salvo-gps-status");
   const salvoLatitud = document.getElementById("salvo-latitud") as HTMLInputElement;
@@ -302,7 +358,14 @@ try {
   const btnSalvoConfirmarEnviar = document.getElementById("btn-salvo-confirmar-enviar") as HTMLButtonElement;
   const btnSalvoConfirmarCancelar = document.getElementById("btn-salvo-confirmar-cancelar");
 
+  // Panel de éxito
+  const salvoExitoContainer = document.getElementById("salvo-exito-container");
+  const btnSalvoCompartir = document.getElementById("btn-salvo-compartir");
+  const btnSalvoCompartirCopiar = document.getElementById("btn-salvo-compartir-copiar");
+  const btnSalvoListo = document.getElementById("btn-salvo-listo");
+
   let personaIdConfirmar: number | null = null;
+  let personaNombreConfirmar: string = "";
 
   btnEstoyASalvo?.addEventListener("click", () => {
     modalSalvo?.classList.remove("hidden");
@@ -323,12 +386,54 @@ try {
     }
     salvoNoResults?.classList.add("hidden");
     salvoConfirmarContainer?.classList.add("hidden");
+    salvoExitoContainer?.classList.add("hidden");
+    btnCloseSalvo?.classList.remove("hidden");
     personaIdConfirmar = null;
+    personaNombreConfirmar = "";
   }
 
   btnCloseSalvo?.addEventListener("click", cerrarModalSalvo);
   modalSalvo?.addEventListener("click", (e) => {
     if (e.target === modalSalvo) cerrarModalSalvo();
+  });
+
+  // Manejo de carga de foto
+  salvoFotoFile?.addEventListener("change", async (ev) => {
+    const input = ev.currentTarget as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    if (salvoFotoStatus) {
+      salvoFotoStatus.textContent = "Cargando foto de verificación...";
+      salvoFotoStatus.className = "text-[10px] text-yellow-600 font-uber-text mt-1 italic font-medium";
+      salvoFotoStatus.classList.remove("hidden");
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const resp = await fetch("/api/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      if (resp.ok) {
+        const res = await resp.json();
+        if (salvoFotoKey) salvoFotoKey.value = res.key;
+        if (salvoFotoStatus) {
+          salvoFotoStatus.textContent = "✓ Foto cargada correctamente";
+          salvoFotoStatus.className = "text-[10px] text-success font-uber-text mt-1 italic font-semibold";
+        }
+      } else {
+        throw new Error();
+      }
+    } catch {
+      if (salvoFotoStatus) {
+        salvoFotoStatus.textContent = "❌ Error al cargar foto";
+        salvoFotoStatus.className = "text-[10px] text-red-500 font-uber-text mt-1 italic";
+      }
+    }
   });
 
   async function obtenerUbicacionGps() {
@@ -367,6 +472,7 @@ try {
 
   btnSalvoConfirmarCancelar?.addEventListener("click", () => {
     personaIdConfirmar = null;
+    personaNombreConfirmar = "";
     salvoConfirmarContainer?.classList.add("hidden");
     formSalvoBuscar?.classList.remove("hidden");
     if (salvoResults) salvoResults.classList.remove("hidden");
@@ -377,6 +483,9 @@ try {
 
     const contacto = salvoContacto?.value.trim();
     const refugio = salvoRefugio?.value.trim() || null;
+    const estadoSalud = salvoEstadoSalud?.value || "vivo";
+    const notas = salvoNotas?.value.trim() || null;
+    const fotoKey = salvoFotoKey?.value || null;
     const lat = salvoLatitud?.value ? parseFloat(salvoLatitud.value) : null;
     const lon = salvoLongitud?.value ? parseFloat(salvoLongitud.value) : null;
     const confirmado = chkSalvoConfirmacion?.checked;
@@ -400,9 +509,11 @@ try {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          estado: "vivo",
+          estado: estadoSalud,
           contacto,
           refugio,
+          notas,
+          foto_key: fotoKey,
           latitud: lat,
           longitud: lon
         })
@@ -410,9 +521,11 @@ try {
 
       if (patchResp.ok) {
         btnSalvoConfirmarEnviar.textContent = "✓ A salvo";
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+        
+        // Mostrar panel de éxito
+        salvoConfirmarContainer?.classList.add("hidden");
+        btnCloseSalvo?.classList.add("hidden"); // Forzar cerrar por botón Listo
+        salvoExitoContainer?.classList.remove("hidden");
       } else {
         const err = await patchResp.json();
         alert(`Error: ${err.error || "intente de nuevo"}`);
@@ -424,6 +537,27 @@ try {
       btnSalvoConfirmarEnviar.disabled = false;
       btnSalvoConfirmarEnviar.textContent = 'Confirmar "A salvo"';
     }
+  });
+
+  // Listeners de panel de éxito
+  btnSalvoCompartir?.addEventListener("click", () => {
+    const link = `${window.location.origin}/?q=${encodeURIComponent(personaNombreConfirmar)}`;
+    const texto = `¡Hola! He confirmado que estoy a salvo en la plataforma BUSCA. Puedes ver mis detalles aquí: ${link}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, "_blank");
+  });
+
+  btnSalvoCompartirCopiar?.addEventListener("click", () => {
+    const link = `${window.location.origin}/?q=${encodeURIComponent(personaNombreConfirmar)}`;
+    navigator.clipboard.writeText(link);
+    if (btnSalvoCompartirCopiar) btnSalvoCompartirCopiar.textContent = "✓ Enlace copiado";
+    setTimeout(() => {
+      if (btnSalvoCompartirCopiar) btnSalvoCompartirCopiar.textContent = "🔗 Copiar enlace de reporte";
+    }, 2000);
+  });
+
+  btnSalvoListo?.addEventListener("click", () => {
+    cerrarModalSalvo();
+    window.location.reload();
   });
 
   formSalvoBuscar?.addEventListener("submit", async (e) => {
@@ -486,12 +620,20 @@ try {
             // Eventos dinámicos
             card.querySelector(".btn-salvo-marcar")?.addEventListener("click", (ev) => {
               personaIdConfirmar = item.id;
+              personaNombreConfirmar = nombre;
               formSalvoBuscar?.classList.add("hidden");
               if (salvoResults) salvoResults.classList.add("hidden");
               salvoNoResults?.classList.add("hidden");
-
+ 
               if (salvoContacto) salvoContacto.value = "";
               if (salvoRefugio) salvoRefugio.value = "";
+              if (salvoNotas) salvoNotas.value = "";
+              if (salvoFotoFile) salvoFotoFile.value = "";
+              if (salvoFotoKey) salvoFotoKey.value = "";
+              if (salvoFotoStatus) {
+                salvoFotoStatus.textContent = "";
+                salvoFotoStatus.classList.add("hidden");
+              }
               if (chkSalvoConfirmacion) chkSalvoConfirmacion.checked = false;
               if (salvoLatitud) salvoLatitud.value = "";
               if (salvoLongitud) salvoLongitud.value = "";

@@ -40,6 +40,8 @@ export const PATCH: APIRoute = async (context) => {
     const nuevaLat = body.latitud !== undefined ? body.latitud : existente.latitud;
     const nuevaLon = body.longitud !== undefined ? body.longitud : existente.longitud;
     const nuevaUbiNombre = body.ubicacion_nombre !== undefined ? body.ubicacion_nombre : existente.ubicacion_nombre;
+    const nuevasNotas = body.notas !== undefined ? body.notas : existente.notas;
+    const nuevaFotoKey = body.foto_key !== undefined ? body.foto_key : existente.foto_key;
 
     await DB.prepare(`
       UPDATE personas 
@@ -49,9 +51,33 @@ export const PATCH: APIRoute = async (context) => {
           latitud = ?, 
           longitud = ?, 
           ubicacion_nombre = ?, 
+          notas = ?, 
+          foto_key = ?, 
           updated_at = datetime('now') 
       WHERE id = ?
-    `).bind(nuevoEstado, nuevoRefugio, nuevoContacto, nuevaLat, nuevaLon, nuevaUbiNombre, Number(id)).run();
+    `).bind(nuevoEstado, nuevoRefugio, nuevoContacto, nuevaLat, nuevaLon, nuevaUbiNombre, nuevasNotas, nuevaFotoKey, Number(id)).run();
+
+    // Actualización en cascada para resolver reportes de búsqueda relacionados
+    if (["vivo", "herido"].includes(nuevoEstado)) {
+      if (existente.cedula) {
+        await DB.prepare(`
+          UPDATE reportes 
+          SET estado_reporte = 'resuelto', 
+              updated_at = datetime('now') 
+          WHERE cedula_buscado = ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
+        `).bind(existente.cedula).run();
+      }
+      
+      const nombreCompleto = `${existente.nombre} ${existente.apellido || ""}`.trim();
+      if (nombreCompleto.length > 3) {
+        await DB.prepare(`
+          UPDATE reportes 
+          SET estado_reporte = 'resuelto', 
+              updated_at = datetime('now') 
+          WHERE (nombre_buscado LIKE ? OR ? LIKE '%' || nombre_buscado || '%') AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
+        `).bind(`%${nombreCompleto}%`, nombreCompleto).run();
+      }
+    }
 
     return new Response(JSON.stringify({ ok: true, id: Number(id), estado: nuevoEstado }), {
       status: 200,
