@@ -7,7 +7,7 @@ interface Props {
 }
 
 const { 
-  title = "BUSCA - Censo y Búsqueda de Emergencia", 
+  title = "dondeestan.org - Censo y Búsqueda de Emergencia", 
   description = "Plataforma de censo de víctimas, refugios y reporte de personas desaparecidas." 
 } = Astro.props;
 ---
@@ -17,7 +17,9 @@ const {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="preconnect" href="https://api.qrserver.com" />
+    <link rel="preload" as="image" href="/icons/icon-192.png" fetchpriority="high" />
     <meta name="generator" content={Astro.generator} />
     
     <!-- SEO Meta Tags -->
@@ -28,7 +30,7 @@ const {
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#000000" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     

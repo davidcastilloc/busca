@@ -43,7 +43,7 @@ const formatFecha = (fechaStr: string) => {
 };
 ---
 
-<Layout title={flyer ? `${flyer.title} - Cartel de Emergencia` : "Cartel no encontrado - BUSCA"}>
+<Layout title={flyer ? `${flyer.title} - Cartel de Emergencia` : "Cartel no encontrado - dondeestan.org"}>
   <Navbar />
   
   <main class="flex-grow py-8 px-4 max-w-xl mx-auto w-full">
@@ -53,7 +53,7 @@ const formatFecha = (fechaStr: string) => {
           <div class="bg-canvas-soft border border-canvas-soft rounded-xl p-5 shadow-sm font-uber-text uber-body-sm text-ink">
             <div class="font-bold text-base mb-1">🎉 Reporte registrado con éxito</div>
             <p class="text-body">
-              La Inteligencia Artificial de BUSCA ya está procesando y cruzando los datos. Guarda este enlace o descarga la imagen abajo.
+              La plataforma dondeestan.org ya está procesando y cruzando los datos. Guarda este enlace o descarga la imagen abajo.
             </p>
           </div>
         )}
@@ -93,6 +93,8 @@ const formatFecha = (fechaStr: string) => {
                 alt={flyer.title}
                 class="w-full h-full object-cover"
                 crossorigin="anonymous"
+                fetchpriority="high"
+                decoding="sync"
               />
             </div>
 
@@ -109,7 +111,7 @@ const formatFecha = (fechaStr: string) => {
                 {phones.length > 0 && (
                   <div>
                     <h3 class="text-ink uppercase tracking-wider mb-1 font-bold text-[10px]">Llamar a:</h3>
-                    {phones.map(phone => (
+                    {phones.map((phone: string) => (
                       <p class="text-sm font-bold text-ink">{phone}</p>
                     ))}
                   </div>
@@ -118,7 +120,7 @@ const formatFecha = (fechaStr: string) => {
                 {socials.length > 0 && (
                   <div>
                     <h3 class="text-ink uppercase tracking-wider mb-1 font-bold text-[10px]">Redes Sociales:</h3>
-                    {socials.map(social => (
+                    {socials.map((social: string) => (
                       <p class="text-sm font-bold text-ink truncate">{social}</p>
                     ))}
                   </div>
@@ -126,10 +128,24 @@ const formatFecha = (fechaStr: string) => {
               </div>
             )}
 
-            <!-- Footer del Cartel -->
-            <div class="text-[9px] text-body border-t border-canvas-soft pt-2.5 flex justify-between font-uber-text">
-              <span>Creado en BUSCA • {formatFecha(flyer.created_at)}</span>
-              <span class="text-ink tracking-wider uppercase font-bold">Reporte #{id}</span>
+            <!-- Footer del Cartel con Logo, QR y Dominio -->
+            <div class="border-t border-canvas-soft pt-3 mt-4 flex items-center justify-between font-uber-text">
+              <div class="flex items-center gap-2">
+                <div class="font-uber-display text-xl tracking-tighter font-black text-primary flex items-center gap-1">
+                  dondeestan<span class="text-body">.org</span>
+                </div>
+              </div>
+              <div class="flex gap-3 items-center text-right">
+                <div class="flex flex-col text-[9px] text-body uppercase tracking-wider">
+                  <span>Escanea para</span>
+                  <span>más info o</span>
+                  <span>compartir</span>
+                </div>
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${encodeURIComponent(url.href)}`} alt="QR Code" class="w-12 h-12 border border-canvas-soft p-0.5 rounded-sm" crossorigin="anonymous" />
+              </div>
+            </div>
+            <div class="text-[8px] text-body mt-2 flex justify-between font-uber-text">
+              <span>Reporte #{id} • Creado el {formatFecha(flyer.created_at)}</span>
             </div>
           </div>
         </div>

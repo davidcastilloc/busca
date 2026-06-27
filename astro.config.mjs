@@ -8,7 +8,18 @@ export default defineConfig({
   adapter: cloudflare({
     sessionKVBindingName: 'CACHE_KV'
   }),
+  prefetch: {
+    prefetchAll: true,
+    defaultStrategy: 'hover'
+  },
   vite: {
     plugins: [tailwindcss()],
+    build: {
+      minify: 'esbuild',
+      target: 'esnext',
+    },
+    esbuild: {
+      drop: ['console', 'debugger'],
+    }
   },
 });

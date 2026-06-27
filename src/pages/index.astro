@@ -31,7 +31,7 @@ try {
 }
 ---
 
-<Layout title="BUSCA - Censo y Búsqueda de Emergencia">
+<Layout title="dondeestan.org - Censo y Búsqueda de Emergencia">
   <Navbar />
   
   <main class="flex-grow py-6 sm:py-12 px-4 bg-canvas">
@@ -562,7 +562,7 @@ try {
   // Listeners de panel de éxito
   btnSalvoCompartir?.addEventListener("click", () => {
     const link = `${window.location.origin}/?q=${encodeURIComponent(personaNombreConfirmar)}`;
-    const texto = `¡Hola! He confirmado que estoy a salvo en la plataforma BUSCA. Puedes ver mis detalles aquí: ${link}`;
+    const texto = `¡Hola! He confirmado que estoy a salvo en la plataforma dondeestan.org. Puedes ver mis detalles aquí: ${link}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, "_blank");
   });
 
