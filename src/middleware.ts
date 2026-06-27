@@ -3,6 +3,15 @@ import { env } from "cloudflare:workers";
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const url = new URL(context.request.url);
+  const proto = context.request.headers.get("x-forwarded-proto");
+  const host = url.host;
+
+  // Forzar HTTPS en producción
+  if ((url.protocol === "http:" || proto === "http") && !host.includes("localhost") && !host.includes("127.0.0.1")) {
+    const httpsUrl = new URL(context.request.url);
+    httpsUrl.protocol = "https:";
+    return Response.redirect(httpsUrl.toString(), 301);
+  }
 
   // Solo aplicar rate limit a rutas de API, excluyendo la visualización de fotos (GET /api/upload)
   if (url.pathname.startsWith("/api/") && !(url.pathname === "/api/upload" && context.request.method === "GET")) {
