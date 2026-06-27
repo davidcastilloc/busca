@@ -18,6 +18,7 @@ interface Props {
     fuente?: string | null;
     updated_at: string;
     score?: number; // Para búsquedas semánticas
+    verificacion?: string | null;
   };
 }
 
@@ -31,7 +32,11 @@ const estadoConfig = {
   desconocido: { badge: "badge-neutral text-white", border: "border-neutral/30", text: "Desconocido" }
 };
 
-const config = estadoConfig[persona.estado] || estadoConfig.desconocido;
+let config = estadoConfig[persona.estado] || estadoConfig.desconocido;
+
+if (persona.verificacion === "pendiente") {
+  config = { badge: "badge-warning text-black", border: "border-warning/30", text: "A salvo (Sin confirmar)" };
+}
 
 const formatFecha = (fechaStr: string) => {
   try {

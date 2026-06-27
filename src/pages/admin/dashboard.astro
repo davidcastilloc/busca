@@ -19,6 +19,7 @@ let stats = {
 
 let refugios: { refugio: string; count: number }[] = [];
 let personas: any[] = [];
+let pendientes: any[] = [];
 
 try {
   const { DB } = env;
@@ -63,6 +64,11 @@ try {
 
     const personasQuery = await DB.prepare(queryStr).bind(...bindings).all();
     personas = personasQuery.results;
+
+    // 4. Consulta de pendientes de verificación
+    const personasPendientes = await DB.prepare("SELECT *, 'persona' as _tipo_origen FROM personas WHERE verificacion = 'pendiente'").all();
+    const reportesPendientes = await DB.prepare("SELECT *, 'reporte' as _tipo_origen FROM reportes WHERE verificacion = 'pendiente'").all();
+    pendientes = [...(personasPendientes.results || []), ...(reportesPendientes.results || [])];
   }
 } catch (error) {
   console.error("Error al cargar dashboard de administración:", error);
@@ -122,6 +128,94 @@ const formatFecha = (fechaStr: string) => {
         <div class="font-uber-display text-3xl text-ink mt-2">{stats.desconocido}</div>
       </div>
     </div>
+
+    <!-- Sección de Moderación Destacada: Pendientes de Validación -->
+    {pendientes.length > 0 && (
+      <div class="bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm mb-8 animate-fade-in">
+        <h2 class="font-uber-display text-lg text-ink mb-4 flex items-center gap-2">
+          ⚠️ Pendientes de Validación ({pendientes.length})
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {pendientes.map((item: any) => {
+            const esPersona = item._tipo_origen === "persona";
+            const id = item.id;
+            const nombre = esPersona 
+              ? `${item.nombre} ${item.apellido || ""}`
+              : (item.nombre_buscado || "Persona no identificada");
+            
+            const fotoOriginal = item.foto_key;
+            const fotoEvidencia = item.foto_evidencia_key;
+            const contacto = item.contacto_evidencia || item.contacto || "-";
+            const notas = item.notas_evidencia || item.notas || "-";
+
+            return (
+              <div class="border border-canvas-soft bg-canvas rounded-xl p-4 flex flex-col justify-between shadow-sm hover:shadow transition-shadow">
+                <div>
+                  <div class="flex justify-between items-center mb-3">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-body">
+                      {esPersona ? "👤 Censo de Persona" : "📢 Reporte de Desaparición"}
+                    </span>
+                    <span class="text-xs text-yellow-600 font-semibold bg-yellow-100 px-2.5 py-0.5 rounded-full">
+                      Esperando Validación
+                    </span>
+                  </div>
+                  <h3 class="font-uber-display text-base text-ink mb-3 truncate">{nombre}</h3>
+                  
+                  <!-- Fotos comparativas -->
+                  <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="text-center">
+                      <span class="text-[9px] font-semibold text-mute uppercase block mb-1">Foto Original</span>
+                      <div class="aspect-square rounded-lg bg-canvas-soft overflow-hidden flex items-center justify-center border border-canvas-soft">
+                        {fotoOriginal ? (
+                          <img src={`/api/upload?key=${encodeURIComponent(fotoOriginal)}`} alt="Foto original" class="w-full h-full object-contain" />
+                        ) : (
+                          <span class="text-3xl text-mute">👤</span>
+                        )}
+                      </div>
+                    </div>
+                    <div class="text-center">
+                      <span class="text-[9px] font-semibold text-mute uppercase block mb-1">Evidencia</span>
+                      <div class="aspect-square rounded-lg bg-canvas-soft overflow-hidden flex items-center justify-center border border-yellow-500/30">
+                        {fotoEvidencia ? (
+                          <img src={`/api/upload?key=${encodeURIComponent(fotoEvidencia)}`} alt="Foto evidencia" class="w-full h-full object-contain" />
+                        ) : (
+                          <span class="text-3xl text-mute">📷</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Detalles de evidencia -->
+                  <div class="text-xs space-y-1 text-body font-uber-text mb-4 bg-canvas-soft p-3 rounded-lg">
+                    <div><strong>📞 Contacto:</strong> {contacto}</div>
+                    {item.refugio && <div><strong>📍 Refugio:</strong> {item.refugio}</div>}
+                    <div class="line-clamp-3"><strong>📝 Mensaje:</strong> <span class="italic">"{notas}"</span></div>
+                  </div>
+                </div>
+
+                <!-- Acciones -->
+                <div class="flex gap-2 border-t border-canvas-soft pt-3 mt-auto">
+                  <button 
+                    class="btn-aprobar btn bg-success text-white hover:bg-green-700 flex-1 font-uber-text text-xs py-1 min-h-0 h-9 flex items-center justify-center gap-1 cursor-pointer"
+                    data-id={id}
+                    data-tipo={item._tipo_origen}
+                  >
+                    Aprobar
+                  </button>
+                  <button 
+                    class="btn-rechazar btn bg-red-600 text-white hover:bg-red-800 flex-1 font-uber-text text-xs py-1 min-h-0 h-9 flex items-center justify-center gap-1 cursor-pointer"
+                    data-id={id}
+                    data-tipo={item._tipo_origen}
+                  >
+                    Rechazar
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
       <!-- Columna Izquierda: Filtros y Albergues -->
@@ -263,3 +357,81 @@ const formatFecha = (fechaStr: string) => {
     </div>
   </main>
 </Layout>
+
+<!-- Script de acciones del administrador para moderar reportes de a salvo -->
+<script>
+  const botonesAprobar = document.querySelectorAll(".btn-aprobar");
+  const botonesRechazar = document.querySelectorAll(".btn-rechazar");
+
+  botonesAprobar.forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      const id = target.getAttribute("data-id");
+      const tipo = target.getAttribute("data-tipo");
+      if (!id || !tipo) return;
+
+      if (!confirm("¿Confirmar y marcar esta persona/reporte como verificado a salvo?")) return;
+
+      target.disabled = true;
+      target.textContent = "Aprobando...";
+
+      try {
+        const endpoint = tipo === "persona" ? `/api/personas/${id}` : `/api/reportes/${id}`;
+        const resp = await fetch(endpoint, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accion: "aprobar_a_salvo" })
+        });
+
+        if (resp.ok) {
+          window.location.reload();
+        } else {
+          const err = await resp.json();
+          alert(`Error: ${err.error}`);
+          target.disabled = false;
+          target.textContent = "Aprobar";
+        }
+      } catch {
+        alert("Error de conexión");
+        target.disabled = false;
+        target.textContent = "Aprobar";
+      }
+    });
+  });
+
+  botonesRechazar.forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      const id = target.getAttribute("data-id");
+      const tipo = target.getAttribute("data-tipo");
+      if (!id || !tipo) return;
+
+      if (!confirm("¿Rechazar este reporte de a salvo? La persona/reporte volverá a su estado anterior.")) return;
+
+      target.disabled = true;
+      target.textContent = "Rechazando...";
+
+      try {
+        const endpoint = tipo === "persona" ? `/api/personas/${id}` : `/api/reportes/${id}`;
+        const resp = await fetch(endpoint, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accion: "rechazar_a_salvo" })
+        });
+
+        if (resp.ok) {
+          window.location.reload();
+        } else {
+          const err = await resp.json();
+          alert(`Error: ${err.error}`);
+          target.disabled = false;
+          target.textContent = "Rechazar";
+        }
+      } catch {
+        alert("Error de conexión");
+        target.disabled = false;
+        target.textContent = "Rechazar";
+      }
+    });
+  });
+</script>

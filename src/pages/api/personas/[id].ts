@@ -34,15 +34,136 @@ export const PATCH: APIRoute = async (context) => {
       });
     }
 
-    const nuevoEstado = body.estado || existente.estado;
-    const nuevoRefugio = body.refugio !== undefined ? body.refugio : existente.refugio;
-    const nuevoContacto = body.contacto !== undefined ? body.contacto : existente.contacto;
-    const nuevaLat = body.latitud !== undefined ? body.latitud : existente.latitud;
-    const nuevaLon = body.longitud !== undefined ? body.longitud : existente.longitud;
-    const nuevaUbiNombre = body.ubicacion_nombre !== undefined ? body.ubicacion_nombre : existente.ubicacion_nombre;
-    const nuevasNotas = body.notas !== undefined ? body.notas : existente.notas;
-    const nuevaFotoKey = body.foto_key !== undefined ? body.foto_key : existente.foto_key;
+    let nuevoEstado = body.estado || existente.estado;
+    let nuevoRefugio = body.refugio !== undefined ? body.refugio : existente.refugio;
+    let nuevoContacto = body.contacto !== undefined ? body.contacto : existente.contacto;
+    let nuevaLat = body.latitud !== undefined ? body.latitud : existente.latitud;
+    let nuevaLon = body.longitud !== undefined ? body.longitud : existente.longitud;
+    let nuevaUbiNombre = body.ubicacion_nombre !== undefined ? body.ubicacion_nombre : existente.ubicacion_nombre;
+    let nuevasNotas = body.notas !== undefined ? body.notas : existente.notas;
+    let nuevaFotoKey = body.foto_key !== undefined ? body.foto_key : existente.foto_key;
 
+    let nuevaVerificacion = existente.verificacion || "ninguna";
+    let nuevaFotoEvidencia = existente.foto_evidencia_key || null;
+    let nuevoContactoEvidencia = existente.contacto_evidencia || null;
+    let nuevasNotasEvidencia = existente.notas_evidencia || null;
+
+    const accion = body.accion;
+
+    if (accion === "reportar_a_salvo") {
+      if (!body.foto_key) {
+        return new Response(JSON.stringify({ error: "Foto de evidencia es obligatoria para auto-reporte." }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      if (!body.contacto) {
+        return new Response(JSON.stringify({ error: "Contacto telefónico es obligatorio para auto-reporte." }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      
+      nuevoEstado = body.estado || "vivo";
+      nuevaVerificacion = "pendiente";
+      nuevaFotoEvidencia = body.foto_key;
+      nuevoContactoEvidencia = body.contacto;
+      nuevasNotasEvidencia = body.notas || null;
+      
+      await DB.prepare(`
+        UPDATE personas 
+        SET estado = ?, 
+            refugio = ?, 
+            contacto = ?, 
+            latitud = ?, 
+            longitud = ?, 
+            ubicacion_nombre = ?, 
+            notas = ?, 
+            verificacion = ?,
+            foto_evidencia_key = ?,
+            contacto_evidencia = ?,
+            notas_evidencia = ?,
+            updated_at = datetime('now') 
+        WHERE id = ?
+      `).bind(
+        nuevoEstado, 
+        nuevoRefugio, 
+        nuevoContacto, 
+        nuevaLat, 
+        nuevaLon, 
+        nuevaUbiNombre, 
+        nuevasNotas, 
+        nuevaVerificacion,
+        nuevaFotoEvidencia,
+        nuevoContactoEvidencia,
+        nuevasNotasEvidencia,
+        Number(id)
+      ).run();
+
+      return new Response(JSON.stringify({ ok: true, id: Number(id), estado: nuevoEstado, verificacion: nuevaVerificacion }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    if (accion === "aprobar_a_salvo") {
+      nuevaVerificacion = "verificado";
+      
+      await DB.prepare(`
+        UPDATE personas 
+        SET verificacion = ?,
+            updated_at = datetime('now') 
+        WHERE id = ?
+      `).bind(nuevaVerificacion, Number(id)).run();
+
+      // Resolvemos reportes de búsqueda en cascada
+      if (existente.cedula) {
+        await DB.prepare(`
+          UPDATE reportes 
+          SET estado_reporte = 'resuelto', 
+              updated_at = datetime('now') 
+          WHERE cedula_buscado = ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
+        `).bind(existente.cedula).run();
+      }
+      
+      const nombreCompleto = `${existente.nombre} ${existente.apellido || ""}`.trim();
+      if (nombreCompleto.length > 3) {
+        await DB.prepare(`
+          UPDATE reportes 
+          SET estado_reporte = 'resuelto', 
+              updated_at = datetime('now') 
+          WHERE nombre_buscado LIKE ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
+        `).bind(`%${nombreCompleto}%`).run();
+      }
+
+      return new Response(JSON.stringify({ ok: true, id: Number(id), estado: existente.estado, verificacion: nuevaVerificacion }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    if (accion === "rechazar_a_salvo") {
+      nuevoEstado = "desconocido";
+      nuevaVerificacion = "ninguna";
+
+      await DB.prepare(`
+        UPDATE personas 
+        SET estado = ?,
+            verificacion = ?,
+            foto_evidencia_key = NULL,
+            contacto_evidencia = NULL,
+            notas_evidencia = NULL,
+            updated_at = datetime('now') 
+        WHERE id = ?
+      `).bind(nuevoEstado, nuevaVerificacion, Number(id)).run();
+
+      return new Response(JSON.stringify({ ok: true, id: Number(id), estado: nuevoEstado, verificacion: nuevaVerificacion }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // Comportamiento normal (PATCH clásico sin accion)
     await DB.prepare(`
       UPDATE personas 
       SET estado = ?, 
@@ -57,8 +178,8 @@ export const PATCH: APIRoute = async (context) => {
       WHERE id = ?
     `).bind(nuevoEstado, nuevoRefugio, nuevoContacto, nuevaLat, nuevaLon, nuevaUbiNombre, nuevasNotas, nuevaFotoKey, Number(id)).run();
 
-    // Actualización en cascada para resolver reportes de búsqueda relacionados
-    if (["vivo", "herido"].includes(nuevoEstado)) {
+    // Actualización en cascada clásica si no es pendiente y es vivo/herido
+    if (["vivo", "herido"].includes(nuevoEstado) && nuevaVerificacion !== "pendiente") {
       if (existente.cedula) {
         await DB.prepare(`
           UPDATE reportes 
