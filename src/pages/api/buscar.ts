@@ -33,22 +33,32 @@ export const GET: APIRoute = async (context) => {
       });
     }
 
-    const term = `%${query}%`;
+    const tokens = query.split(/\s+/).filter(t => t.length > 0);
+    const isNumeric = /^\d+$/.test(query);
+
     const results: any[] = [];
     let hasMorePersonas = false;
     let hasMoreReportes = false;
 
     if (tipo === "personas" || tipo === "todos") {
-      const personasRes = await DB.prepare(`
-        SELECT * FROM personas 
-        WHERE cedula = ? 
-           OR nombre LIKE ? 
-           OR apellido LIKE ? 
-           OR ubicacion_nombre LIKE ?
-           OR refugio LIKE ?
-        ORDER BY updated_at DESC
-        LIMIT ? OFFSET ?
-      `).bind(query, term, term, term, term, limit, offset).all();
+      let queryStr = "SELECT * FROM personas";
+      const params: any[] = [];
+
+      if (isNumeric) {
+        queryStr += " WHERE cedula = ?";
+        params.push(query);
+      } else if (tokens.length > 0) {
+        queryStr += " WHERE " + tokens.map(token => {
+          const t = `%${token}%`;
+          params.push(t, t, t, t);
+          return "(nombre LIKE ? OR apellido LIKE ? OR ubicacion_nombre LIKE ? OR refugio LIKE ?)";
+        }).join(" AND ");
+      }
+
+      queryStr += " ORDER BY updated_at DESC LIMIT ? OFFSET ?";
+      params.push(limit, offset);
+
+      const personasRes = await DB.prepare(queryStr).bind(...params).all();
       
       if (personasRes.results) {
         results.push(...personasRes.results.map((p: any) => ({ ...p, _source: "persona" })));
@@ -59,14 +69,24 @@ export const GET: APIRoute = async (context) => {
     }
 
     if (tipo === "reportes" || tipo === "todos") {
-      const reportesRes = await DB.prepare(`
-        SELECT * FROM reportes
-        WHERE cedula_buscado = ?
-           OR nombre_buscado LIKE ?
-           OR ubicacion_nombre LIKE ?
-        ORDER BY updated_at DESC
-        LIMIT ? OFFSET ?
-      `).bind(query, term, term, limit, offset).all();
+      let queryStr = "SELECT * FROM reportes";
+      const params: any[] = [];
+
+      if (isNumeric) {
+        queryStr += " WHERE cedula_buscado = ?";
+        params.push(query);
+      } else if (tokens.length > 0) {
+        queryStr += " WHERE " + tokens.map(token => {
+          const t = `%${token}%`;
+          params.push(t, t);
+          return "(nombre_buscado LIKE ? OR ubicacion_nombre LIKE ?)";
+        }).join(" AND ");
+      }
+
+      queryStr += " ORDER BY updated_at DESC LIMIT ? OFFSET ?";
+      params.push(limit, offset);
+
+      const reportesRes = await DB.prepare(queryStr).bind(...params).all();
       
       if (reportesRes.results) {
         results.push(...reportesRes.results.map((r: any) => ({ ...r, _source: "reporte" })));
