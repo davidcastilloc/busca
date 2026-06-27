@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
+import { obtenerVoluntarioSesion } from "../../../lib/auth-helpers";
 
 export const prerender = false;
 
@@ -39,8 +40,44 @@ export const GET: APIRoute = async (context) => {
 export const POST: APIRoute = async (context) => {
   try {
     const { DB } = env;
+    if (!DB) {
+      return new Response(JSON.stringify({ error: "Base de datos no disponible." }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // Verificar sesión de voluntario
+    const sessionToken = context.cookies.get("session_token")?.value;
+    const voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
+    if (!voluntario) {
+      return new Response(JSON.stringify({ error: "Acceso no autorizado. Debe iniciar sesión como voluntario." }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
     const body = await context.request.json();
-    const { nombre, direccion, latitud, longitud, capacidad_maxima, ocupacion_actual, necesidades, contacto } = body;
+    const { 
+      nombre, 
+      direccion, 
+      latitud, 
+      longitud, 
+      capacidad_maxima, 
+      ocupacion_actual, 
+      necesidades, 
+      contacto,
+      // Nuevos campos
+      tipo,
+      encargado,
+      ninos,
+      bebes_lactantes,
+      adultos_mayores,
+      personal_profesional,
+      voluntarios,
+      inventario,
+      fecha_registro
+    } = body;
 
     // Validar requeridos
     if (!nombre || !latitud || !longitud) {
@@ -62,8 +99,13 @@ export const POST: APIRoute = async (context) => {
 
     // Insertar en D1
     const res = await DB.prepare(`
-      INSERT INTO refugios (nombre, direccion, latitud, longitud, capacidad_maxima, ocupacion_actual, necesidades, contacto, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO refugios (
+        nombre, direccion, latitud, longitud, capacidad_maxima, ocupacion_actual, 
+        necesidades, contacto, tipo, encargado, ninos, bebes_lactantes, 
+        adultos_mayores, personal_profesional, voluntarios, inventario, 
+        fecha_registro, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       RETURNING id
     `).bind(
       nombre.trim(),
@@ -73,7 +115,16 @@ export const POST: APIRoute = async (context) => {
       capacidad_maxima ? parseInt(capacidad_maxima) : 100,
       ocupacion_actual ? parseInt(ocupacion_actual) : 0,
       necesidades ? necesidades.trim() : null,
-      contacto ? contacto.trim() : null
+      contacto ? contacto.trim() : null,
+      tipo || 'refugio',
+      encargado ? encargado.trim() : null,
+      ninos ? parseInt(ninos) : 0,
+      bebes_lactantes ? parseInt(bebes_lactantes) : 0,
+      adultos_mayores ? parseInt(adultos_mayores) : 0,
+      personal_profesional ? parseInt(personal_profesional) : 0,
+      voluntarios ? parseInt(voluntarios) : 0,
+      inventario ? (typeof inventario === 'string' ? inventario : JSON.stringify(inventario)) : null,
+      fecha_registro || null
     ).first<{ id: number }>();
 
     return new Response(JSON.stringify({ success: true, id: res?.id }), {
