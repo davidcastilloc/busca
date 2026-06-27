@@ -92,7 +92,9 @@ export const PATCH: APIRoute = async (context) => {
       personal_profesional,
       voluntarios,
       inventario,
-      fecha_registro
+      fecha_registro,
+      latitud,
+      longitud
     } = body;
 
     // Construir campos de actualización
@@ -151,9 +153,13 @@ export const PATCH: APIRoute = async (context) => {
       fields.push("inventario = ?");
       params.push(inventario ? (typeof inventario === 'string' ? inventario : JSON.stringify(inventario)) : null);
     }
-    if (fecha_registro !== undefined) {
-      fields.push("fecha_registro = ?");
-      params.push(fecha_registro || null);
+    if (latitud !== undefined) {
+      fields.push("latitud = ?");
+      params.push(latitud !== null && latitud !== "" ? parseFloat(latitud) : null);
+    }
+    if (longitud !== undefined) {
+      fields.push("longitud = ?");
+      params.push(longitud !== null && longitud !== "" ? parseFloat(longitud) : null);
     }
 
     if (fields.length === 0) {
@@ -163,7 +169,8 @@ export const PATCH: APIRoute = async (context) => {
       });
     }
 
-    // Agregar fecha de actualización
+    // Agregar fecha de censo y de actualización automáticas
+    fields.push("fecha_registro = datetime('now')");
     fields.push("updated_at = datetime('now')");
 
     // Parámetro ID final

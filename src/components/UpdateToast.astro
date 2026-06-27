@@ -35,11 +35,34 @@
 </style>
 
 <script>
-  const toast = document.getElementById("update-toast");
-  const updateBtn = document.getElementById("update-btn");
-  const dismissBtn = document.getElementById("update-dismiss");
-
   let waitingWorker: ServiceWorker | null = null;
+
+  function setupUpdateToast() {
+    const toast = document.getElementById("update-toast");
+    const updateBtn = document.getElementById("update-btn");
+    const dismissBtn = document.getElementById("update-dismiss");
+
+    if (!toast || !updateBtn || !dismissBtn) return;
+
+    // Si ya tenemos un worker esperando de antes, mostrar el toast
+    if (waitingWorker) {
+      toast.classList.remove("hidden");
+    }
+
+    // Usar propiedades directas para evitar acumulacion de listeners en transiciones
+    updateBtn.onclick = () => {
+      if (waitingWorker) {
+        waitingWorker.postMessage({ type: "SKIP_WAITING" });
+      }
+    };
+
+    dismissBtn.onclick = () => {
+      toast.classList.add("hidden");
+    };
+  }
+
+  // Registrar inicializador para cada carga de pagina (soporta ClientRouter)
+  document.addEventListener("astro:page-load", setupUpdateToast);
 
   if ("serviceWorker" in navigator && !import.meta.env.DEV) {
     navigator.serviceWorker.ready.then((registration) => {
@@ -74,23 +97,9 @@
   }
 
   function mostrarToast() {
+    const toast = document.getElementById("update-toast");
     if (toast) {
       toast.classList.remove("hidden");
     }
-  }
-
-  if (updateBtn) {
-    updateBtn.addEventListener("click", () => {
-      if (waitingWorker) {
-        // Decirle al SW que se active ya
-        waitingWorker.postMessage({ type: "SKIP_WAITING" });
-      }
-    });
-  }
-
-  if (dismissBtn) {
-    dismissBtn.addEventListener("click", () => {
-      if (toast) toast.classList.add("hidden");
-    });
   }
 </script>

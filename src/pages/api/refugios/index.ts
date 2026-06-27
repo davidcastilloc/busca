@@ -105,7 +105,7 @@ export const POST: APIRoute = async (context) => {
         adultos_mayores, personal_profesional, voluntarios, inventario, 
         fecha_registro, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       RETURNING id
     `).bind(
       nombre.trim(),
@@ -123,8 +123,7 @@ export const POST: APIRoute = async (context) => {
       adultos_mayores ? parseInt(adultos_mayores) : 0,
       personal_profesional ? parseInt(personal_profesional) : 0,
       voluntarios ? parseInt(voluntarios) : 0,
-      inventario ? (typeof inventario === 'string' ? inventario : JSON.stringify(inventario)) : null,
-      fecha_registro || null
+      inventario ? (typeof inventario === 'string' ? inventario : JSON.stringify(inventario)) : null
     ).first<{ id: number }>();
 
     return new Response(JSON.stringify({ success: true, id: res?.id }), {
