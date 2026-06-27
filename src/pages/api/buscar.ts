@@ -79,8 +79,8 @@ export const GET: APIRoute = async (context) => {
     const hasMore = hasMorePersonas || hasMoreReportes;
     const responseBody = JSON.stringify({ results, hasMore });
 
-    // Cachear en KV por 30 segundos (búsquedas dinámicas más cortas)
-    await CACHE_KV.put(cacheKey, responseBody, { expirationTtl: 30 });
+    // Cachear en KV por 60 segundos (mínimo requerido por Cloudflare KV)
+    await CACHE_KV.put(cacheKey, responseBody, { expirationTtl: 60 });
 
     return new Response(responseBody, {
       status: 200,
