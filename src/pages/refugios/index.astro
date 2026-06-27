@@ -28,11 +28,15 @@ try {
 ---
 
 <Layout title="Refugios y Centros de Acopio - dondeestan.org">
+  <!-- Leaflet CSS y JS para mapas de emergencia -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
   <Navbar />
   
   <main class="flex-grow py-6 sm:py-12 px-4 bg-canvas max-w-4xl mx-auto w-full">
     <!-- Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
       <div>
         <h1 class="font-uber-display text-2xl sm:text-3xl text-ink tracking-tight">
           Refugios y Centros de Acopio
@@ -46,8 +50,33 @@ try {
       </a>
     </div>
 
-    <!-- Buscador de Refugios -->
-    <div class="mb-6">
+    <!-- Mapa Interactivo -->
+    <div class="mb-6 relative">
+      <div id="mapa-refugios" class="w-full h-80 sm:h-96 rounded-xl border border-canvas-soft shadow-sm z-0"></div>
+      <button type="button" id="btn-geolocalizar" class="absolute bottom-4 right-4 z-[400] w-10 h-10 bg-white border border-canvas-soft rounded-full shadow-md hover:bg-canvas-soft active:scale-95 transition-transform flex items-center justify-center cursor-pointer text-lg" title="Encontrar mi ubicación">
+        📍
+      </button>
+    </div>
+
+    <!-- Filtros Rápidos y Buscador -->
+    <div class="space-y-4 mb-6">
+      <!-- Filtros por tipo -->
+      <div class="flex flex-wrap gap-2 overflow-x-auto pb-1 scrollbar-none" id="tipo-filtros">
+        <button type="button" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border border-canvas-soft bg-primary text-white cursor-pointer transition-all" data-tipo="todos">
+          Todos
+        </button>
+        <button type="button" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border border-canvas-soft bg-canvas text-ink hover:bg-canvas-soft cursor-pointer transition-all" data-tipo="refugio">
+          🏠 Refugios
+        </button>
+        <button type="button" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border border-canvas-soft bg-canvas text-ink hover:bg-canvas-soft cursor-pointer transition-all" data-tipo="centro_acopio">
+          📦 Centros de Acopio
+        </button>
+        <button type="button" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border border-canvas-soft bg-canvas text-ink hover:bg-canvas-soft cursor-pointer transition-all" data-tipo="hospital">
+          🏥 Hospitales / Salud
+        </button>
+      </div>
+
+      <!-- Buscador por texto -->
       <input 
         type="text" 
         id="search-refugios" 
@@ -119,9 +148,18 @@ try {
           return (
             <div 
               class="refugio-card bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm space-y-4 transition-all hover:shadow-md"
+              data-id={r.id}
               data-nombre={r.nombre.toLowerCase()}
               data-direccion={(r.direccion || "").toLowerCase()}
               data-necesidades={(r.necesidades || "").toLowerCase()}
+              data-tipo={r.tipo || "refugio"}
+              data-lat={r.latitud || ""}
+              data-lng={r.longitud || ""}
+              data-ocupacion={ocupacion}
+              data-capacidad={capacidad}
+              data-contacto={r.contacto || ""}
+              data-encargado={r.encargado || ""}
+              data-semaforo={itemsCriticos.length > 0 ? "rojo" : itemsAlerta.length > 0 ? "amarillo" : "verde"}
             >
               <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                 <div>
@@ -406,28 +444,396 @@ try {
   </div>
 </Layout>
 
-<script>
-  const searchInput = document.getElementById("search-refugios") as HTMLInputElement;
-  const cards = document.querySelectorAll(".refugio-card");
+<style is:global>
+  /* Marcadores personalizados para el mapa de emergencia */
+  .custom-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 2px solid white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 2px 4px -2px rgba(0, 0, 0, 0.15);
+    width: 32px;
+    height: 32px;
+    position: relative;
+    color: white;
+    font-size: 14px;
+  }
+  
+  .marker-refugio {
+    background-color: #2563eb; /* Azul */
+  }
+  
+  .marker-acopio {
+    background-color: #d97706; /* Naranja/Amarillo */
+  }
+  
+  .marker-hospital {
+    background-color: #dc2626; /* Rojo */
+  }
 
-  // Filtro en el cliente
-  searchInput?.addEventListener("input", () => {
-    const term = searchInput.value.toLowerCase().trim();
+  .custom-marker-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 9999px;
+    border: 1.5px solid white;
+  }
+
+  .badge-verde {
+    background-color: #16a34a;
+  }
+
+  .badge-amarillo {
+    background-color: #fbbf24;
+  }
+
+  .badge-rojo {
+    background-color: #dc2626;
+  }
+
+  .custom-marker-pulse {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 9999px;
+    background-color: #dc2626;
+    animation: marker-pulse-anim 1.5s infinite;
+  }
+
+  @keyframes marker-pulse-anim {
+    0% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+    }
+    70% {
+      transform: scale(1);
+      box-shadow: 0 0 0 6px rgba(220, 38, 38, 0);
+    }
+    100% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+    }
+  }
+
+  /* Indicador de posición del usuario */
+  .user-location-marker {
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background-color: #3b82f6;
+    border: 2px solid white;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+    position: relative;
+  }
+
+  .user-location-pulse {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 9999px;
+    background-color: rgba(59, 130, 246, 0.4);
+    animation: user-pulse 2s infinite;
+  }
+
+  @keyframes user-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(3.5);
+      opacity: 0;
+    }
+  }
+
+  /* Ajustes del Popup de Leaflet */
+  .leaflet-popup-content-wrapper {
+    border-radius: 12px;
+    padding: 2px;
+    border: 1px solid var(--canvas-soft);
+  }
+  .leaflet-popup-content {
+    margin: 8px 12px;
+  }
+</style>
+
+<script>
+  let esVoluntario = false;
+  // Obtener estado de voluntario desde el botón del DOM
+  const btnEdits = document.querySelectorAll(".btn-edit-refugio");
+  if (btnEdits.length > 0) {
+    esVoluntario = true;
+  }
+
+  // Elementos UI
+  const searchInput = document.getElementById("search-refugios") as HTMLInputElement;
+  const filterBtns = document.querySelectorAll(".filter-btn");
+  const cards = document.querySelectorAll(".refugio-card");
+  const btnGeolocalizar = document.getElementById("btn-geolocalizar");
+
+  // Instancia de Mapa Leaflet
+  let map: any = null;
+  const marcadores = new Map<string, any>();
+  let userMarker: any = null;
+
+  // Inicializar Mapa
+  function initMap() {
+    const mapDiv = document.getElementById("mapa-refugios");
+    if (!mapDiv) return;
+
+    // Centrar en Venezuela por defecto
+    // @ts-ignore
+    map = L.map("mapa-refugios", {
+      zoomControl: false // Desactivamos por defecto para colocar controles personalizados si se requiere
+    }).setView([8.0, -66.0], 6);
+
+    // Añadir control de Zoom abajo a la derecha
+    // @ts-ignore
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+    // Capa de mosaicos (Tiles)
+    // @ts-ignore
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    // Crear marcadores desde los datos del DOM de las tarjetas
     cards.forEach((card) => {
       const el = card as HTMLElement;
+      const id = el.dataset.id || "";
+      const latRaw = el.dataset.lat;
+      const lngRaw = el.dataset.lng;
+      const nombre = el.dataset.nombre || "";
+      const direccion = el.dataset.direccion || "";
+      const tipo = el.dataset.tipo || "refugio";
+      const ocupacion = el.dataset.ocupacion || "0";
+      const capacidad = el.dataset.capacidad || "100";
+      const contacto = el.dataset.contacto || "";
+      const semaforo = el.dataset.semaforo || "verde";
+
+      if (!latRaw || !lngRaw) return;
+
+      const lat = parseFloat(latRaw);
+      const lng = parseFloat(lngRaw);
+
+      if (isNaN(lat) || isNaN(lng)) return;
+
+      // Definir emoji e icono del marcador según tipo y semáforo
+      let emoji = "🏠";
+      let classTipo = "marker-refugio";
+      if (tipo === "hospital") {
+        emoji = "🏥";
+        classTipo = "marker-hospital";
+      } else if (tipo === "centro_acopio") {
+        emoji = "📦";
+        classTipo = "marker-acopio";
+      }
+
+      // Badge indicador de inventario en marcador
+      let badgeHTML = "";
+      if (semaforo === "rojo") {
+        badgeHTML = `<div class="custom-marker-pulse"></div><div class="custom-marker-badge badge-rojo"></div>`;
+      } else if (semaforo === "amarillo") {
+        badgeHTML = `<div class="custom-marker-badge badge-amarillo"></div>`;
+      } else {
+        badgeHTML = `<div class="custom-marker-badge badge-verde"></div>`;
+      }
+
+      // Crear el DivIcon personalizado
+      // @ts-ignore
+      const customIcon = L.divIcon({
+        html: `<div class="custom-marker ${classTipo}">${emoji}${badgeHTML}</div>`,
+        className: "", // Limpiar clase por defecto de Leaflet
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -32]
+      });
+
+      // Crear popup
+      let semaforoText = "🟢 Estable";
+      let semaforoColor = "text-green-600";
+      if (semaforo === "rojo") {
+        semaforoText = "🔴 Insumos Críticos";
+        semaforoColor = "text-red-600 font-bold";
+      } else if (semaforo === "amarillo") {
+        semaforoText = "🟡 Alertas de Insumo";
+        semaforoColor = "text-amber-600 font-semibold";
+      }
+
+      const popupHTML = `
+        <div class="p-1.5 space-y-2 max-w-[240px] font-uber-text">
+          <div class="flex items-center gap-1.5">
+            <span class="text-base">${emoji}</span>
+            <h4 class="font-bold text-ink text-sm leading-tight capitalize">${nombre}</h4>
+          </div>
+          <p class="text-[10px] text-body leading-normal">📍 ${direccion || 'Sin dirección registrada'}</p>
+          <div class="flex flex-col gap-1 text-[11px] bg-canvas-soft p-2 rounded-lg border border-canvas-soft">
+            <div>👥 Ocupación: <strong class="text-ink">${ocupacion} / ${capacidad} pers.</strong></div>
+            <div>📦 Inventario: <span class="font-semibold ${semaforoColor}">${semaforoText}</span></div>
+            ${contacto ? `<div>📞 Contacto: <strong class="text-ink">${contacto}</strong></div>` : ''}
+          </div>
+          <div class="flex flex-col gap-1.5 pt-1">
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" rel="noopener noreferrer" class="btn btn-xs bg-primary text-white hover:bg-black-elevated text-center py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 no-underline">
+              🚗 Cómo llegar
+            </a>
+            ${esVoluntario ? `
+              <button type="button" class="btn-mapa-edit btn btn-xs bg-canvas text-ink hover:bg-canvas-soft border border-canvas-soft text-center py-2 rounded-lg text-[10px] font-semibold cursor-pointer" data-id="${id}">
+                ✏️ Actualizar Estado
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+
+      // @ts-ignore
+      const marker = L.marker([lat, lng], { icon: customIcon }).bindPopup(popupHTML);
+      marker.addTo(map);
+      marcadores.set(id, marker);
+    });
+
+    // Si hay marcadores, ajustar el mapa para que muestre todos (si es más de 0)
+    if (marcadores.size > 0) {
+      // @ts-ignore
+      const group = new L.featureGroup(Array.from(marcadores.values()));
+      map.fitBounds(group.getBounds().pad(0.15));
+    }
+  }
+
+  // Filtro de Búsqueda y Tipo
+  function filtrarCentros() {
+    const term = searchInput.value.toLowerCase().trim();
+    // Obtener tipo activo
+    const activeBtn = document.querySelector(".filter-btn.bg-primary") as HTMLElement;
+    const tipoActivo = activeBtn ? activeBtn.dataset.tipo : "todos";
+
+    cards.forEach((card) => {
+      const el = card as HTMLElement;
+      const id = el.dataset.id || "";
       const nombre = el.dataset.nombre || "";
       const direccion = el.dataset.direccion || "";
       const necesidades = el.dataset.necesidades || "";
+      const tipo = el.dataset.tipo || "";
 
-      if (nombre.includes(term) || direccion.includes(term) || necesidades.includes(term)) {
+      const coincideTexto = nombre.includes(term) || direccion.includes(term) || necesidades.includes(term);
+      const coincideTipo = tipoActivo === "todos" || tipo === tipoActivo;
+
+      const marker = marcadores.get(id);
+
+      if (coincideTexto && coincideTipo) {
         el.classList.remove("hidden");
+        if (marker && map) {
+          marker.addTo(map);
+        }
       } else {
         el.classList.add("hidden");
+        if (marker && map) {
+          map.removeLayer(marker);
+        }
       }
+    });
+  }
+
+  // Escuchar entrada de búsqueda
+  searchInput?.addEventListener("input", filtrarCentros);
+
+  // Escuchar filtros de tipo (botones de píldoras)
+  filterBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      filterBtns.forEach((b) => {
+        b.classList.remove("bg-primary", "text-white");
+        b.classList.add("bg-canvas", "text-ink", "hover:bg-canvas-soft");
+      });
+      btn.classList.add("bg-primary", "text-white");
+      btn.classList.remove("bg-canvas", "text-ink", "hover:bg-canvas-soft");
+      
+      filtrarCentros();
     });
   });
 
-  // Modal de edición
+  // Geolocalización
+  btnGeolocalizar?.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      alert("Tu navegador no soporta geolocalización.");
+      return;
+    }
+
+    btnGeolocalizar.classList.add("scale-90");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        btnGeolocalizar.classList.remove("scale-90");
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        if (map) {
+          map.setView([lat, lng], 14);
+
+          // Agregar o mover marcador de usuario
+          if (userMarker) {
+            userMarker.setLatLng([lat, lng]);
+          } else {
+            // @ts-ignore
+            const userIcon = L.divIcon({
+              html: `<div class="user-location-marker"><div class="user-location-pulse"></div></div>`,
+              className: "",
+              iconSize: [16, 16],
+              iconAnchor: [8, 8]
+            });
+            // @ts-ignore
+            userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map);
+          }
+        }
+      },
+      (error) => {
+        btnGeolocalizar.classList.remove("scale-90");
+        console.error("Error de geolocalización:", error);
+        alert("No se pudo obtener tu ubicación. Verifica los permisos de tu navegador.");
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  });
+
+  // Delegar click del botón "Editar" del mapa para abrir el modal nativo
+  document.getElementById("mapa-refugios")?.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains("btn-mapa-edit")) {
+      const id = target.getAttribute("data-id");
+      if (id) {
+        // Encontrar botón correspondiente en el listado y disparar click
+        const btnLista = document.querySelector(`.btn-edit-refugio[data-id="${id}"]`) as HTMLButtonElement;
+        if (btnLista) {
+          btnLista.click();
+        }
+      }
+    }
+  });
+
+  // Inicializar Leaflet cuando cargue la página
+  if (typeof window !== "undefined") {
+    // Si Leaflet está cargado por el CDN in:inline
+    // @ts-ignore
+    if (typeof L !== "undefined") {
+      initMap();
+    } else {
+      // Reintentar en un momento si carga asíncrona
+      const interval = setInterval(() => {
+        // @ts-ignore
+        if (typeof L !== "undefined") {
+          initMap();
+          clearInterval(interval);
+        }
+      }, 100);
+    }
+  }
+
+  // ================= MODAL DE EDICIÓN NATIVO =================
   const modal = document.getElementById("modal-edit-refugio");
   const closeBtn = document.getElementById("btn-close-edit");
   const form = document.getElementById("form-edit-refugio") as HTMLFormElement;
