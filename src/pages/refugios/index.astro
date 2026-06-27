@@ -1127,11 +1127,20 @@ try {
         const data = await resp.json();
         latEditInput.value = data.lat.toFixed(6);
         lonEditInput.value = data.lng.toFixed(6);
-        if (gpsEditStatus) {
-          gpsEditStatus.textContent = `Resuelto: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
-          gpsEditStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
+
+        if (data.aproximado) {
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = `⚠️ Ubicación aproximada: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)} — Ajusta el pin tocando el mapa.`;
+            gpsEditStatus.className = "text-[11px] text-amber-600 font-uber-text italic font-semibold";
+          }
+          initEditMap(data.lat, data.lng, 16);
+        } else {
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = `Resuelto: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
+            gpsEditStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
+          }
+          initEditMap(data.lat, data.lng, 17);
         }
-        initEditMap(data.lat, data.lng, 15);
       } else {
         const err = await resp.json();
         if (gpsEditStatus) {

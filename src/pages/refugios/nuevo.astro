@@ -482,12 +482,19 @@ if (!voluntario) {
         latInput.value = data.lat.toFixed(6);
         lonInput.value = data.lng.toFixed(6);
 
-        if (gpsStatus) {
-          gpsStatus.textContent = `Enlace resuelto: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
-          gpsStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
+        if (data.aproximado) {
+          if (gpsStatus) {
+            gpsStatus.textContent = `⚠️ Ubicación aproximada: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)} — Ajusta el pin tocando el mapa.`;
+            gpsStatus.className = "text-[11px] text-amber-600 font-uber-text italic font-semibold";
+          }
+          initMap(data.lat, data.lng, 16);
+        } else {
+          if (gpsStatus) {
+            gpsStatus.textContent = `Enlace resuelto: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
+            gpsStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
+          }
+          initMap(data.lat, data.lng, 17);
         }
-
-        initMap(data.lat, data.lng, 15);
       } else {
         const err = await resp.json();
         if (gpsStatus) {
