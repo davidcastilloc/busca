@@ -46,16 +46,16 @@ const formatFecha = (fechaStr: string) => {
 <div class={`card card-side bg-base-100 shadow-md border-l-4 ${config.border} flex-col sm:flex-row overflow-hidden transition-transform duration-200 hover:scale-[1.01]`}>
   <!-- Foto de R2 -->
   {persona.foto_key ? (
-    <figure class="w-full sm:w-44 h-44 sm:h-auto shrink-0 bg-base-300 relative">
+    <figure class="w-full aspect-[4/3] sm:aspect-auto sm:w-44 sm:self-stretch shrink-0 bg-base-300 relative flex items-center justify-center overflow-hidden">
       <img 
         src={`/api/upload?key=${encodeURIComponent(persona.foto_key)}`} 
         alt={`Foto de ${persona.nombre}`} 
-        class="w-full h-full object-cover"
+        class="w-full h-full object-contain"
         loading="lazy"
       />
     </figure>
   ) : (
-    <div class="w-full sm:w-44 h-44 shrink-0 bg-base-300 flex items-center justify-center text-4xl select-none">
+    <div class="w-full aspect-[4/3] sm:aspect-auto sm:w-44 sm:self-stretch shrink-0 bg-base-300 flex items-center justify-center text-4xl select-none">
       👤
     </div>
   )}

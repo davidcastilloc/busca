@@ -91,7 +91,7 @@ const formatFecha = (fechaStr: string) => {
               <img 
                 src={`/api/upload?key=${encodeURIComponent(flyer.foto_key)}`} 
                 alt={flyer.title}
-                class="w-full h-full object-cover"
+                class="w-full h-full object-contain"
                 crossorigin="anonymous"
                 fetchpriority="high"
                 decoding="sync"

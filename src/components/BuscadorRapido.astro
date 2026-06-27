@@ -216,6 +216,31 @@
   </div>
 </div>
 
+<!-- Modal de Compartir en Redes (Fallback para desktop y acceso rapido) -->
+<div id="modal-compartir-redes" class="fixed inset-0 z-[120] bg-black/60 flex items-center justify-center hidden" style="backdrop-filter:blur(4px)">
+  <div class="bg-canvas w-full max-w-sm rounded-2xl p-6 space-y-4 border border-canvas-soft shadow-xl mx-4">
+    <div class="flex justify-between items-center">
+      <h3 class="font-uber-display uber-display-sm text-ink">🔗 Compartir Reporte</h3>
+      <button id="modal-compartir-close" class="w-8 h-8 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors font-bold cursor-pointer">✕</button>
+    </div>
+    <p class="text-xs text-body font-uber-text">Elige dónde quieres difundir la información de búsqueda:</p>
+    <div class="grid grid-cols-2 gap-2 pt-2">
+      <a id="share-wa" target="_blank" rel="noopener" class="btn bg-[#25D366] text-white hover:opacity-90 font-uber-text text-sm flex items-center justify-center gap-2 py-3">
+        💬 WhatsApp
+      </a>
+      <a id="share-fb" target="_blank" rel="noopener" class="btn bg-[#1877F2] text-white hover:opacity-90 font-uber-text text-sm flex items-center justify-center gap-2 py-3">
+        📘 Facebook
+      </a>
+      <a id="share-x" target="_blank" rel="noopener" class="btn bg-black text-white hover:opacity-90 font-uber-text text-sm flex items-center justify-center gap-2 py-3">
+        🐦 Twitter / X
+      </a>
+      <button id="share-copy" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text text-sm flex items-center justify-center gap-2 py-3">
+        📋 Copiar Link
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
   const btnTabExact = document.getElementById("btn-tab-exact");
   const btnTabSemantic = document.getElementById("btn-tab-semantic");
@@ -516,8 +541,8 @@
     const card = document.createElement("div");
     const config = getEstadoConfig(p.estado);
     const imgHtml = p.foto_key 
-      ? `<figure class="w-full sm:w-36 h-36 sm:h-auto shrink-0 bg-canvas-soft"><img src="/api/upload?key=${encodeURIComponent(p.foto_key)}" alt="Foto" class="w-full h-full object-cover" loading="lazy" /></figure>`
-      : `<div class="w-full sm:w-36 h-28 shrink-0 bg-canvas-soft flex items-center justify-center text-4xl text-mute">👤</div>`;
+      ? `<figure class="w-full aspect-[4/3] sm:aspect-auto sm:w-36 sm:self-stretch shrink-0 bg-canvas-soft flex items-center justify-center overflow-hidden"><img src="/api/upload?key=${encodeURIComponent(p.foto_key)}" alt="Foto" class="w-full h-full object-contain" loading="lazy" /></figure>`
+      : `<div class="w-full aspect-[4/3] sm:aspect-auto sm:w-36 sm:self-stretch shrink-0 bg-canvas-soft flex items-center justify-center text-4xl text-mute">👤</div>`;
 
     const btnLocalizado = p.estado === 'desconocido'
       ? `<button class="btn-localizar-persona btn btn-sm bg-success text-white hover:bg-green-700 font-uber-text mt-2 self-start">
@@ -555,8 +580,8 @@
     const config = getTipoConfig(r.tipo);
     const score = r.score ? Math.round(r.score * 100) : null;
     const imgHtml = r.foto_key 
-      ? `<figure class="w-full sm:w-36 h-36 sm:h-auto shrink-0 bg-canvas-soft"><img src="/api/upload?key=${encodeURIComponent(r.foto_key)}" alt="Foto" class="w-full h-full object-cover" loading="lazy" /></figure>`
-      : `<div class="w-full sm:w-36 h-28 shrink-0 bg-canvas-soft flex items-center justify-center text-4xl text-mute">📢</div>`;
+      ? `<figure class="w-full aspect-[4/3] sm:aspect-auto sm:w-36 sm:self-stretch shrink-0 bg-canvas-soft flex items-center justify-center overflow-hidden"><img src="/api/upload?key=${encodeURIComponent(r.foto_key)}" alt="Foto" class="w-full h-full object-contain" loading="lazy" /></figure>`
+      : `<div class="w-full aspect-[4/3] sm:aspect-auto sm:w-36 sm:self-stretch shrink-0 bg-canvas-soft flex items-center justify-center text-4xl text-mute">📢</div>`;
 
     card.className = "cv-auto bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98]";
     card.innerHTML = `
@@ -602,7 +627,7 @@
       : (data.nombre_buscado || "Persona no identificada");
 
     const fotoHtml = data.foto_key 
-      ? `<img src="/api/upload?key=${encodeURIComponent(data.foto_key)}" alt="Foto" class="w-full max-h-[50vh] object-cover rounded-xl bg-canvas-soft" />`
+      ? `<img src="/api/upload?key=${encodeURIComponent(data.foto_key)}" alt="Foto" class="w-full max-h-[50vh] object-contain rounded-xl bg-canvas-soft" />`
       : `<div class="w-full h-48 bg-canvas-soft rounded-xl flex items-center justify-center text-6xl text-mute">${tipo === "persona" ? "👤" : "📢"}</div>`;
 
     let datosHtml = "";
@@ -703,9 +728,9 @@
       actionsHtml += `<button class="btn bg-canvas-soft text-mute flex-1 min-w-[120px] font-uber-text uber-body-md-strong opacity-50 cursor-not-allowed flex items-center justify-center" disabled>📞 Llamar</button>`;
     }
 
-    actionsHtml += `<button id="btn-reportar-vi" class="btn bg-canvas-soft text-ink flex-1 min-w-[120px] font-uber-text uber-body-md-strong">📢 Lo vi</button>`;
+    actionsHtml += `<button id="btn-descargar-cartel" class="btn bg-canvas-soft text-ink flex-1 min-w-[120px] font-uber-text uber-body-md-strong">📥 Descargar</button>`;
 
-    actionsHtml += `<button id="btn-compartir-cartel" class="btn bg-primary text-white flex-1 min-w-[120px] font-uber-text uber-body-md-strong">📷 Compartir</button>`;
+    actionsHtml += `<button id="btn-compartir-link" class="btn bg-primary text-white flex-1 min-w-[120px] font-uber-text uber-body-md-strong">🔗 Compartir</button>`;
 
     if (tipo === "reporte" && data.estado_reporte !== "resuelto") {
       actionsHtml += `<button id="btn-marcar-encontrado" class="btn bg-canvas-soft text-ink flex-1 min-w-[120px] font-uber-text uber-body-md-strong">✅ Encontrado</button>`;
@@ -723,9 +748,14 @@
       abrirReporteRapido();
     });
 
-    document.getElementById("btn-compartir-cartel")?.addEventListener("click", (e) => {
+    document.getElementById("btn-descargar-cartel")?.addEventListener("click", (e) => {
       e.stopPropagation();
-      generarCartel();
+      generarYDescargarCartel();
+    });
+
+    document.getElementById("btn-compartir-link")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      compartirCaso();
     });
 
     document.getElementById("btn-marcar-encontrado")?.addEventListener("click", (e) => {
@@ -951,11 +981,11 @@
 
 
 
-  // ═══ GENERAR CARTEL "SE BUSCA" ═══
-  async function generarCartel() {
+  // ═══ GENERAR Y DESCARGAR CARTEL "SE BUSCA" ═══
+  async function generarYDescargarCartel() {
     if (!currentData) return;
     
-    const btn = document.getElementById("btn-compartir-cartel");
+    const btn = document.getElementById("btn-descargar-cartel");
     if (!btn) return;
     btn.textContent = "Generando...";
     btn.classList.add("opacity-50");
@@ -1030,14 +1060,14 @@
 
               cartelFoto.src = blobUrl;
               if (imgAspect > containerAspect) {
-                // Imagen muy ancha: limitar por ancho (600px) para que no se corte
+                // Imagen muy ancha
                 const newHeight = containerW / imgAspect;
                 cartelFoto.style.width = `${containerW}px`;
                 cartelFoto.style.height = `${newHeight}px`;
                 cartelFoto.style.left = "0px";
                 cartelFoto.style.top = `${(containerH - newHeight) / 2}px`;
               } else {
-                // Imagen muy alta o cuadrada: limitar por alto (400px) para que no se corte
+                // Imagen muy alta
                 const newWidth = containerH * imgAspect;
                 cartelFoto.style.height = `${containerH}px`;
                 cartelFoto.style.width = `${newWidth}px`;
@@ -1071,7 +1101,6 @@
           allowTaint: true,
           backgroundColor: "#ffffff",
           onclone: (clonedDoc) => {
-            // Eliminar todas las hojas de estilo del clon para evitar error oklch de DaisyUI/Tailwind
             const styles = clonedDoc.querySelectorAll("style, link[rel='stylesheet']");
             styles.forEach(s => s.remove());
           }
@@ -1084,37 +1113,9 @@
         canvas.toBlob((b) => resolve(b!), "image/png");
       });
 
-      // Compartir
       const nombreArchivo = `SE_BUSCA_${nombre.replace(/\s+/g, "_")}.png`;
-      const shareUrl = currentTipo === "persona" 
-        ? `${window.location.origin}/?persona=${currentData.id}`
-        : `${window.location.origin}/?reporte=${currentData.id}`;
 
-      // Copiar enlace al portapapeles siempre
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-      } catch (e) {
-        console.error("No se pudo copiar al portapapeles:", e);
-      }
-
-      if (navigator.share && navigator.canShare) {
-        const file = new File([blob], nombreArchivo, { type: "image/png" });
-        const shareData = { 
-          files: [file], 
-          title: "SE BUSCA", 
-          text: `SE BUSCA: ${nombre}. Ayúdanos a localizarlo. Ver reporte completo aquí: ${shareUrl}`,
-          url: shareUrl
-        };
-        
-        if (navigator.canShare(shareData)) {
-          await navigator.share(shareData);
-          btn.textContent = "📷 Compartir";
-          btn.classList.remove("opacity-50");
-          return;
-        }
-      }
-
-      // Fallback: descarga directa
+      // Descarga directa
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -1122,9 +1123,9 @@
       a.click();
       URL.revokeObjectURL(url);
       
-      btn.textContent = "✓ Descargado y Enlace Copiado";
+      btn.textContent = "✓ Descargado";
       setTimeout(() => {
-        btn.textContent = "📷 Compartir";
+        btn.textContent = "📥 Descargar";
         btn.classList.remove("opacity-50");
       }, 2500);
 
@@ -1132,10 +1133,80 @@
       console.error("Error generando cartel:", err);
       btn.textContent = "Error";
       setTimeout(() => {
-        btn.textContent = "📷 Compartir";
+        btn.textContent = "📥 Descargar";
         btn.classList.remove("opacity-50");
       }, 2000);
     }
+  }
+
+  // ═══ COMPARTIR CASO POR REDES SOCIALES ═══
+  function compartirCaso() {
+    if (!currentData) return;
+    const esReporte = currentTipo === "reporte";
+    const nombre = esReporte 
+      ? (currentData.nombre_buscado || "Persona no identificada")
+      : `${currentData.nombre} ${currentData.apellido || ""}`;
+    const shareUrl = esReporte 
+      ? `${window.location.origin}/?reporte=${currentData.id}`
+      : `${window.location.origin}/?persona=${currentData.id}`;
+    const texto = `SE BUSCA: ${nombre}. Ayúdanos a localizarlo. Ver reporte completo aquí:`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: "SE BUSCA",
+        text: `${texto} ${shareUrl}`,
+        url: shareUrl
+      }).catch(err => {
+        console.log("Error al compartir nativo, usando fallback", err);
+        mostrarModalCompartirRedes(texto, shareUrl);
+      });
+    } else {
+      mostrarModalCompartirRedes(texto, shareUrl);
+    }
+  }
+
+  function mostrarModalCompartirRedes(texto: string, url: string) {
+    const modal = document.getElementById("modal-compartir-redes");
+    if (!modal) return;
+
+    const linkWa = document.getElementById("share-wa") as HTMLAnchorElement;
+    const linkFb = document.getElementById("share-fb") as HTMLAnchorElement;
+    const linkX = document.getElementById("share-x") as HTMLAnchorElement;
+    const btnCopy = document.getElementById("share-copy") as HTMLButtonElement;
+
+    const textEncoded = encodeURIComponent(`${texto} ${url}`);
+    const urlEncoded = encodeURIComponent(url);
+
+    if (linkWa) linkWa.href = `https://api.whatsapp.com/send?text=${textEncoded}`;
+    if (linkFb) linkFb.href = `https://www.facebook.com/sharer/sharer.php?u=${urlEncoded}`;
+    if (linkX) linkX.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(texto)}&url=${urlEncoded}`;
+
+    // Copiar link
+    const handleCopy = async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        const originalText = btnCopy.textContent;
+        btnCopy.textContent = "✓ Copiado";
+        setTimeout(() => { btnCopy.textContent = originalText; }, 2000);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    
+    btnCopy?.addEventListener("click", handleCopy, { once: true });
+
+    modal.classList.remove("hidden");
+
+    const closeBtn = document.getElementById("modal-compartir-close");
+    const handleClose = () => {
+      modal.classList.add("hidden");
+    };
+    closeBtn?.addEventListener("click", handleClose, { once: true });
+    
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (e.target === modal) handleClose();
+    };
+    modal.addEventListener("click", handleOutsideClick, { once: true });
   }
 
   // ═══ CONFIGS DE ESTADO/TIPO ═══
