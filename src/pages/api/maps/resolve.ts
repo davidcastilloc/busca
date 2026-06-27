@@ -12,15 +12,16 @@ export const POST: APIRoute = async (context) => {
       });
     }
 
-    // Seguir redirecciones de Google Maps
+    // Seguir redirecciones de Google Maps usando cabeceras de consentimiento para evitar bloqueos
     const res = await fetch(url, {
       method: "GET",
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Cookie": "SOCS=CAESHAgCEitib3NleGNhX2Jvb2ttYXJrX2NvbnNlbnRfZ2xvYmFsX2FjY2VwdGVkEgRpdCBJADACGgJpdCABGgQIP1gA"
       }
     });
 
-    const finalUrl = res.url;
+    let finalUrl = res.url;
 
     // 1. Intentar buscar patrón @lat,lng en la URL final
     let match = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
@@ -33,6 +34,18 @@ export const POST: APIRoute = async (context) => {
       match = finalUrl.match(/\/place\/(-?\d+\.\d+),(-?\d+\.\d+)/);
     }
 
+    // 4. Si redirige a una página de consentimiento de cookies, extraer del parámetro "continue"
+    if (!match && (finalUrl.includes("consent.google") || finalUrl.includes("google.com/consent"))) {
+      const urlObj = new URL(finalUrl);
+      const continueUrl = urlObj.searchParams.get("continue");
+      if (continueUrl) {
+        const decoded = decodeURIComponent(continueUrl);
+        match = decoded.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                decoded.match(/[?&](q|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+                decoded.match(/\/place\/(-?\d+\.\d+),(-?\d+\.\d+)/);
+      }
+    }
+
     if (match) {
       const lat = parseFloat(match[1]);
       const lng = parseFloat(match[2]);
@@ -42,22 +55,12 @@ export const POST: APIRoute = async (context) => {
       });
     }
 
-    // 4. Buscar en el HTML de respuesta (metatags de staticmap o center)
+    // 5. Buscar en el HTML de respuesta cualquier ocurrencia de "center=latitud,longitud"
     const html = await res.text();
-    const staticMapMatch = html.match(/staticmap\?center=(-?\d+\.\d+)(?:%2C|,)(-?\d+\.\d+)/);
-    if (staticMapMatch) {
-      const lat = parseFloat(staticMapMatch[1]);
-      const lng = parseFloat(staticMapMatch[2]);
-      return new Response(JSON.stringify({ success: true, lat, lng }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
-    const ogImageMatch = html.match(/meta\s+property="og:image"\s+content="[^"]*center=(-?\d+\.\d+)%2C(-?\d+\.\d+)/);
-    if (ogImageMatch) {
-      const lat = parseFloat(ogImageMatch[1]);
-      const lng = parseFloat(ogImageMatch[2]);
+    const centerMatch = html.match(/center=(-?\d+\.\d+)(?:%2C|,)(-?\d+\.\d+)/i);
+    if (centerMatch) {
+      const lat = parseFloat(centerMatch[1]);
+      const lng = parseFloat(centerMatch[2]);
       return new Response(JSON.stringify({ success: true, lat, lng }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
