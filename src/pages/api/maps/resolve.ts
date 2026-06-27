@@ -2,6 +2,28 @@ import type { APIRoute } from "astro";
 
 export const prerender = false;
 
+function extraerDeUrl(urlStr: string): { lat: number; lng: number } | null {
+  try {
+    const decoded = decodeURIComponent(urlStr);
+    
+    // 1. Patrón @lat,lng
+    let match = decoded.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    
+    // 2. Patrón q=lat,lng o ll=lat,lng
+    match = decoded.match(/[?&](q|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (match) return { lat: parseFloat(match[2]), lng: parseFloat(match[3]) };
+    
+    // 3. Patrón /place/lat+lng o /place/lat,lng
+    match = decoded.match(/\/place\/(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    
+  } catch (e) {
+    console.error("Error al parsear URL en extractor:", e);
+  }
+  return null;
+}
+
 export const POST: APIRoute = async (context) => {
   try {
     const { url } = await context.request.json();
@@ -12,8 +34,44 @@ export const POST: APIRoute = async (context) => {
       });
     }
 
-    // Seguir redirecciones de Google Maps usando cabeceras de consentimiento para evitar bloqueos
-    const res = await fetch(url, {
+    // A. Intentar extraer de la URL inicial (sin hacer peticiones)
+    const coordenadasDirectas = extraerDeUrl(url);
+    if (coordenadasDirectas) {
+      return new Response(JSON.stringify({ success: true, ...coordenadasDirectas }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // B. Si no, hacer fetch con redirección manual para capturar saltos de dominio
+    let targetUrl = url;
+    let response = await fetch(targetUrl, {
+      method: "GET",
+      redirect: "manual",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }
+    });
+
+    // Si es redirección (3xx), seguirla manualmente
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (location) {
+        targetUrl = location;
+        
+        // Intentar extraer de la nueva URL redireccionada
+        const coordenadasRedir = extraerDeUrl(targetUrl);
+        if (coordenadasRedir) {
+          return new Response(JSON.stringify({ success: true, ...coordenadasRedir }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+      }
+    }
+
+    // C. Hacer fetch a la URL final, inyectando la cookie de consentimiento de Google para evitar el muro de cookies
+    const res = await fetch(targetUrl, {
       method: "GET",
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -21,41 +79,33 @@ export const POST: APIRoute = async (context) => {
       }
     });
 
-    let finalUrl = res.url;
-
-    // 1. Intentar buscar patrón @lat,lng en la URL final
-    let match = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (!match) {
-      // 2. Intentar buscar patrón q=lat,lng o ll=lat,lng
-      match = finalUrl.match(/[?&](q|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/);
-    }
-    if (!match) {
-      // 3. Intentar buscar patrón /place/lat+lng
-      match = finalUrl.match(/\/place\/(-?\d+\.\d+),(-?\d+\.\d+)/);
-    }
-
-    // 4. Si redirige a una página de consentimiento de cookies, extraer del parámetro "continue"
-    if (!match && (finalUrl.includes("consent.google") || finalUrl.includes("google.com/consent"))) {
-      const urlObj = new URL(finalUrl);
-      const continueUrl = urlObj.searchParams.get("continue");
-      if (continueUrl) {
-        const decoded = decodeURIComponent(continueUrl);
-        match = decoded.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                decoded.match(/[?&](q|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-                decoded.match(/\/place\/(-?\d+\.\d+),(-?\d+\.\d+)/);
-      }
-    }
-
-    if (match) {
-      const lat = parseFloat(match[1]);
-      const lng = parseFloat(match[2]);
-      return new Response(JSON.stringify({ success: true, lat, lng }), {
+    const finalUrl = res.url;
+    
+    // Intentar extraer de la URL final resuelta
+    const coordenadasFinalUrl = extraerDeUrl(finalUrl);
+    if (coordenadasFinalUrl) {
+      return new Response(JSON.stringify({ success: true, ...coordenadasFinalUrl }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    // 5. Buscar en el HTML de respuesta cualquier ocurrencia de "center=latitud,longitud"
+    // D. Si redirigió a una página de cookies (consent.google.com), intentar extraer del parámetro "continue"
+    if (finalUrl.includes("consent.google") || finalUrl.includes("google.com/consent")) {
+      const urlObj = new URL(finalUrl);
+      const continueUrl = urlObj.searchParams.get("continue");
+      if (continueUrl) {
+        const coordenadasContinue = extraerDeUrl(continueUrl);
+        if (coordenadasContinue) {
+          return new Response(JSON.stringify({ success: true, ...coordenadasContinue }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
+      }
+    }
+
+    // E. Buscar en el HTML de la respuesta final por center=lat,lng (típico en og:image y metatags de Google Maps)
     const html = await res.text();
     const centerMatch = html.match(/center=(-?\d+\.\d+)(?:%2C|,)(-?\d+\.\d+)/i);
     if (centerMatch) {
@@ -71,6 +121,7 @@ export const POST: APIRoute = async (context) => {
       status: 422,
       headers: { "Content-Type": "application/json" }
     });
+
   } catch (error: any) {
     console.error("Error al resolver URL de Google Maps:", error);
     return new Response(JSON.stringify({ error: "Error al procesar el enlace. Asegúrate de que es una URL válida de Google Maps." }), {
