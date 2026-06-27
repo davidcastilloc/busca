@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import { ClientRouter } from "astro:transitions";
 
 interface Props {
   title?: string;
@@ -21,6 +22,7 @@ const {
     <link rel="preconnect" href="https://api.qrserver.com" />
     <link rel="preload" as="image" href="/icons/icon-192.png" fetchpriority="high" />
     <meta name="generator" content={Astro.generator} />
+    <ClientRouter />
     
     <!-- SEO Meta Tags -->
     <title>{title}</title>

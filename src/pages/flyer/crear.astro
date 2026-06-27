@@ -154,7 +154,7 @@ export const prerender = false;
             const ctx = canvas.getContext("2d");
             if (!ctx) return;
 
-            const MAX_SIZE = 800;
+            const MAX_SIZE = 600;
             let width = img.width;
             let height = img.height;
 
@@ -174,8 +174,11 @@ export const prerender = false;
             canvas.height = height;
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Comprimir imagen a JPEG con calidad 0.7 para bajo ancho de banda
-            const compressed = canvas.toDataURL("image/jpeg", 0.7);
+            // Intentar WebP con calidad 0.5, fallback a JPEG 0.5 si no es soportado
+            let compressed = canvas.toDataURL("image/webp", 0.5);
+            if (!compressed.startsWith("data:image/webp")) {
+              compressed = canvas.toDataURL("image/jpeg", 0.5);
+            }
             photoBase64.value = compressed;
             previewImg.src = compressed;
             previewContainer.classList.remove("hidden");

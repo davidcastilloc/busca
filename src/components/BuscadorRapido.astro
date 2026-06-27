@@ -76,6 +76,11 @@
 
   <div id="results-header" class="hidden font-uber-text uber-body-md-strong text-body mt-8 mb-4"></div>
   <div id="results-container" class="space-y-4"></div>
+  
+  <!-- Sentinel para scroll infinito -->
+  <div id="scroll-sentinel" class="hidden justify-center py-6">
+    <span class="loading loading-spinner text-primary"></span>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
@@ -227,6 +232,7 @@
   const loader = document.getElementById("results-loader");
   const resultsHeader = document.getElementById("results-header");
   const resultsContainer = document.getElementById("results-container");
+  const scrollSentinel = document.getElementById("scroll-sentinel");
 
   // Modal elements
   const modalDetalle = document.getElementById("modal-detalle");
@@ -240,6 +246,13 @@
   let currentTipo: string = "";
   let currentSearchResults: any[] = [];
   let currentSubTab: "todos" | "sin_contacto" | "localizados" = "todos";
+
+  // Paginación
+  let offset = 0;
+  const limit = 20;
+  let hasMore = false;
+  let currentQuery = "";
+  let isLoadingMore = false;
 
   const filterStateBar = document.getElementById("filter-state-bar") as HTMLDivElement;
   const btnFilterAll = document.getElementById("btn-filter-all");
@@ -290,23 +303,65 @@
     });
   }
 
-  async function realizarBusquedaExacta(q: string) {
+  async function realizarBusquedaExacta(q: string, append = false) {
     if (!q) return;
-    mostrarLoader(true);
+    if (!append) {
+      offset = 0;
+      currentSearchResults = [];
+      mostrarLoader(true);
+      if (scrollSentinel) scrollSentinel.classList.add("hidden");
+    } else {
+      isLoadingMore = true;
+    }
+    currentQuery = q;
     try {
-      const resp = await fetch(`/api/buscar?q=${encodeURIComponent(q)}&tipo=todos`);
+      const resp = await fetch(`/api/buscar?q=${encodeURIComponent(q)}&tipo=todos&limit=${limit}&offset=${offset}`);
       if (resp.ok) {
-        const resultados = await resp.json();
-        currentSearchResults = resultados;
+        const data = await resp.json();
+        const resultados = data.results || [];
+        hasMore = data.hasMore || false;
+        
+        if (append) {
+          currentSearchResults.push(...resultados);
+        } else {
+          currentSearchResults = resultados;
+        }
+
         if (filterStateBar) filterStateBar.classList.remove("hidden");
-        currentSubTab = "todos";
-        actualizarFiltroUI();
+        if (!append) {
+          currentSubTab = "todos";
+          actualizarFiltroUI();
+        }
         aplicarFiltrosYRenderizar();
+
+        if (hasMore && scrollSentinel) {
+          scrollSentinel.classList.remove("hidden");
+          scrollSentinel.classList.add("flex");
+        } else if (scrollSentinel) {
+          scrollSentinel.classList.add("hidden");
+          scrollSentinel.classList.remove("flex");
+        }
       } else { throw new Error("Error en respuesta"); }
     } catch (err) {
       console.error(err);
-      mostrarMensajeHeader("❌ Error de conexión al buscar.", true);
-    } finally { mostrarLoader(false); }
+      if (!append) {
+        mostrarMensajeHeader("❌ Error de conexión al buscar.", true);
+      }
+    } finally { 
+      mostrarLoader(false); 
+      isLoadingMore = false;
+    }
+  }
+
+  // Observer para scroll infinito
+  if (scrollSentinel) {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+        offset += limit;
+        realizarBusquedaExacta(currentQuery, true);
+      }
+    }, { rootMargin: "150px" });
+    observer.observe(scrollSentinel);
   }
 
   // ═══ BÚSQUEDA EXACTA ═══
@@ -470,7 +525,7 @@
          </button>`
       : "";
 
-    card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98]";
+    card.className = "cv-auto bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98]";
     card.innerHTML = `
       ${imgHtml}
       <div class="p-4 flex flex-col justify-between flex-grow min-w-0">
@@ -503,7 +558,7 @@
       ? `<figure class="w-full sm:w-36 h-36 sm:h-auto shrink-0 bg-canvas-soft"><img src="/api/upload?key=${encodeURIComponent(r.foto_key)}" alt="Foto" class="w-full h-full object-cover" loading="lazy" /></figure>`
       : `<div class="w-full sm:w-36 h-28 shrink-0 bg-canvas-soft flex items-center justify-center text-4xl text-mute">📢</div>`;
 
-    card.className = "bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98]";
+    card.className = "cv-auto bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98]";
     card.innerHTML = `
       ${imgHtml}
       <div class="p-4 flex flex-col justify-between flex-grow min-w-0">

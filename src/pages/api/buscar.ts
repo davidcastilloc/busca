@@ -10,15 +10,17 @@ export const GET: APIRoute = async (context) => {
     const url = new URL(context.request.url);
     const query = url.searchParams.get("q")?.trim() || "";
     const tipo = url.searchParams.get("tipo")?.trim() || "personas";
+    const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "20"), 1), 100);
+    const offset = Math.max(parseInt(url.searchParams.get("offset") || "0"), 0);
 
     if (!query) {
-      return new Response(JSON.stringify([]), {
+      return new Response(JSON.stringify({ results: [], hasMore: false }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    const cacheKey = `search:${tipo}:${query.toLowerCase()}`;
+    const cacheKey = `search:${tipo}:${query.toLowerCase()}:L${limit}:O${offset}`;
     const cached = await CACHE_KV.get(cacheKey);
 
     if (cached) {
@@ -33,6 +35,8 @@ export const GET: APIRoute = async (context) => {
 
     const term = `%${query}%`;
     const results: any[] = [];
+    let hasMorePersonas = false;
+    let hasMoreReportes = false;
 
     if (tipo === "personas" || tipo === "todos") {
       const personasRes = await DB.prepare(`
@@ -43,11 +47,14 @@ export const GET: APIRoute = async (context) => {
            OR ubicacion_nombre LIKE ?
            OR refugio LIKE ?
         ORDER BY updated_at DESC
-        LIMIT 50
-      `).bind(query, term, term, term, term).all();
+        LIMIT ? OFFSET ?
+      `).bind(query, term, term, term, term, limit, offset).all();
       
       if (personasRes.results) {
         results.push(...personasRes.results.map((p: any) => ({ ...p, _source: "persona" })));
+        if (personasRes.results.length === limit) {
+          hasMorePersonas = true;
+        }
       }
     }
 
@@ -58,18 +65,22 @@ export const GET: APIRoute = async (context) => {
            OR nombre_buscado LIKE ?
            OR ubicacion_nombre LIKE ?
         ORDER BY updated_at DESC
-        LIMIT 50
-      `).bind(query, term, term).all();
+        LIMIT ? OFFSET ?
+      `).bind(query, term, term, limit, offset).all();
       
       if (reportesRes.results) {
         results.push(...reportesRes.results.map((r: any) => ({ ...r, _source: "reporte" })));
+        if (reportesRes.results.length === limit) {
+          hasMoreReportes = true;
+        }
       }
     }
 
-    const responseBody = JSON.stringify(results);
+    const hasMore = hasMorePersonas || hasMoreReportes;
+    const responseBody = JSON.stringify({ results, hasMore });
 
-    // Cachear en KV por 60 segundos
-    await CACHE_KV.put(cacheKey, responseBody, { expirationTtl: 60 });
+    // Cachear en KV por 30 segundos (búsquedas dinámicas más cortas)
+    await CACHE_KV.put(cacheKey, responseBody, { expirationTtl: 30 });
 
     return new Response(responseBody, {
       status: 200,

@@ -271,3 +271,9 @@ input[type="radio"] {
   min-width: 22px;
   min-height: 22px;
 }
+
+/* Optimización de Renderizado para LTE/3G */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
+}

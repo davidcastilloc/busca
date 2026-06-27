@@ -11,9 +11,35 @@ let totalSinContacto = 0;
 let totalLocalizados = 0;
 
 try {
-  const { DB } = env;
+  const { DB, CACHE_KV } = env;
 
-  if (DB) {
+  if (CACHE_KV) {
+    const cachedStats = await CACHE_KV.get("index:stats");
+    if (cachedStats) {
+      const stats = JSON.parse(cachedStats);
+      totalReportes = stats.totalReportes;
+      totalSinContacto = stats.totalSinContacto;
+      totalLocalizados = stats.totalLocalizados;
+    } else if (DB) {
+      const personasCount = (await DB.prepare("SELECT COUNT(*) as count FROM personas").first<{ count: number }>())?.count || 0;
+      const reportesCount = (await DB.prepare("SELECT COUNT(*) as count FROM reportes").first<{ count: number }>())?.count || 0;
+      totalReportes = personasCount + reportesCount;
+
+      const personasDesconocido = (await DB.prepare("SELECT COUNT(*) as count FROM personas WHERE estado = 'desconocido'").first<{ count: number }>())?.count || 0;
+      const reportesAbierto = (await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE tipo = 'desaparecido' AND estado_reporte = 'abierto'").first<{ count: number }>())?.count || 0;
+      totalSinContacto = personasDesconocido + reportesAbierto;
+
+      const personasLocalizados = (await DB.prepare("SELECT COUNT(*) as count FROM personas WHERE estado IN ('vivo','herido')").first<{ count: number }>())?.count || 0;
+      const reportesResuelto = (await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE estado_reporte = 'resuelto'").first<{ count: number }>())?.count || 0;
+      totalLocalizados = personasLocalizados + reportesResuelto;
+
+      await CACHE_KV.put("index:stats", JSON.stringify({
+        totalReportes,
+        totalSinContacto,
+        totalLocalizados
+      }), { expirationTtl: 60 });
+    }
+  } else if (DB) {
     const personasCount = (await DB.prepare("SELECT COUNT(*) as count FROM personas").first<{ count: number }>())?.count || 0;
     const reportesCount = (await DB.prepare("SELECT COUNT(*) as count FROM reportes").first<{ count: number }>())?.count || 0;
     totalReportes = personasCount + reportesCount;
@@ -77,7 +103,7 @@ try {
     <BuscadorRapido />
 
     <!-- Sección informativa en Home (Acordeón de 4 bloques) -->
-    <div class="join join-vertical w-full bg-canvas border border-canvas-soft rounded-xl max-w-3xl mx-auto mt-12">
+    <div class="cv-auto join join-vertical w-full bg-canvas border border-canvas-soft rounded-xl max-w-3xl mx-auto mt-12">
       <div class="collapse collapse-arrow join-item border-b border-canvas-soft">
         <input type="radio" name="info-accordion" checked="checked" /> 
         <div class="collapse-title font-uber-display text-base text-ink font-semibold">
