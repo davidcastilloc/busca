@@ -6,6 +6,16 @@
 		"nodejs_compat"
 	],
 	"name": "busca",
+	"routes": [
+		{
+			"pattern": "dondeestan.org",
+			"custom_domain": true
+		},
+		{
+			"pattern": "www.dondeestan.org",
+			"custom_domain": true
+		}
+	],
 	"main": "./src/worker.ts",
 	"assets": {
 		"directory": "./dist",
