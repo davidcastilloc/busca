@@ -1,4 +1,4 @@
-const CACHE_NAME = "busca-cache-v2";
+const CACHE_NAME = "busca-cache-v3";
 const STATIC_ASSETS = [
   "/",
   "/registrar",
@@ -36,6 +36,11 @@ self.addEventListener("activate", (e) => {
 // FETCH: Estrategia diferenciada para 3G
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
+
+  // Solo cachear peticiones GET
+  if (e.request.method !== "GET") {
+    return;
+  }
 
   // API calls: siempre a red (no cachear datos dinámicos)
   if (url.pathname.startsWith("/api/")) {
