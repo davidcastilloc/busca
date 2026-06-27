@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import { ClientRouter } from "astro:transitions";
+import UpdateToast from "../components/UpdateToast.astro";
 
 interface Props {
   title?: string;
@@ -45,7 +46,10 @@ const {
   <body class="bg-canvas text-ink min-h-screen flex flex-col antialiased font-sans">
     <slot />
 
-    <!-- Registro de Service Worker para PWA (solo en producción) -->
+    <!-- Toast de actualización del Service Worker -->
+    <UpdateToast />
+
+    <!-- Registro de Service Worker para PWA -->
     <script>
       if ("serviceWorker" in navigator && !import.meta.env.DEV) {
         window.addEventListener("load", () => {
@@ -53,12 +57,26 @@ const {
             .register("/sw.js")
             .then((reg) => {
               console.log("Service Worker registrado con éxito:", reg.scope);
+              
+              // Verificar actualizaciones cada 60 segundos
+              setInterval(() => {
+                reg.update();
+              }, 60000);
             })
             .catch((err) => {
               console.error("Fallo al registrar Service Worker:", err);
             });
         });
+
+        // Escuchar mensajes de progreso del Background Sync
+        navigator.serviceWorker.addEventListener("message", (event) => {
+          const data = event.data;
+          if (data?.type === "sync-complete" && data.sincronizados > 0) {
+            console.log(`Background Sync: ${data.sincronizados}/${data.total} registros sincronizados`);
+          }
+        });
       }
     </script>
   </body>
 </html>
+

@@ -1,4 +1,10 @@
-const CACHE_NAME = "busca-cache-v3";
+// ═══════════════════════════════════════════════════════════
+// Service Worker — dondeestan.org
+// Estrategias: Cache-First (assets), Network-First (HTML),
+// Background Sync, Push Notifications, Update controlado
+// ═══════════════════════════════════════════════════════════
+
+const CACHE_NAME = "busca-cache-v4";
 const STATIC_ASSETS = [
   "/",
   "/registrar",
@@ -9,16 +15,29 @@ const STATIC_ASSETS = [
   "/icons/icon-512.png"
 ];
 
-// INSTALL: Cachear rutas estáticas + skip waiting
+// Patrones de vibración por tipo de alerta
+const PATRONES_VIBRACION = {
+  evacuacion: [200, 100, 200],
+  replica: [500, 200, 500, 200, 500],
+  info: [400],
+};
+
+// ═══════════════════════════════════════════════════════════
+// INSTALL: Cachear rutas estáticas (NO skipWaiting automático)
+// ═══════════════════════════════════════════════════════════
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
-    }).then(() => self.skipWaiting())
+    })
+    // NO llamamos self.skipWaiting() aquí.
+    // El usuario decide cuándo activar la nueva versión via UpdateToast.
   );
 });
 
+// ═══════════════════════════════════════════════════════════
 // ACTIVATE: Limpiar caches viejos + claim clients
+// ═══════════════════════════════════════════════════════════
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
@@ -33,7 +52,18 @@ self.addEventListener("activate", (e) => {
   );
 });
 
+// ═══════════════════════════════════════════════════════════
+// MESSAGE: Recibir comandos del cliente (skipWaiting controlado)
+// ═══════════════════════════════════════════════════════════
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
 // FETCH: Estrategia diferenciada para 3G
+// ═══════════════════════════════════════════════════════════
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
 
@@ -136,7 +166,9 @@ self.addEventListener("fetch", (e) => {
   );
 });
 
+// ═══════════════════════════════════════════════════════════
 // BACKGROUND SYNC: Sincronizar registros pendientes
+// ═══════════════════════════════════════════════════════════
 self.addEventListener("sync", (e) => {
   if (e.tag === "sync-censo") {
     e.waitUntil(sincronizarRegistrosPendientes());
@@ -145,62 +177,216 @@ self.addEventListener("sync", (e) => {
 
 async function sincronizarRegistrosPendientes() {
   try {
-    const db = await new Promise((resolve, reject) => {
-      const req = indexedDB.open("busca-offline-db", 1);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-
+    const db = await abrirDB();
     const tx = db.transaction("sync-queue", "readonly");
     const store = tx.objectStore("sync-queue");
 
-    const pendientes = await new Promise((resolve) => {
-      const req = store.getAll();
-      req.onsuccess = () => resolve(req.result);
-    });
+    const pendientes = await promisifyRequest(store.getAll());
 
     if (!pendientes || pendientes.length === 0) return;
 
-    for (const item of pendientes) {
-      if (item.data && item.data.foto_key && item.data.foto_key.startsWith("data:image/")) {
+    // Notificar progreso a clientes activos
+    notificarClientes({ type: "sync-start", total: pendientes.length });
+
+    // Procesar en batches de 5 para no saturar red 3G
+    const BATCH_SIZE = 5;
+    let sincronizados = 0;
+    let errores = 0;
+
+    for (let i = 0; i < pendientes.length; i += BATCH_SIZE) {
+      const batch = pendientes.slice(i, i + BATCH_SIZE);
+
+      for (const item of batch) {
         try {
-          const resp = await fetch(item.data.foto_key);
-          const blob = await resp.blob();
-          const formData = new FormData();
-          formData.append("foto", blob, "foto-offline.jpg");
+          // Subir fotos base64 primero
+          if (item.data && item.data.foto_key && item.data.foto_key.startsWith("data:image/")) {
+            try {
+              const resp = await fetch(item.data.foto_key);
+              const blob = await resp.blob();
+              const formData = new FormData();
+              formData.append("foto", blob, "foto-offline.jpg");
 
-          const uploadResp = await fetch("/api/upload", {
-            method: "POST",
-            body: formData
-          });
+              const uploadResp = await fetch("/api/upload", {
+                method: "POST",
+                body: formData
+              });
 
-          if (uploadResp.ok) {
-            const uploadData = await uploadResp.json();
-            item.data.foto_key = uploadData.key;
+              if (uploadResp.ok) {
+                const uploadData = await uploadResp.json();
+                item.data.foto_key = uploadData.key;
+              } else {
+                item.data.foto_key = null; // Limpiar para no bloquear el registro
+              }
+            } catch (uploadErr) {
+              item.data.foto_key = null;
+            }
           }
-        } catch (uploadErr) {
-          console.error("Error subiendo foto offline:", uploadErr);
+
+          const endpoint = item.tipo === "persona" ? "/api/personas" : "/api/reportes";
+
+          const response = await fetchConRetry(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(item.data)
+          }, 3);
+
+          if (response.ok) {
+            const deleteTx = db.transaction("sync-queue", "readwrite");
+            deleteTx.objectStore("sync-queue").delete(item.id);
+            sincronizados++;
+          } else {
+            errores++;
+          }
+        } catch (syncErr) {
+          errores++;
         }
       }
 
-      const endpoint = item.tipo === "persona" ? "/api/personas" : "/api/reportes";
-
-      try {
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(item.data)
-        });
-
-        if (response.ok) {
-          const deleteTx = db.transaction("sync-queue", "readwrite");
-          deleteTx.objectStore("sync-queue").delete(item.id);
-        }
-      } catch (syncErr) {
-        console.error("Error sincronizando registro:", syncErr);
-      }
+      // Notificar progreso parcial
+      notificarClientes({
+        type: "sync-progress",
+        sincronizados,
+        errores,
+        total: pendientes.length
+      });
     }
+
+    // Notificar finalización
+    notificarClientes({
+      type: "sync-complete",
+      sincronizados,
+      errores,
+      total: pendientes.length
+    });
+
   } catch (error) {
-    console.error("Error en sincronización background:", error);
+    notificarClientes({ type: "sync-error", error: String(error) });
   }
 }
+
+/**
+ * Fetch con retry y backoff exponencial
+ */
+async function fetchConRetry(url, options, maxRetries) {
+  let lastError;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok || response.status < 500) {
+        return response;
+      }
+      lastError = new Error(`HTTP ${response.status}`);
+    } catch (err) {
+      lastError = err;
+    }
+    // Backoff exponencial: 1s, 2s, 4s
+    if (attempt < maxRetries - 1) {
+      await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * Notificar a todos los clientes activos (tabs abiertos)
+ */
+async function notificarClientes(data) {
+  const clients = await self.clients.matchAll({ type: "window" });
+  for (const client of clients) {
+    client.postMessage(data);
+  }
+}
+
+/**
+ * Helpers IndexedDB para Service Worker (sin la lib idb)
+ */
+function abrirDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("busca-offline-db", 1);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains("sync-queue")) {
+        const store = db.createObjectStore("sync-queue", {
+          keyPath: "id",
+          autoIncrement: true,
+        });
+        store.createIndex("by-timestamp", "timestamp");
+      }
+    };
+  });
+}
+
+function promisifyRequest(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// PUSH NOTIFICATIONS: Recibir y mostrar notificaciones
+// ═══════════════════════════════════════════════════════════
+self.addEventListener("push", (e) => {
+  let data = {};
+  try {
+    data = e.data ? e.data.json() : {};
+  } catch {
+    data = { titulo: "Alerta de Emergencia", mensaje: e.data?.text() || "" };
+  }
+
+  const tipo = data.tipo || "info";
+  const patron = PATRONES_VIBRACION[tipo] || PATRONES_VIBRACION.info;
+
+  const options = {
+    body: data.mensaje || "Se ha emitido una alerta de emergencia.",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    tag: `alerta-${tipo}-${Date.now()}`,
+    renotify: true,
+    requireInteraction: tipo !== "info", // Evacuación y réplica requieren interacción
+    vibrate: patron,
+    data: {
+      url: data.url || "/",
+      tipo: tipo,
+    },
+    actions: [
+      { action: "open", title: "Ver detalles" },
+      { action: "dismiss", title: "Cerrar" },
+    ],
+  };
+
+  e.waitUntil(
+    self.registration.showNotification(
+      data.titulo || "🚨 Alerta de Emergencia",
+      options
+    )
+  );
+});
+
+// ═══════════════════════════════════════════════════════════
+// NOTIFICATION CLICK: Abrir la URL correcta
+// ═══════════════════════════════════════════════════════════
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+
+  if (e.action === "dismiss") return;
+
+  const urlDestino = e.notification.data?.url || "/";
+
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // Si ya hay una pestaña abierta, enfocarla y navegar
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin)) {
+          client.focus();
+          client.navigate(urlDestino);
+          return;
+        }
+      }
+      // Si no, abrir nueva pestaña
+      return self.clients.openWindow(urlDestino);
+    })
+  );
+});

@@ -78,7 +78,7 @@ const formatFecha = (fechaStr: string) => {
           <div>
             <!-- Cabecera del Cartel -->
             <div class="text-center bg-primary text-white py-3 px-4 -mx-6 -mt-6 mb-5 font-uber-display text-xl tracking-widest uppercase">
-              🚨 ALERTA DE BÚSQUEDA 🚨
+              🚨 DONDE ESTAN 🚨
             </div>
 
             <!-- Título Principal -->
@@ -172,36 +172,182 @@ const formatFecha = (fechaStr: string) => {
     )}
   </main>
 
-  <!-- Script html2canvas -->
-  <script>
-    import html2canvas from "html2canvas";
+  <!-- DIV OCULTO PARA GENERAR CARTEL (estilos inline, compatible con html2canvas) -->
+  {flyer && (
+    <div id="cartel-container" style="position:absolute;left:-9999px;top:-9999px;">
+      <div id="cartel-se-busca" style="width:600px;font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#000;">
+        <!-- Franja superior -->
+        <div style="background:#000;color:#fff;padding:16px 24px;text-align:center;">
+          <div style="font-size:12px;letter-spacing:4px;font-weight:500;margin-bottom:4px;">dondeestan.org</div>
+          <div style="font-size:36px;font-weight:700;letter-spacing:2px;">DONDE ESTAN</div>
+        </div>
+        <!-- Foto -->
+        <div id="cartel-foto-wrap" style="width:100%;height:400px;background:#efefef;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;">
+          <img id="cartel-foto" style="position:absolute;" src="" alt="" crossorigin="anonymous" />
+        </div>
+        <!-- Datos -->
+        <div style="padding:20px 24px;">
+          <div id="cartel-nombre" style="font-size:28px;font-weight:700;line-height:1.2;margin-bottom:8px;"></div>
+          <div id="cartel-datos" style="font-size:14px;color:#5e5e5e;margin-bottom:12px;"></div>
+          <div id="cartel-descripcion" style="font-size:15px;line-height:1.5;margin-bottom:16px;border-left:3px solid #000;padding-left:12px;font-style:italic;"></div>
+          <div id="cartel-contacto-info" style="font-size:14px;color:#5e5e5e;"></div>
+        </div>
+        <!-- Franja inferior -->
+        <div style="background:#000;color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div id="cartel-contacto" style="font-size:16px;font-weight:700;"></div>
+          </div>
+          <div style="font-size:11px;opacity:0.7;text-align:right;">
+            <div>dondeestan.org</div>
+            <div>dondeestan.org</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
 
+  <!-- Script descarga y copiar -->
+  <script>
     const btnDownload = document.getElementById("btn-download");
     const btnCopy = document.getElementById("btn-copy");
-    const flyerCard = document.getElementById("flyer-card");
 
-    if (btnDownload && flyerCard) {
+    if (btnDownload) {
       btnDownload.addEventListener("click", async () => {
         btnDownload.classList.add("opacity-50");
         const originalText = btnDownload.textContent;
         btnDownload.textContent = "Generando...";
 
         try {
-          const canvas = await html2canvas(flyerCard, {
+          // Leer datos del cartel visible para llenar el div oculto
+          const flyerCard = document.getElementById("flyer-card");
+          if (!flyerCard) throw new Error("No se encontró el cartel");
+
+          const cartelNombre = document.getElementById("cartel-nombre");
+          const cartelDatos = document.getElementById("cartel-datos");
+          const cartelDescripcion = document.getElementById("cartel-descripcion");
+          const cartelContactoInfo = document.getElementById("cartel-contacto-info");
+          const cartelContacto = document.getElementById("cartel-contacto");
+          const cartelFotoWrap = document.getElementById("cartel-foto-wrap");
+
+          // Extraer datos del DOM visible
+          const h1 = flyerCard.querySelector("h1");
+          const nombre = h1 ? h1.textContent?.trim() || "PERSONA" : "PERSONA";
+          if (cartelNombre) cartelNombre.textContent = nombre;
+
+          // Descripción
+          const descDiv = flyerCard.querySelector(".whitespace-pre-wrap");
+          if (cartelDescripcion && descDiv) {
+            cartelDescripcion.textContent = descDiv.textContent?.trim() || "";
+          }
+
+          // Teléfonos y redes
+          const phonesEl = flyerCard.querySelectorAll("h3");
+          const contactParts: string[] = [];
+          phonesEl.forEach((h3) => {
+            const container = h3.parentElement;
+            if (container) {
+              const vals = container.querySelectorAll("p");
+              vals.forEach(p => {
+                if (p.textContent?.trim()) contactParts.push(p.textContent.trim());
+              });
+            }
+          });
+          
+          if (cartelContacto) {
+            cartelContacto.textContent = contactParts.length > 0 
+              ? `CONTACTO: ${contactParts[0]}` 
+              : "CONTACTE AUTORIDADES";
+          }
+          if (cartelDatos && contactParts.length > 1) {
+            cartelDatos.textContent = contactParts.slice(1).join(" | ");
+          }
+
+          // Cargar foto como blob URL
+          const fotoImg = flyerCard.querySelector("img[fetchpriority]") as HTMLImageElement;
+          if (fotoImg && fotoImg.src && cartelFotoWrap) {
+            const cartelFoto = document.getElementById("cartel-foto") as HTMLImageElement;
+            try {
+              const fotoResp = await fetch(fotoImg.src);
+              if (!fotoResp.ok) throw new Error();
+              const fotoBlob = await fotoResp.blob();
+              const blobUrl = URL.createObjectURL(fotoBlob);
+
+              await new Promise((resolve, reject) => {
+                const tempImg = new Image();
+                tempImg.src = blobUrl;
+                tempImg.onload = () => {
+                  const containerW = 600;
+                  const containerH = 400;
+                  const imgW = tempImg.naturalWidth;
+                  const imgH = tempImg.naturalHeight;
+                  const containerAspect = containerW / containerH;
+                  const imgAspect = imgW / imgH;
+
+                  cartelFoto.src = blobUrl;
+                  if (imgAspect > containerAspect) {
+                    const newHeight = containerW / imgAspect;
+                    cartelFoto.style.width = `${containerW}px`;
+                    cartelFoto.style.height = `${newHeight}px`;
+                    cartelFoto.style.left = "0px";
+                    cartelFoto.style.top = `${(containerH - newHeight) / 2}px`;
+                  } else {
+                    const newWidth = containerH * imgAspect;
+                    cartelFoto.style.height = `${containerH}px`;
+                    cartelFoto.style.width = `${newWidth}px`;
+                    cartelFoto.style.top = "0px";
+                    cartelFoto.style.left = `${(containerW - newWidth) / 2}px`;
+                  }
+                  resolve(null);
+                };
+                tempImg.onerror = () => reject();
+              });
+            } catch {
+              cartelFotoWrap.style.flexDirection = "column";
+              cartelFotoWrap.innerHTML = `<div style="font-size:72px;color:#afafaf;">👤</div><div style="font-size:16px;color:#5e5e5e;font-weight:bold;margin-top:8px;">SIN FOTO</div>`;
+            }
+          } else if (cartelFotoWrap) {
+            cartelFotoWrap.style.flexDirection = "column";
+            cartelFotoWrap.innerHTML = `<div style="font-size:72px;color:#afafaf;">👤</div><div style="font-size:16px;color:#5e5e5e;font-weight:bold;margin-top:8px;">SIN FOTO DISPONIBLE</div>`;
+          }
+
+          // Import dinámico html2canvas
+          const { default: html2canvas } = await import("html2canvas");
+
+          const cartelEl = document.getElementById("cartel-se-busca");
+          if (!cartelEl) throw new Error("Cartel element not found");
+
+          const canvas = await html2canvas(cartelEl, {
             scale: 2,
             useCORS: true,
-            backgroundColor: "#ffffff"
+            allowTaint: true,
+            backgroundColor: "#ffffff",
+            onclone: (clonedDoc) => {
+              const styles = clonedDoc.querySelectorAll("style, link[rel='stylesheet']");
+              styles.forEach(s => s.remove());
+            }
           });
 
-          const image = canvas.toDataURL("image/jpeg", 0.9);
-          const link = document.createElement("a");
-          link.href = image;
-          link.download = `flyer-${window.location.pathname.split("/").pop()}.jpg`;
-          link.click();
+          const blob = await new Promise<Blob>((resolve) => {
+            canvas.toBlob((b) => resolve(b!), "image/png");
+          });
+
+          const nombreArchivo = `SE_BUSCA_${nombre.replace(/\s+/g, "_")}.png`;
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = nombreArchivo;
+          a.click();
+          URL.revokeObjectURL(url);
+
+          btnDownload.textContent = "✓ Descargado";
+          setTimeout(() => {
+            btnDownload.textContent = originalText;
+            btnDownload.classList.remove("opacity-50");
+          }, 2500);
+
         } catch (err) {
           console.error("Fallo de descarga de flyer:", err);
           alert("Error al generar imagen del cartel. Toma una captura de pantalla.");
-        } finally {
           btnDownload.classList.remove("opacity-50");
           btnDownload.textContent = originalText;
         }
@@ -223,3 +369,4 @@ const formatFecha = (fechaStr: string) => {
     }
   </script>
 </Layout>
+

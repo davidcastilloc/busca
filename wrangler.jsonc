@@ -48,6 +48,10 @@
 			{
 				"queue": "censo-queue",
 				"binding": "CENSO_QUEUE"
+			},
+			{
+				"queue": "push-queue",
+				"binding": "PUSH_QUEUE"
 			}
 		],
 		"consumers": [
@@ -57,8 +61,18 @@
 				"max_batch_timeout": 15,
 				"max_retries": 3,
 				"dead_letter_queue": "censo-dlq"
+			},
+			{
+				"queue": "push-queue",
+				"max_batch_size": 10,
+				"max_batch_timeout": 5,
+				"max_retries": 3,
+				"dead_letter_queue": "push-dlq"
 			}
 		]
+	},
+	"vars": {
+		"VAPID_PUBLIC_KEY": "BEcyoYTu_KhDf-xdW_w3S9bpjzJHD_op-PcYTOTPstRoczDaGNs-VWti9rShxBU4VP8I3_C6-Oqk-25eqqPtRe4"
 	},
 	"vectorize": [
 		{

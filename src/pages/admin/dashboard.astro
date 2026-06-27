@@ -20,6 +20,7 @@ let stats = {
 let refugios: { refugio: string; count: number }[] = [];
 let personas: any[] = [];
 let pendientes: any[] = [];
+let totalSuscriptoresPush = 0;
 
 try {
   const { DB } = env;
@@ -69,6 +70,15 @@ try {
     const personasPendientes = await DB.prepare("SELECT *, 'persona' as _tipo_origen FROM personas WHERE verificacion = 'pendiente'").all();
     const reportesPendientes = await DB.prepare("SELECT *, 'reporte' as _tipo_origen FROM reportes WHERE verificacion = 'pendiente'").all();
     pendientes = [...(personasPendientes.results || []), ...(reportesPendientes.results || [])];
+
+    // 5. Contar suscriptores push activos
+    try {
+      const pushCount = await DB.prepare("SELECT COUNT(*) as count FROM push_subscriptions").first<{ count: number }>();
+      totalSuscriptoresPush = pushCount?.count || 0;
+    } catch {
+      // La tabla puede no existir aún si no se ha corrido la migración
+      totalSuscriptoresPush = 0;
+    }
   }
 } catch (error) {
   console.error("Error al cargar dashboard de administración:", error);
@@ -127,6 +137,60 @@ const formatFecha = (fechaStr: string) => {
         <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Desconocido</div>
         <div class="font-uber-display text-3xl text-ink mt-2">{stats.desconocido}</div>
       </div>
+    </div>
+
+    <!-- Mapa de Calor GPS con Leaflet -->
+    <div class="bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm mb-8">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-uber-display text-lg text-ink flex items-center gap-2">
+          🗺️ Mapa de Concentración
+        </h2>
+        <button id="btn-refrescar-mapa" class="btn btn-sm bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text cursor-pointer">
+          🔄 Refrescar
+        </button>
+      </div>
+      <div id="heatmap" class="w-full h-[400px] rounded-xl overflow-hidden border border-canvas-soft bg-canvas-soft"></div>
+      <p id="heatmap-status" class="text-xs text-body font-uber-text mt-2 italic"></p>
+    </div>
+
+    <!-- Sección de Alertas de Emergencia Push -->
+    <div class="bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm mb-8">
+      <h2 class="font-uber-display text-lg text-ink mb-4 flex items-center gap-2">
+        🚨 Enviar Alerta de Emergencia
+      </h2>
+      <p class="text-sm text-body font-uber-text mb-4">
+        Envía una notificación push silenciosa a todos los voluntarios suscritos.
+        <span class="font-medium text-ink">Suscriptores activos: {totalSuscriptoresPush}</span>
+      </p>
+      
+      <form id="form-alerta" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Tipo de Alerta *</label>
+          <select name="tipo_alerta" id="tipo-alerta" class="select w-full font-uber-text">
+            <option value="evacuacion">🏃 Evacuación (2 vibraciones cortas)</option>
+            <option value="replica">⚠️ Réplica / Peligro (3 vibraciones largas)</option>
+            <option value="info">ℹ️ Información General (1 vibración)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Título *</label>
+          <input type="text" name="titulo_alerta" id="titulo-alerta" class="input w-full font-uber-text" placeholder="Ej: Nueva zona de evacuación" maxlength="100" required />
+        </div>
+        <div class="md:col-span-2">
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Mensaje *</label>
+          <textarea name="mensaje_alerta" id="mensaje-alerta" class="textarea w-full h-20 font-uber-text" placeholder="Descripción de la alerta..." maxlength="500" required></textarea>
+        </div>
+        <div>
+          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">URL destino (opcional)</label>
+          <input type="text" name="url_alerta" id="url-alerta" class="input w-full font-uber-text" placeholder="/" value="/" />
+        </div>
+        <div class="flex items-end">
+          <button type="submit" id="btn-enviar-alerta" class="btn bg-red-600 text-white hover:bg-red-700 w-full font-uber-text uber-body-md-strong cursor-pointer">
+            Enviar Alerta a {totalSuscriptoresPush} Dispositivos
+          </button>
+        </div>
+      </form>
+      <p id="alerta-status" class="text-sm font-uber-text mt-3 hidden"></p>
     </div>
 
     <!-- Sección de Moderación Destacada: Pendientes de Validación -->
@@ -434,4 +498,147 @@ const formatFecha = (fechaStr: string) => {
       }
     });
   });
+</script>
+
+<!-- Leaflet CSS + JS desde CDN -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script is:inline src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+<!-- Script del Mapa de Calor -->
+<script is:inline>
+  (function() {
+    const mapContainer = document.getElementById('heatmap');
+    const statusText = document.getElementById('heatmap-status');
+    const refrescarBtn = document.getElementById('btn-refrescar-mapa');
+    
+    if (!mapContainer || typeof L === 'undefined') return;
+
+    // Inicializar mapa centrado en Venezuela
+    const map = L.map('heatmap').setView([10.4806, -66.9036], 7);
+
+    // Tiles de OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap',
+      maxZoom: 18,
+    }).addTo(map);
+
+    let heatLayer = null;
+
+    async function cargarHeatmap() {
+      if (statusText) statusText.textContent = 'Cargando datos de coordenadas...';
+      try {
+        const resp = await fetch('/api/heatmap');
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+
+        if (heatLayer) map.removeLayer(heatLayer);
+
+        if (data.puntos && data.puntos.length > 0) {
+          heatLayer = L.heatLayer(data.puntos, {
+            radius: 25,
+            blur: 15,
+            maxZoom: 15,
+            gradient: {
+              0.2: '#2196F3',
+              0.4: '#4CAF50',
+              0.6: '#FFC107',
+              0.8: '#FF5722',
+              1.0: '#F44336'
+            }
+          }).addTo(map);
+
+          if (statusText) statusText.textContent = data.total + ' puntos con coordenadas GPS cargados.';
+
+          // Auto-centrar en los datos
+          const bounds = data.puntos.map(function(p) { return [p[0], p[1]]; });
+          if (bounds.length > 0) {
+            map.fitBounds(bounds, { padding: [20, 20], maxZoom: 12 });
+          }
+        } else {
+          if (statusText) statusText.textContent = 'No hay registros con coordenadas GPS aún.';
+        }
+      } catch (err) {
+        if (statusText) statusText.textContent = 'Error al cargar datos: ' + err.message;
+      }
+    }
+
+    cargarHeatmap();
+
+    if (refrescarBtn) {
+      refrescarBtn.addEventListener('click', function() {
+        cargarHeatmap();
+      });
+    }
+  })();
+</script>
+
+<!-- Script de Alertas Push -->
+<script is:inline>
+  (function() {
+    var formAlerta = document.getElementById('form-alerta');
+    var alertaStatus = document.getElementById('alerta-status');
+    var btnEnviar = document.getElementById('btn-enviar-alerta');
+
+    if (!formAlerta) return;
+
+    formAlerta.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      var titulo = document.getElementById('titulo-alerta').value.trim();
+      var mensaje = document.getElementById('mensaje-alerta').value.trim();
+      var tipo = document.getElementById('tipo-alerta').value;
+      var url = document.getElementById('url-alerta').value.trim() || '/';
+
+      if (!titulo || !mensaje) {
+        mostrarEstado('❌ Título y mensaje son obligatorios.', 'text-red-600');
+        return;
+      }
+
+      // Confirmación doble
+      var tipoLabel = { evacuacion: 'EVACUACIÓN', replica: 'RÉPLICA / PELIGRO', info: 'INFORMACIÓN' };
+      if (!confirm('¿Enviar alerta de ' + (tipoLabel[tipo] || tipo) + ' a TODOS los voluntarios suscritos?\n\nTítulo: ' + titulo + '\nMensaje: ' + mensaje)) {
+        return;
+      }
+
+      btnEnviar.disabled = true;
+      btnEnviar.textContent = 'Enviando...';
+      mostrarEstado('Encolando alerta...', 'text-blue-600');
+
+      fetch('/api/push-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo: titulo,
+          mensaje: mensaje,
+          tipo: tipo,
+          url_destino: url
+        })
+      })
+      .then(function(resp) { return resp.json().then(function(data) { return { ok: resp.ok, data: data }; }); })
+      .then(function(result) {
+        if (result.ok) {
+          mostrarEstado('✓ ' + result.data.mensaje, 'text-green-600');
+          formAlerta.reset();
+          document.getElementById('url-alerta').value = '/';
+        } else {
+          mostrarEstado('❌ ' + (result.data.error || 'Error desconocido'), 'text-red-600');
+        }
+      })
+      .catch(function(err) {
+        mostrarEstado('❌ Error de conexión: ' + err.message, 'text-red-600');
+      })
+      .finally(function() {
+        btnEnviar.disabled = false;
+        btnEnviar.textContent = 'Enviar Alerta';
+      });
+    });
+
+    function mostrarEstado(text, colorClass) {
+      if (!alertaStatus) return;
+      alertaStatus.textContent = text;
+      alertaStatus.className = 'text-sm font-uber-text mt-3 font-medium ' + colorClass;
+      alertaStatus.classList.remove('hidden');
+    }
+  })();
 </script>

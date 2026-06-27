@@ -1,0 +1,96 @@
+---
+---
+
+<!-- Toast flotante para actualizaciones del Service Worker -->
+<div id="update-toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-[999] hidden animate-slide-up">
+  <div class="bg-ink text-white rounded-2xl px-5 py-3 shadow-xl flex items-center gap-3 max-w-sm">
+    <span class="text-lg">🔄</span>
+    <div class="flex-1">
+      <p class="font-uber-text uber-body-sm-strong">Nueva versión disponible</p>
+      <p class="font-uber-text text-xs text-white/70">Toca para actualizar sin perder datos</p>
+    </div>
+    <button id="update-btn" class="bg-white text-ink rounded-xl px-4 py-2 font-uber-text uber-body-sm-strong hover:bg-white/90 transition-colors whitespace-nowrap cursor-pointer">
+      Actualizar
+    </button>
+    <button id="update-dismiss" class="text-white/50 hover:text-white transition-colors ml-1 cursor-pointer" aria-label="Cerrar">
+      ✕
+    </button>
+  </div>
+</div>
+
+<style>
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out forwards;
+  }
+</style>
+
+<script>
+  const toast = document.getElementById("update-toast");
+  const updateBtn = document.getElementById("update-btn");
+  const dismissBtn = document.getElementById("update-dismiss");
+
+  let waitingWorker: ServiceWorker | null = null;
+
+  if ("serviceWorker" in navigator && !import.meta.env.DEV) {
+    navigator.serviceWorker.ready.then((registration) => {
+      // Verificar si ya hay un worker esperando
+      if (registration.waiting) {
+        waitingWorker = registration.waiting;
+        mostrarToast();
+      }
+
+      // Escuchar nuevas actualizaciones
+      registration.addEventListener("updatefound", () => {
+        const newWorker = registration.installing;
+        if (!newWorker) return;
+
+        newWorker.addEventListener("statechange", () => {
+          // Cuando el nuevo SW pasa a "installed" (esperando activarse)
+          if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+            waitingWorker = newWorker;
+            mostrarToast();
+          }
+        });
+      });
+    });
+
+    // Cuando el controller cambia (nuevo SW activado), recargar
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+  }
+
+  function mostrarToast() {
+    if (toast) {
+      toast.classList.remove("hidden");
+    }
+  }
+
+  if (updateBtn) {
+    updateBtn.addEventListener("click", () => {
+      if (waitingWorker) {
+        // Decirle al SW que se active ya
+        waitingWorker.postMessage({ type: "SKIP_WAITING" });
+      }
+    });
+  }
+
+  if (dismissBtn) {
+    dismissBtn.addEventListener("click", () => {
+      if (toast) toast.classList.add("hidden");
+    });
+  }
+</script>

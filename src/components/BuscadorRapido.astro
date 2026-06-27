@@ -1,20 +1,19 @@
 ---
 ---
 
-<div class="w-full max-w-3xl mx-auto px-4 py-4 sm:py-6">
-  <!-- Tabs de búsqueda -->
-  <div class="flex gap-2 sm:gap-3 justify-center mb-6 sm:mb-8">
+<div class="w-full max-w-3xl mx-auto px-2 py-2 sm:py-4">
+  <div class="hidden flex gap-2 sm:gap-3 justify-center mb-4 sm:mb-6">
     <button id="btn-tab-exact" class="flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center">
-      Censo de Personas
+      🔍 Por Nombre / Cédula
     </button>
-    <button id="btn-tab-semantic" class="flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center">
-      Búsqueda IA
+    <button id="btn-tab-semantic" class="hidden flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center">
+      🧠 Descripción / IA
     </button>
   </div>
 
   <!-- Formulario 1: Búsqueda Exacta -->
   <div id="panel-exact" class="bg-canvas border border-canvas-soft p-4 sm:p-8 rounded-xl shadow-sm">
-    <form id="form-search-exact" class="space-y-3">
+    <form id="form-search-exact" class="space-y-4" onsubmit="event.preventDefault();">
       <div class="flex flex-col gap-3">
         <input 
           type="text" 
@@ -27,31 +26,83 @@
           Buscar
         </button>
       </div>
+
+      <!-- Escenarios rápidos -->
+      <div class="hidden space-y-2">
+        <p class="text-[11px] text-mute font-uber-text font-medium uppercase tracking-wider">¿Qué dato tienes?</p>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="chip-scenario px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-placeholder="Ej: María García" data-tab="exact">
+            👤 Sé el nombre
+          </button>
+          <button type="button" class="chip-scenario px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-placeholder="Ej: 12345678" data-tab="exact">
+            🪪 Tengo la cédula
+          </button>
+          <button type="button" class="chip-scenario px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-placeholder="Ej: Albergue Polideportivo" data-tab="exact">
+            📍 Sé dónde estaba
+          </button>
+          <button type="button" class="hidden chip-scenario px-3 py-1.5 rounded-full bg-yellow-500/10 text-yellow-800 text-xs font-uber-text font-medium border border-yellow-500/30 hover:bg-yellow-500/20 transition-colors cursor-pointer" data-tab="semantic">
+            ❓ No sé el nombre
+          </button>
+        </div>
+      </div>
+
       <p class="text-xs text-body font-uber-text">
-        Búsqueda exacta en el censo oficial de albergues y rescatistas.
+        Búsqueda en el registro colaborativo aportado por voluntarios y rescatistas.
       </p>
     </form>
   </div>
 
   <!-- Formulario 2: Búsqueda Semántica (IA) -->
   <div id="panel-semantic" class="bg-canvas border border-canvas-soft p-4 sm:p-8 rounded-xl shadow-sm hidden">
-    <form id="form-search-semantic" class="space-y-3">
+    <form id="form-search-semantic" class="space-y-4" onsubmit="event.preventDefault();">
+      <!-- Banner informativo -->
+      <div class="flex items-start gap-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+        <span class="text-lg mt-0.5">🧠</span>
+        <div class="text-xs text-body font-uber-text space-y-1">
+          <p class="font-semibold text-ink">¿No sabes el nombre? Describe lo que recuerdas.</p>
+          <p>La IA busca reportes con características similares: ropa, edad, zona, rasgos físicos.</p>
+        </div>
+      </div>
+
       <div class="space-y-2">
-        <label class="block font-uber-text uber-body-md-strong text-ink">Descripción del Reporte</label>
+        <label class="block font-uber-text uber-body-md-strong text-ink">Describe a la persona o situación</label>
         <textarea 
           id="query-semantic" 
           required
           minlength="5"
           rows="4"
           class="textarea w-full font-uber-text uber-body-md" 
-          placeholder="Ej: Niño de unos 8 años, jean azul, gorra roja, visto por última vez en la plaza Bolívar..."
+          placeholder="Ej: Señora mayor, cabello blanco, vestido floreado, zona de Petare..."
         ></textarea>
       </div>
+
+      <!-- Escenarios rápidos para IA -->
+      <div class="space-y-2">
+        <p class="text-[11px] text-mute font-uber-text font-medium uppercase tracking-wider">Escenarios comunes — toca para usar de plantilla</p>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="chip-fill px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-fill="Niño/niña de aproximadamente _ años, vestido con _, visto/a por última vez en _">
+            👶 Niño/a perdido
+          </button>
+          <button type="button" class="chip-fill px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-fill="Persona mayor de edad avanzada, cabello _, complexión _, vista por última vez en la zona de _">
+            👴 Adulto mayor
+          </button>
+          <button type="button" class="chip-fill px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-fill="Persona herida encontrada en _, con características: _, necesita atención médica">
+            🏥 Vi a alguien herido
+          </button>
+          <button type="button" class="chip-fill px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-fill="Persona atrapada o en situación de riesgo en _, descripción: _, zona afectada por _">
+            🆘 Alguien atrapado
+          </button>
+          <button type="button" class="chip-fill px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-fill="Grupo de personas desplazadas en la zona de _, aproximadamente _ personas, incluyen niños/adultos mayores, necesitan _">
+            👥 Grupo desplazado
+          </button>
+        </div>
+      </div>
+
       <button type="submit" id="btn-submit-semantic" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text uber-body-md-strong">
-        Buscar por Similitud IA
+        🔍 Buscar por Similitud IA
       </button>
       <p class="text-xs text-body font-uber-text">
-        La IA procesará la descripción y buscará reportes con características físicas similares.
+        Procesa la descripción y busca reportes con características similares. Requiere conexión.
       </p>
     </form>
   </div>
@@ -113,8 +164,8 @@
   <div id="cartel-se-busca" style="width:600px;font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#000;">
     <!-- Franja superior negra -->
     <div style="background:#000;color:#fff;padding:16px 24px;text-align:center;">
-      <div style="font-size:12px;letter-spacing:4px;font-weight:500;margin-bottom:4px;">⚠️ ALERTA DE BÚSQUEDA</div>
-      <div style="font-size:36px;font-weight:700;letter-spacing:2px;">SE BUSCA</div>
+      <div style="font-size:12px;letter-spacing:4px;font-weight:500;margin-bottom:4px;">dondeestan.org</div>
+      <div style="font-size:36px;font-weight:700;letter-spacing:2px;">DONDE ESTAN</div>
     </div>
     
     <!-- Foto -->
@@ -204,6 +255,7 @@
         <div id="reporte-rapido-gps-status" class="text-xs text-mute font-uber-text italic">Iniciando búsqueda...</div>
         <input type="hidden" id="reporte-rapido-latitud" />
         <input type="hidden" id="reporte-rapido-longitud" />
+        <div id="reporte-rapido-gps-map" class="w-full h-36 rounded-lg overflow-hidden border border-canvas-soft bg-canvas mt-2 hidden"></div>
       </div>
 
       <!-- Checkbox de confirmación -->
@@ -386,6 +438,43 @@
       panelSemantic.classList.remove("hidden");
     });
   }
+
+  // ═══ CHIPS DE ESCENARIO ═══
+  document.querySelectorAll(".chip-scenario").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const tab = (chip as HTMLElement).dataset.tab;
+      const placeholder = (chip as HTMLElement).dataset.placeholder;
+      
+      if (tab === "semantic") {
+        // Cambiar a pestaña IA
+        btnTabSemantic?.click();
+        querySemantic?.focus();
+      } else {
+        // Actualizar placeholder del input exacto
+        if (placeholder && queryExact) {
+          queryExact.placeholder = placeholder;
+          queryExact.value = "";
+          queryExact.focus();
+        }
+      }
+    });
+  });
+
+  // Chips de plantilla IA (pre-llenan el textarea)
+  document.querySelectorAll(".chip-fill").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const fill = (chip as HTMLElement).dataset.fill || "";
+      if (querySemantic) {
+        querySemantic.value = fill;
+        querySemantic.focus();
+        // Posicionar cursor en el primer "_" para que el usuario lo reemplace
+        const pos = fill.indexOf("_");
+        if (pos !== -1) {
+          querySemantic.setSelectionRange(pos, pos + 1);
+        }
+      }
+    });
+  });
 
   async function realizarBusquedaExacta(q: string, append = false) {
     if (!q) return;
@@ -836,6 +925,46 @@
     </div>`;
   }
   // ═══ REPORTE RÁPIDO "LO VI" ═══
+  let reporteRapidoMap: any = null;
+  let reporteRapidoMarker: any = null;
+
+  function initReporteRapidoMap(lat: number, lon: number, latInput: HTMLInputElement, lonInput: HTMLInputElement, gpsStatus: HTMLElement | null) {
+    const mapDiv = document.getElementById("reporte-rapido-gps-map");
+    if (!mapDiv || typeof (window as any).L === "undefined") return;
+
+    mapDiv.classList.remove("hidden");
+    const L = (window as any).L;
+
+    if (!reporteRapidoMap) {
+      reporteRapidoMap = L.map("reporte-rapido-gps-map", {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: true,
+        scrollWheelZoom: false,
+      }).setView([lat, lon], 15);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+      }).addTo(reporteRapidoMap);
+
+      reporteRapidoMap.on("click", (e: any) => {
+        latInput.value = e.latlng.lat.toFixed(6);
+        lonInput.value = e.latlng.lng.toFixed(6);
+        if (reporteRapidoMarker) reporteRapidoMarker.setLatLng(e.latlng);
+        else reporteRapidoMarker = L.marker(e.latlng).addTo(reporteRapidoMap);
+        if (gpsStatus) {
+          gpsStatus.textContent = "Ubicación ajustada en mapa.";
+          gpsStatus.className = "text-xs text-blue-600 font-uber-text italic font-medium";
+        }
+      });
+    }
+
+    if (reporteRapidoMarker) reporteRapidoMarker.setLatLng([lat, lon]);
+    else reporteRapidoMarker = L.marker([lat, lon]).addTo(reporteRapidoMap);
+    reporteRapidoMap.setView([lat, lon], 15);
+    setTimeout(() => { if (reporteRapidoMap) reporteRapidoMap.invalidateSize(); }, 150);
+  }
+
   async function obtenerGpsReporte(gpsStatus: HTMLElement | null, latInput: HTMLInputElement | null, lonInput: HTMLInputElement | null) {
     if (!gpsStatus || !latInput || !lonInput) return;
     gpsStatus.textContent = "Buscando ubicación GPS...";
@@ -855,6 +984,7 @@
         lonInput.value = lon.toString();
         gpsStatus.textContent = `Ubicación GPS obtenida: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
         gpsStatus.className = "text-xs text-success font-uber-text italic font-semibold";
+        initReporteRapidoMap(lat, lon, latInput, lonInput, gpsStatus);
       },
       (error) => {
         let msg = "No se pudo obtener ubicación GPS";
@@ -1219,8 +1349,18 @@
         cartelFotoWrap.innerHTML = `<div style="font-size:72px;color:#afafaf;">👤</div><div style="font-size:16px;color:#5e5e5e;font-weight:bold;margin-top:8px;">SIN FOTO DISPONIBLE</div>`;
       }
 
-      // Import dinámico html2canvas
-      const { default: html2canvas } = await import("html2canvas");
+      // Cargar html2canvas desde CDN para evitar error 404 de Vite en dev
+      let html2canvas = (window as any).html2canvas;
+      if (!html2canvas) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+        html2canvas = (window as any).html2canvas;
+      }
       
       const cartelEl = document.getElementById("cartel-se-busca");
       if (!cartelEl) throw new Error("Cartel element not found");

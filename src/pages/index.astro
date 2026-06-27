@@ -57,17 +57,17 @@ try {
 }
 ---
 
-<Layout title="dondeestan.org - Censo y Búsqueda de Emergencia">
+<Layout title="dondeestan.org - Te ayudamos a encontrarlos">
   <Navbar />
   
-  <main class="flex-grow py-6 sm:py-12 px-4 bg-canvas">
+  <main class="flex-grow py-4 sm:py-12 px-4 bg-canvas">
     <!-- Hero Section (estilo hero-band-light de Uber) -->
-    <div class="text-center max-w-2xl mx-auto mb-10">
-      <h1 class="font-uber-display text-3xl sm:text-4xl md:text-5xl text-ink tracking-tight mb-3">
-        Censo y búsqueda de emergencia
+    <div class="text-center max-w-2xl mx-auto mb-6 sm:mb-10">
+      <h1 class="font-uber-display text-3xl sm:text-4xl md:text-5xl text-ink tracking-tight mb-2">
+        Te ayudamos a encontrarlos
       </h1>
-      <p class="text-base sm:text-lg text-body font-uber-text max-w-xl mx-auto mb-6">
-        Buscador unificado de personas rescatadas, albergues y reportes de desapariciones. Plataforma optimizada para baja conectividad.
+      <p class="text-sm sm:text-base text-body font-uber-text max-w-xl mx-auto mb-6 px-2">
+        Buscador ciudadano para reunir familias tras la emergencia. Consulta registros aportados por voluntarios y rescatistas.
       </p>
       
       <!-- Stats (tarjetas minimalistas de Uber) -->
@@ -310,6 +310,7 @@ try {
           <div id="salvo-gps-status" class="text-xs text-mute font-uber-text italic">Iniciando búsqueda...</div>
           <input type="hidden" id="salvo-latitud" />
           <input type="hidden" id="salvo-longitud" />
+          <div id="salvo-gps-map" class="w-full h-36 rounded-lg overflow-hidden border border-canvas-soft bg-canvas mt-2 hidden"></div>
         </div>
 
         <!-- Checkbox de confirmación -->
@@ -354,6 +355,10 @@ try {
     </div>
   </div>
 </div>
+
+<!-- Leaflet para mini-mapa GPS del modal -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
   const btnEstoyASalvo = document.getElementById("btn-estoy-a-salvo");
@@ -515,6 +520,55 @@ try {
     }
   });
 
+  let salvoMiniMap: any = null;
+  let salvoMarker: any = null;
+
+  function initSalvoMiniMap(lat: number, lon: number) {
+    const mapDiv = document.getElementById("salvo-gps-map");
+    if (!mapDiv || typeof (window as any).L === "undefined") return;
+
+    mapDiv.classList.remove("hidden");
+
+    const L = (window as any).L;
+
+    if (!salvoMiniMap) {
+      salvoMiniMap = L.map("salvo-gps-map", {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: true,
+        scrollWheelZoom: false,
+      }).setView([lat, lon], 15);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 18,
+      }).addTo(salvoMiniMap);
+
+      salvoMiniMap.on("click", (e: any) => {
+        if (salvoLatitud) salvoLatitud.value = e.latlng.lat.toFixed(6);
+        if (salvoLongitud) salvoLongitud.value = e.latlng.lng.toFixed(6);
+        updateSalvoMarker(e.latlng.lat, e.latlng.lng);
+        if (salvoGpsStatus) {
+          salvoGpsStatus.textContent = "Ubicación ajustada en mapa.";
+          salvoGpsStatus.className = "text-xs text-blue-600 font-uber-text italic font-medium";
+        }
+      });
+    }
+
+    updateSalvoMarker(lat, lon);
+    salvoMiniMap.setView([lat, lon], 15);
+    setTimeout(() => { if (salvoMiniMap) salvoMiniMap.invalidateSize(); }, 150);
+  }
+
+  function updateSalvoMarker(lat: number, lon: number) {
+    if (!salvoMiniMap) return;
+    const L = (window as any).L;
+    if (salvoMarker) {
+      salvoMarker.setLatLng([lat, lon]);
+    } else {
+      salvoMarker = L.marker([lat, lon]).addTo(salvoMiniMap);
+    }
+  }
+
   async function obtenerUbicacionGps() {
     if (!salvoGpsStatus || !salvoLatitud || !salvoLongitud) return;
     salvoGpsStatus.textContent = "Buscando ubicación GPS...";
@@ -534,6 +588,7 @@ try {
         salvoLongitud.value = lon.toString();
         salvoGpsStatus.textContent = `Ubicación GPS obtenida: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
         salvoGpsStatus.className = "text-xs text-success font-uber-text italic font-semibold";
+        initSalvoMiniMap(lat, lon);
       },
       (error) => {
         let msg = "No se pudo obtener la ubicación GPS";
@@ -676,10 +731,11 @@ try {
     try {
       const resp = await fetch(`/api/buscar?q=${encodeURIComponent(query)}&tipo=todos`);
       if (resp.ok) {
-        const resultados = await resp.json();
+        const data = await resp.json();
+        const resultados = data.results || data;
         if (salvoLoader) salvoLoader.classList.add("hidden");
         
-        if (resultados.length === 0) {
+        if (!resultados || resultados.length === 0) {
           if (btnSalvoRegistrar) {
             const esCedula = /^\d+$/.test(query.replace(/[^0-9]/g, ""));
             if (esCedula) {

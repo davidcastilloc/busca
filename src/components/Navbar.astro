@@ -1,19 +1,20 @@
 ---
 import OfflineIndicator from "./OfflineIndicator.astro";
+import PushBanner from "./PushBanner.astro";
 ---
 
 <div class="w-full bg-canvas border-b border-canvas-soft sticky top-0 z-50 py-4 px-4 sm:px-8">
   <div class="max-w-7xl mx-auto flex items-center justify-between">
     <!-- Logo -->
-    <div class="flex-shrink-0">
-      <a href="/" class="flex items-center gap-3 font-uber-display text-2xl tracking-tight text-ink">
-        <img src="/icons/icon-192.png" alt="dondeestan.org" class="w-8 h-8 rounded-md object-cover grayscale" />
-        <span class="flex items-center gap-1">dondeestan<span class="text-body font-normal">.org</span></span>
+    <div class="flex-shrink-0 min-w-0">
+      <a href="/" class="flex items-center gap-2 sm:gap-3 font-uber-display text-xl sm:text-2xl tracking-tight text-ink">
+        <img src="/icons/icon-192.png" alt="dondeestan.org" class="w-7 h-7 sm:w-8 sm:h-8 rounded-md object-cover grayscale flex-shrink-0" />
+        <span class="flex items-center gap-1 truncate">dondeestan<span class="text-body font-normal">.org</span></span>
       </a>
     </div>
     
     <!-- Menú de Navegación -->
-    <div class="flex items-center gap-4 sm:gap-6">
+    <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
       <nav class="hidden md:flex items-center gap-1">
         <a href="/" class="px-4 py-2 rounded-full hover:bg-canvas-soft text-ink font-uber-text uber-body-md-strong transition-colors">
           Buscar
@@ -27,6 +28,9 @@ import OfflineIndicator from "./OfflineIndicator.astro";
         <a href="/flyer/crear" class="px-4 py-2 rounded-full hover:bg-canvas-soft text-ink font-uber-text uber-body-md-strong transition-colors">
           Crear Cartel
         </a>
+        <a href="/admin/escaner" class="px-4 py-2 rounded-full hover:bg-canvas-soft text-ink font-uber-text uber-body-md-strong transition-colors">
+          Escáner IA
+        </a>
         <a href="/admin/dashboard" class="px-4 py-2 rounded-full hover:bg-canvas-soft text-ink font-uber-text uber-body-md-strong transition-colors">
           Panel
         </a>
@@ -34,8 +38,8 @@ import OfflineIndicator from "./OfflineIndicator.astro";
 
       <!-- Menú móvil (Icon Button Circular) -->
       <div class="dropdown dropdown-end md:hidden">
-        <div tabindex="0" role="button" class="w-12 h-12 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors active:bg-surface-pressed">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div tabindex="0" role="button" class="w-10 h-10 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors active:bg-surface-pressed">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
           </svg>
         </div>
@@ -61,16 +65,30 @@ import OfflineIndicator from "./OfflineIndicator.astro";
             </a>
           </li>
           <li>
+            <a href="/admin/escaner" class="block px-4 py-3 text-ink font-uber-text uber-body-md-strong hover:bg-canvas-soft transition-colors">
+              Escáner IA
+            </a>
+          </li>
+          <li>
             <a href="/admin/dashboard" class="block px-4 py-3 text-ink font-uber-text uber-body-md-strong hover:bg-canvas-soft transition-colors">
               Panel
             </a>
           </li>
+          <li>
+            <div class="px-4 py-3" id="push-menu-mobile">
+              <PushBanner />
+            </div>
+          </li>
         </ul>
       </div>
 
-      <div class="h-6 w-px bg-canvas-soft hidden sm:block"></div>
-      
-      <OfflineIndicator />
+      <!-- Push + Offline: solo visible en desktop -->
+      <div class="hidden md:flex items-center gap-2">
+        <div class="h-6 w-px bg-canvas-soft"></div>
+        <PushBanner />
+        <OfflineIndicator />
+      </div>
     </div>
   </div>
 </div>
+

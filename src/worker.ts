@@ -1,5 +1,6 @@
 import { handle } from "@astrojs/cloudflare/handler";
 import { procesarCola } from "./lib/queue-processor";
+import { procesarColaPush } from "./lib/push-queue-processor";
 
 export default {
   async fetch(
@@ -15,6 +16,12 @@ export default {
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
-    ctx.waitUntil(procesarCola(batch, env, ctx));
+    // Discriminar por nombre de cola
+    if (batch.queue === "push-queue") {
+      ctx.waitUntil(procesarColaPush(batch, env));
+    } else {
+      // censo-queue (default)
+      ctx.waitUntil(procesarCola(batch, env, ctx));
+    }
   }
 } satisfies ExportedHandler<Env>;

@@ -1,17 +1,17 @@
 ---
 ---
 
-<div class="card bg-base-100 border border-neutral-content p-4 shadow-sm">
-  <label class="label font-bold text-sm text-base-content/80 mb-2">📍 Coordenadas Geográficas (GPS)</label>
+<div class="bg-canvas-soft border border-canvas-soft p-4 rounded-xl space-y-3">
+  <label class="block font-uber-text uber-body-sm-strong text-body">📍 Coordenadas Geográficas (GPS)</label>
   
-  <div class="flex gap-2 mb-2">
+  <div class="flex gap-2">
     <div class="flex-1">
       <input 
         type="number" 
         step="any" 
         name="latitud" 
         id="latitud" 
-        class="input input-bordered w-full input-sm" 
+        class="input w-full font-uber-text text-sm" 
         placeholder="Latitud (ej. 10.4806)" 
       />
     </div>
@@ -21,7 +21,7 @@
         step="any" 
         name="longitud" 
         id="longitud" 
-        class="input input-bordered w-full input-sm" 
+        class="input w-full font-uber-text text-sm" 
         placeholder="Longitud (ej. -66.9036)" 
       />
     </div>
@@ -29,59 +29,119 @@
     <button 
       type="button" 
       id="btn-obtener-gps" 
-      class="btn btn-secondary btn-sm btn-square" 
+      class="btn bg-primary text-white px-3 font-uber-text text-sm cursor-pointer flex-shrink-0"
       title="Obtener ubicación GPS"
     >
-      🎯
+      🎯 GPS
     </button>
   </div>
   
-  <p id="gps-status" class="text-xs text-base-content/60 italic"></p>
+  <p id="gps-status" class="text-xs text-mute font-uber-text italic"></p>
+
+  <!-- Mini-mapa preview con Leaflet -->
+  <div id="gps-preview-map" class="w-full h-40 rounded-xl overflow-hidden border border-canvas-soft bg-canvas hidden"></div>
 </div>
 
-<script>
-  const btn = document.getElementById("btn-obtener-gps");
-  const latInput = document.getElementById("latitud") as HTMLInputElement;
-  const lonInput = document.getElementById("longitud") as HTMLInputElement;
-  const statusText = document.getElementById("gps-status");
+<!-- Leaflet CSS + JS (solo si no están cargados) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  if (btn && latInput && lonInput && statusText) {
-    btn.addEventListener("click", () => {
+<script is:inline>
+  (function() {
+    const btn = document.getElementById("btn-obtener-gps");
+    const latInput = document.getElementById("latitud");
+    const lonInput = document.getElementById("longitud");
+    const statusText = document.getElementById("gps-status");
+    const mapContainer = document.getElementById("gps-preview-map");
+
+    if (!btn || !latInput || !lonInput || !statusText) return;
+
+    let miniMap = null;
+    let marker = null;
+
+    function initMiniMap(lat, lon) {
+      if (typeof L === "undefined" || !mapContainer) return;
+
+      mapContainer.classList.remove("hidden");
+
+      if (!miniMap) {
+        miniMap = L.map("gps-preview-map", {
+          zoomControl: false,
+          attributionControl: false,
+          dragging: true,
+          scrollWheelZoom: false,
+        }).setView([lat, lon], 15);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 18,
+        }).addTo(miniMap);
+
+        // Permitir mover el marcador para ajustar posición
+        miniMap.on("click", function(e) {
+          var latlng = e.latlng;
+          latInput.value = latlng.lat.toFixed(6);
+          lonInput.value = latlng.lng.toFixed(6);
+          actualizarMarcador(latlng.lat, latlng.lng);
+          statusText.textContent = "Ubicación ajustada manualmente en el mapa.";
+          statusText.className = "text-xs text-blue-600 font-uber-text italic font-medium";
+        });
+      }
+
+      actualizarMarcador(lat, lon);
+      miniMap.setView([lat, lon], 15);
+
+      // Fix: invalidar tamaño tras hacerse visible
+      setTimeout(function() {
+        if (miniMap) miniMap.invalidateSize();
+      }, 100);
+    }
+
+    function actualizarMarcador(lat, lon) {
+      if (!miniMap) return;
+      if (marker) {
+        marker.setLatLng([lat, lon]);
+      } else {
+        marker = L.marker([lat, lon]).addTo(miniMap);
+      }
+    }
+
+    btn.addEventListener("click", function() {
       if (!("geolocation" in navigator)) {
         statusText.textContent = "Geolocalización no soportada por el navegador.";
         return;
       }
 
       statusText.textContent = "Obteniendo coordenadas GPS precisas...";
-      btn.classList.add("loading");
+      statusText.className = "text-xs text-yellow-600 font-uber-text italic font-medium";
+      btn.classList.add("opacity-50");
+      btn.disabled = true;
 
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          const accuracy = position.coords.accuracy;
+        function(position) {
+          var lat = position.coords.latitude;
+          var lon = position.coords.longitude;
+          var accuracy = position.coords.accuracy;
 
           latInput.value = lat.toFixed(6);
           lonInput.value = lon.toFixed(6);
 
-          statusText.textContent = `Ubicación obtenida. Precisión: ±${Math.round(accuracy)} metros.`;
-          btn.classList.remove("loading");
+          statusText.textContent = "Ubicación obtenida. Precisión: ±" + Math.round(accuracy) + " metros.";
+          statusText.className = "text-xs text-success font-uber-text italic font-semibold";
+          btn.classList.remove("opacity-50");
+          btn.disabled = false;
+
+          // Mostrar mini-mapa con la ubicación
+          initMiniMap(lat, lon);
         },
-        (error) => {
-          btn.classList.remove("loading");
-          switch (error.code) {
-            case 1:
-              statusText.textContent = "Permiso GPS denegado. Ingrese coordenadas manualmente.";
-              break;
-            case 2:
-              statusText.textContent = "La ubicación no está disponible actualmente.";
-              break;
-            case 3:
-              statusText.textContent = "Tiempo de espera agotado al obtener el GPS.";
-              break;
-            default:
-              statusText.textContent = "Error al obtener GPS: " + error.message;
-          }
+        function(error) {
+          btn.classList.remove("opacity-50");
+          btn.disabled = false;
+          var msg = "Error al obtener GPS";
+          if (error.code === 1) msg = "Permiso GPS denegado. Ingrese coordenadas manualmente.";
+          else if (error.code === 2) msg = "La ubicación no está disponible actualmente.";
+          else if (error.code === 3) msg = "Tiempo de espera agotado al obtener el GPS.";
+          statusText.textContent = msg;
+          statusText.className = "text-xs text-red-500 font-uber-text italic";
         },
         {
           enableHighAccuracy: true,
@@ -90,5 +150,18 @@
         }
       );
     });
-  }
+
+    // Si ya hay coordenadas pre-llenadas, mostrar mapa
+    function checkExistingCoords() {
+      var lat = parseFloat(latInput.value);
+      var lon = parseFloat(lonInput.value);
+      if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
+        initMiniMap(lat, lon);
+      }
+    }
+
+    // Actualizar mapa cuando el usuario escribe coordenadas manualmente
+    latInput.addEventListener("change", checkExistingCoords);
+    lonInput.addEventListener("change", checkExistingCoords);
+  })();
 </script>

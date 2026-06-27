@@ -1,4 +1,4 @@
-import { extraerEntidades, generarEmbedding } from "./ai";
+import { extraerEntidades, generarEmbedding, extraerNombresDeImagen } from "./ai";
 
 export async function procesarCola(
   batch: MessageBatch<any>,
@@ -156,6 +156,116 @@ export async function procesarCola(
             console.error(`Error procesando IA para reporte ${reporteId}:`, aiError);
             // No reintentamos si falló la IA pero guardó en base de datos.
             // Permite continuar el flujo sin colapsar la cola.
+          }
+        }
+      }
+      
+      else if (type === "procesar_nombres_censo") {
+        if (!data) {
+          console.error("Payload 'data' faltante en procesar_nombres_censo:", message.body);
+          message.ack();
+          continue;
+        }
+        
+        const { personas, refugio, contacto } = data;
+        const personasRecibidas = personas as {nombre: string, cedula: number|null, telefono: string|null, edad: number|null}[];
+        
+        if (!personasRecibidas || !Array.isArray(personasRecibidas)) {
+          console.error("Payload 'personas' inválido:", data);
+          message.ack();
+          continue;
+        }
+        
+        console.log(`Procesando censo curado manualmente, total personas:`, personasRecibidas.length);
+
+        const PUSH_QUEUE = (env as any).PUSH_QUEUE;
+
+        for (const persona of personasRecibidas) {
+          const nombreCompleto = persona.nombre;
+          if (!nombreCompleto || nombreCompleto.trim().length < 3) continue;
+
+          const cedula = persona.cedula || null;
+          const tel = persona.telefono || null;
+          const edad = persona.edad || null;
+          const finalContacto = [tel, contacto].filter(Boolean).join(" - ");
+
+          const partes = nombreCompleto.trim().split(/\s+/);
+          const primerNombre = partes[0] || "";
+          const primerApellido = partes[partes.length - 1] || "";
+
+          // Buscar coincidencias en reportes de desaparecidos abiertos
+          const queryTerm = `%${nombreCompleto.trim()}%`;
+          const reportesCoincidentes = await env.DB.prepare(`
+            SELECT * FROM reportes 
+            WHERE tipo = 'desaparecido' 
+              AND estado_reporte = 'abierto'
+              AND (nombre_buscado LIKE ? 
+                   OR (nombre_buscado LIKE ? AND nombre_buscado LIKE ?))
+          `).bind(queryTerm, `%${primerNombre}%`, `%${primerApellido}%`).all<{ id: number; nombre_buscado: string; reportante_contacto: string }>();
+
+          const matches = reportesCoincidentes.results || [];
+
+          // Registrar persona encontrada en la tabla personas
+          let personaId: number | null = null;
+          try {
+            const nombre = primerNombre;
+            const apellido = partes.slice(1).join(" ");
+            
+            const insertPersona = await env.DB.prepare(`
+              INSERT INTO personas (nombre, apellido, estado, refugio, contacto, cedula, edad, fuente, updated_at)
+              VALUES (?, ?, 'vivo', ?, ?, ?, ?, 'escaner_ia', datetime('now'))
+              RETURNING id
+            `).bind(nombre, apellido || null, refugio, finalContacto || null, cedula ? String(cedula) : null, edad,).first<{ id: number }>();
+            
+            if (insertPersona) {
+              personaId = insertPersona.id;
+            }
+          } catch (dbErr) {
+            console.error("Error al registrar persona de la lista escaneada:", dbErr);
+          }
+
+          if (matches.length > 0) {
+            console.log(`¡Coincidencia encontrada para ${nombreCompleto}! actualizando reportes...`);
+            
+            for (const reporte of matches) {
+              // 3. Actualizar reporte en D1 a resuelto
+              await env.DB.prepare(`
+                UPDATE reportes 
+                SET estado_reporte = 'resuelto', 
+                    persona_id = ?,
+                    updated_at = datetime('now') 
+                WHERE id = ?
+              `).bind(personaId, reporte.id).run();
+
+              // 4. Enviar notificación push si hay PUSH_QUEUE
+              if (PUSH_QUEUE) {
+                const subRes = await env.DB.prepare(
+                  "SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE rol = 'familiar'"
+                ).all<{ endpoint: string; p256dh: string; auth: string }>();
+
+                const suscripciones = subRes.results || [];
+
+                if (suscripciones.length > 0) {
+                  const BATCH_SIZE = 50;
+                  for (let i = 0; i < suscripciones.length; i += BATCH_SIZE) {
+                    const batch = suscripciones.slice(i, i + BATCH_SIZE);
+                    await PUSH_QUEUE.send({
+                      type: "push_batch",
+                      payload: {
+                        titulo: "¡Familiar Encontrado!",
+                        mensaje: `${reporte.nombre_buscado} ha sido registrado a salvo en el refugio: ${refugio}.`,
+                        tipo: "info",
+                        url: `/?q=${encodeURIComponent(reporte.nombre_buscado)}`
+                      },
+                      suscripciones: batch.map((s) => ({
+                        endpoint: s.endpoint,
+                        keys: { p256dh: s.p256dh, auth: s.auth }
+                      }))
+                    });
+                  }
+                }
+              }
+            }
           }
         }
       }
