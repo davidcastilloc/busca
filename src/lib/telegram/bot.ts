@@ -163,7 +163,7 @@ export async function processTelegramUpdate(
         return;
       }
       if (session.step.startsWith("sos_")) {
-        await handleSosState(client, db, chatId, telegramId, session, text, env);
+        await handleSosState(client, db, chatId, telegramId, session, text, msg.location, env);
         return;
       }
       if (session.step.startsWith("brd_")) {

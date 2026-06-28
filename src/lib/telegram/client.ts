@@ -46,6 +46,20 @@ export class TelegramClient {
     });
   }
 
+  async sendLocation(
+    chatId: string | number,
+    latitude: number,
+    longitude: number,
+    options: any = {}
+  ): Promise<any> {
+    return this.call("sendLocation", {
+      chat_id: chatId,
+      latitude: latitude,
+      longitude: longitude,
+      ...options,
+    });
+  }
+
   async sendPhoto(
     chatId: string | number,
     photo: string | Blob,
