@@ -952,11 +952,27 @@ try {
 
           map.addLayer(markers);
 
-          // Ajustar mapa
+          // Ajustar mapa (Weighted Center para enfocar zonas con más centros y problemas)
           if (puntos.length > 0) {
-            const bounds = markers.getBounds();
-            if (bounds.isValid()) {
-              map.fitBounds(bounds, { padding: [30, 30] });
+            let sumLat = 0, sumLon = 0, totalWeight = 0;
+            puntos.forEach((p: any) => {
+              if (p.lat && p.lon) {
+                const w = p.peso || 1;
+                sumLat += p.lat * w;
+                sumLon += p.lon * w;
+                totalWeight += w;
+              }
+            });
+            
+            if (totalWeight > 0) {
+              const centerLat = sumLat / totalWeight;
+              const centerLon = sumLon / totalWeight;
+              map.flyTo([centerLat, centerLon], 11, { duration: 1.5 });
+            } else {
+              const bounds = markers.getBounds();
+              if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [30, 30] });
+              }
             }
           }
         }
