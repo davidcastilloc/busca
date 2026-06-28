@@ -1,8 +1,9 @@
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers';
 
 export const prerender = false;
 
-export const POST: APIRoute = async ({ params, request, locals }) => {
+export const POST: APIRoute = async ({ params, request }) => {
   const id = params.id;
   
   if (!id) {
@@ -10,8 +11,6 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
   }
 
   try {
-    // @ts-ignore
-    const { env } = locals.runtime;
     const { DB } = env;
     const body = (await request.json()) as Record<string, any>;
     

@@ -13,8 +13,8 @@ interface Props {
 const { 
   title = "dondeestan.org - Censo y Búsqueda de Emergencia", 
   description = "Plataforma de censo de víctimas, refugios y reporte de personas desaparecidas.",
-  ogImage,
-  ogUrl,
+  ogImage = Astro.url ? new URL("/icons/icon-512.png", Astro.url).href : "https://dondeestan.org/icons/icon-512.png",
+  ogUrl = Astro.url ? Astro.url.href : "https://dondeestan.org",
 } = Astro.props;
 ---
 
