@@ -30,14 +30,36 @@ export const GET: APIRoute = async ({ params, request }) => {
     const offset = parseInt(url.searchParams.get('offset') || '0', 10);
 
     // Consulta segura porque 'table' fue validada contra ALLOWED_TABLES
-    const queryStr = `SELECT * FROM ${table} ORDER BY rowid DESC LIMIT ? OFFSET ?`;
-    const result = await DB.prepare(queryStr).bind(limit, offset).all();
+    let queryStr = `SELECT * FROM ${table} ORDER BY rowid DESC LIMIT ? OFFSET ?`;
+    let bindings: any[] = [limit, offset];
+
+    if (table === 'historial_actividad') {
+      // JOIN para obtener el nombre del voluntario en vez de solo voluntario_id
+      queryStr = `
+        SELECT h.*, v.nombre as voluntario_nombre 
+        FROM historial_actividad h 
+        LEFT JOIN voluntarios v ON h.voluntario_id = v.id 
+        ORDER BY h.rowid DESC 
+        LIMIT ? OFFSET ?
+      `;
+    }
+
+    const result = await DB.prepare(queryStr).bind(...bindings).all();
     
     // Obtener información de columnas
     const pragmaQuery = `PRAGMA table_info(${table})`;
-    const columns = await DB.prepare(pragmaQuery).all();
+    const columnsResult = await DB.prepare(pragmaQuery).all();
+    let columns = columnsResult.results;
 
-    return new Response(JSON.stringify({ data: result.results, columns: columns.results }), {
+    if (table === 'historial_actividad') {
+      // Inyectar columna extra virtual para que la UI la renderice
+      columns = [
+        ...columns,
+        { name: 'voluntario_nombre', type: 'TEXT' }
+      ];
+    }
+
+    return new Response(JSON.stringify({ data: result.results, columns: columns }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });

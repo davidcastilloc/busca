@@ -38,14 +38,14 @@ export const POST: APIRoute = async ({ params, request }) => {
     }
 
     // 3. Registrar en el historial de actividad (auditoría)
-    const logQuery = `INSERT INTO historial_actividad (tipo_entidad, entidad_id, accion, actor, detalles) VALUES (?, ?, ?, ?, ?)`;
+    const logQuery = `INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, detalles) VALUES (?, ?, ?, ?, ?)`;
     await DB.prepare(logQuery)
       .bind(
-        'voluntario', 
-        id, 
-        accion === 'ban' ? 'banned' : 'unbanned', 
-        'SUPER_ADMIN_DIOS', 
-        JSON.stringify({ motivo: body.motivo || 'Baneado desde el panel de Super Admin' })
+        null, // voluntario_id (es nulo porque lo hace Super Admin DIOS, no un voluntario común)
+        accion === 'ban' ? 'BANEAR' : 'DESBANEAR', 
+        'voluntarios',
+        Number(id), 
+        JSON.stringify({ actor: 'SUPER_ADMIN_DIOS', motivo: body.motivo || 'Baneado desde el panel de Super Admin' })
       )
       .run();
 

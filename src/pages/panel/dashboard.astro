@@ -64,33 +64,43 @@ const tables = [
         </div>
       </header>
 
-      <!-- Contenedor de la Tabla -->
-      <div class="p-6 flex-1">
-        <div id="table-loading" class="text-center py-12 text-body font-uber-text hidden">
-          <div class="animate-spin inline-block w-8 h-8 border-4 border-current border-t-transparent text-primary rounded-full" role="status" aria-label="loading"></div>
-          <p class="mt-4">Cargando datos de la base de datos...</p>
-        </div>
+       <!-- Contenedor de la Tabla -->
+       <div class="p-6 flex-1 flex flex-col gap-4">
+         <!-- Buscador/Filtro Estilo Drizzle Admin -->
+         <div id="filter-wrapper" class="hidden">
+           <input 
+             type="text" 
+             id="table-filter" 
+             placeholder="🔍 Filtrar registros en tiempo real (escribe cualquier valor...)" 
+             class="input w-full font-uber-text text-sm border border-canvas-soft bg-canvas focus:border-primary"
+           />
+         </div>
 
-        <div id="table-empty" class="text-center py-12 text-body font-uber-text hidden">
-          <p class="text-4xl mb-4">📭</p>
-          <p>La tabla está vacía.</p>
-        </div>
-        
-        <div id="table-error" class="text-center py-12 text-red-600 font-uber-text bg-red-50 rounded-xl hidden">
-          <p class="font-bold mb-2">Error al cargar</p>
-          <p id="table-error-msg" class="text-sm"></p>
-        </div>
+         <div id="table-loading" class="text-center py-12 text-body font-uber-text hidden">
+           <div class="animate-spin inline-block w-8 h-8 border-4 border-current border-t-transparent text-primary rounded-full" role="status" aria-label="loading"></div>
+           <p class="mt-4">Cargando datos de la base de datos...</p>
+         </div>
 
-        <div class="overflow-x-auto rounded-xl border border-canvas-soft hidden" id="table-container">
-          <table class="table w-full text-left text-sm font-uber-text" id="data-table">
-            <thead class="bg-canvas-soft text-xs uppercase text-body border-b border-canvas-soft">
-              <tr id="table-head"></tr>
-            </thead>
-            <tbody id="table-body" class="divide-y divide-canvas-soft">
-            </tbody>
-          </table>
-        </div>
-      </div>
+         <div id="table-empty" class="text-center py-12 text-body font-uber-text hidden">
+           <p class="text-4xl mb-4">📭</p>
+           <p>La tabla está vacía.</p>
+         </div>
+         
+         <div id="table-error" class="text-center py-12 text-red-600 font-uber-text bg-red-50 rounded-xl hidden">
+           <p class="font-bold mb-2">Error al cargar</p>
+           <p id="table-error-msg" class="text-sm"></p>
+         </div>
+
+         <div class="overflow-x-auto rounded-xl border border-canvas-soft hidden flex-1" id="table-container">
+           <table class="table w-full text-left text-sm font-uber-text" id="data-table">
+             <thead class="bg-canvas-soft text-xs uppercase text-body border-b border-canvas-soft">
+               <tr id="table-head"></tr>
+             </thead>
+             <tbody id="table-body" class="divide-y divide-canvas-soft">
+             </tbody>
+           </table>
+         </div>
+       </div>
     </section>
   </main>
 
@@ -137,6 +147,8 @@ const tables = [
     container: document.getElementById('table-container') as HTMLElement,
     thead: document.getElementById('table-head') as HTMLElement,
     tbody: document.getElementById('table-body') as HTMLElement,
+    filterWrapper: document.getElementById('filter-wrapper') as HTMLElement,
+    filterInput: document.getElementById('table-filter') as HTMLInputElement,
     
     // Modal
     modal: document.getElementById('crud-modal') as HTMLElement,
@@ -164,6 +176,7 @@ const tables = [
       currentTable = target.getAttribute('data-table') || '';
       isReadonly = target.getAttribute('data-readonly') === 'true';
       UI.title.textContent = target.textContent?.trim() || currentTable;
+      UI.filterInput.value = ''; // Reset filter
       
       loadTableData();
     });
@@ -174,6 +187,7 @@ const tables = [
   UI.btnClose.addEventListener('click', closeModal);
   UI.btnCancel.addEventListener('click', closeModal);
   UI.btnSave.addEventListener('click', saveRecord);
+  UI.filterInput.addEventListener('input', () => renderTable());
 
   // Inicializar seleccionando la primera tab
   if (UI.tabs.length > 0) {
@@ -192,6 +206,7 @@ const tables = [
     UI.loading.classList.remove('hidden');
     UI.btnNew.classList.add('hidden');
     UI.btnRefresh.classList.add('hidden');
+    UI.filterWrapper.classList.add('hidden');
     
     try {
       const res = await fetch(`/api/panel/tables/${currentTable}?limit=200`);
@@ -207,6 +222,7 @@ const tables = [
         UI.btnNew.classList.remove('hidden');
       }
       UI.btnRefresh.classList.remove('hidden');
+      UI.filterWrapper.classList.remove('hidden');
 
       renderTable();
     } catch (err: any) {
@@ -218,11 +234,25 @@ const tables = [
   }
 
   function renderTable() {
-    if (currentData.length === 0) {
+    const filterText = UI.filterInput.value.toLowerCase().trim();
+    
+    const filteredData = currentData.filter(row => {
+      if (!filterText) return true;
+      return currentColumns.some(col => {
+        const val = row[col.name];
+        if (val === null || val === undefined) return false;
+        return String(val).toLowerCase().includes(filterText);
+      });
+    });
+
+    if (filteredData.length === 0) {
+      UI.tbody.innerHTML = '';
       UI.empty.classList.remove('hidden');
+      UI.container.classList.add('hidden');
       return;
     }
 
+    UI.empty.classList.add('hidden');
     UI.container.classList.remove('hidden');
 
     // Headers
@@ -235,7 +265,9 @@ const tables = [
 
     // Body
     let tbodyHTML = '';
-    currentData.forEach((row, rowIndex) => {
+    filteredData.forEach((row, filteredIndex) => {
+      // Encontrar el índice original en currentData para editar
+      const originalIndex = currentData.findIndex(r => r === row);
       let tr = '<tr class="hover:bg-canvas-soft/50 transition-colors group">';
       currentColumns.forEach(col => {
         let val = row[col.name];
@@ -243,7 +275,7 @@ const tables = [
         // Truncar textos largos
         if (typeof val === 'string' && val.length > 50) val = val.substring(0, 50) + '...';
         
-        tr += `<td class="px-4 py-3 truncate max-w-[150px]" title="${row[col.name]}">${val}</td>`;
+        tr += `<td class="px-4 py-3 truncate max-w-[150px]" title="${row[col.name] || ''}">${val}</td>`;
       });
 
       // Acciones
@@ -266,7 +298,7 @@ const tables = [
 
       if (!isReadonly) {
         accionesHTML += `
-          <button onclick="openEditModal(${rowIndex})" class="px-2 py-1 text-xs font-bold text-blue-600 bg-blue-100 rounded hover:bg-blue-200">Editar</button>
+          <button onclick="openEditModal(${originalIndex})" class="px-2 py-1 text-xs font-bold text-blue-600 bg-blue-100 rounded hover:bg-blue-200">Editar</button>
           <button onclick="deleteRecord('${idVal}')" class="px-2 py-1 text-xs font-bold text-red-600 bg-red-100 rounded hover:bg-red-200">Eliminar</button>
         `;
       } else {
