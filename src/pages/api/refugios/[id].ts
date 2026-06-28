@@ -179,6 +179,69 @@ export const PATCH: APIRoute = async (context) => {
     const sql = `UPDATE refugios SET ${fields.join(", ")} WHERE id = ?`;
     await DB.prepare(sql).bind(...params).run();
 
+    // Enviar notificación push si hay cambio significativo
+    try {
+      const PUSH_QUEUE = (env as any).PUSH_QUEUE;
+      if (PUSH_QUEUE) {
+        // Obtener refugio actualizado para determinar alertas
+        const refugioActualizado = await DB.prepare("SELECT nombre, inventario, ocupacion_actual, capacidad_maxima FROM refugios WHERE id = ?").bind(id).first<any>();
+        if (refugioActualizado) {
+          let alerta: { titulo: string; mensaje: string; tipo: "info" | "evacuacion" | "replica" } | null = null;
+
+          // Verificar semáforo de inventario
+          if (inventario) {
+            try {
+              const inv = typeof inventario === 'string' ? JSON.parse(inventario) : inventario;
+              const criticos = Object.values(inv).filter(v => v === "Crítico");
+              if (criticos.length > 0) {
+                alerta = {
+                  titulo: `🔴 ${refugioActualizado.nombre} — Estado Crítico`,
+                  mensaje: `${criticos.length} insumos en nivel crítico. Se necesita ayuda urgente.`,
+                  tipo: "info"
+                };
+              }
+            } catch {}
+          }
+
+          // Verificar si está lleno
+          const ocup = ocupacion_actual !== undefined ? parseInt(ocupacion_actual) : refugioActualizado.ocupacion_actual;
+          const cap = capacidad_maxima !== undefined ? parseInt(capacidad_maxima) : refugioActualizado.capacidad_maxima;
+          if (ocup && cap && ocup >= cap) {
+            alerta = {
+              titulo: `⚠️ ${refugioActualizado.nombre} — Capacidad Llena`,
+              mensaje: `El centro ha alcanzado su capacidad máxima (${ocup}/${cap} personas).`,
+              tipo: "info"
+            };
+          }
+
+          if (alerta) {
+            const subs = await DB.prepare(
+              "SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE rol = 'voluntario'"
+            ).all<{ endpoint: string; p256dh: string; auth: string }>();
+            const suscripciones = subs.results || [];
+            if (suscripciones.length > 0) {
+              await PUSH_QUEUE.send({
+                type: "push_batch",
+                payload: {
+                  titulo: alerta.titulo,
+                  mensaje: alerta.mensaje,
+                  tipo: alerta.tipo,
+                  url: `/refugios/mapa?id=${id}`,
+                },
+                suscripciones: suscripciones.map(s => ({
+                  endpoint: s.endpoint,
+                  keys: { p256dh: s.p256dh, auth: s.auth },
+                })),
+              });
+            }
+          }
+        }
+      }
+    } catch (pushErr) {
+      console.error("Error al enviar push de refugio:", pushErr);
+      // No fallar la actualización por error de push
+    }
+
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
