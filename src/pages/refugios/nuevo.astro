@@ -1,7 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import Navbar from "../../components/Navbar.astro";
-import { CATEGORIAS_INVENTARIO } from "../../lib/items";
+import { CATEGORIAS_INVENTARIO, TOTAL_ITEMS } from "../../lib/items";
 import { env } from "cloudflare:workers";
 import { obtenerVoluntarioSesion } from "../../lib/auth-helpers";
 
@@ -202,7 +202,7 @@ if (!voluntario) {
         </div>
 
         <div class="bg-canvas border border-canvas-soft p-4 rounded-xl space-y-4">
-          <span class="text-xs font-semibold text-ink font-uber-text block">📋 Estado del Inventario (43 Ítems)</span>
+          <span class="text-xs font-semibold text-ink font-uber-text block">📋 Estado del Inventario ({TOTAL_ITEMS} Ítems)</span>
           
           <div class="flex gap-1 overflow-x-auto pb-2 border-b border-canvas-soft scrollbar-none" id="tabs-container">
             {CATEGORIAS_INVENTARIO.map((cat, idx) => (
@@ -221,7 +221,11 @@ if (!voluntario) {
               <div id={`tab-${idx}`} class={`tab-pane space-y-3 ${idx === 0 ? '' : 'hidden'}`}>
                 {cat.items.map((item) => (
                   <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 py-2 border-b border-canvas-soft last:border-b-0">
-                    <span class="text-xs font-uber-text text-ink font-medium md:max-w-[200px]">{item.nombre}</span>
+                    <span class="text-xs font-uber-text text-ink font-medium md:max-w-[200px]">
+                      {item.nombre}
+                      {item.unidad_medida && <span class="text-[10px] text-mute ml-1 font-normal">({item.unidad_medida})</span>}
+                      {item.es_critico && <span class="text-[10px] text-red-500 font-bold ml-1" title="Insumo Crítico">⚠️</span>}
+                    </span>
                     <div class="flex gap-1 bg-canvas-soft p-1 rounded-xl w-full md:w-auto overflow-x-auto">
                       {["Crítico", "Alerta", "Estable", "Excedente"].map((est) => {
                         let activeClass = "";

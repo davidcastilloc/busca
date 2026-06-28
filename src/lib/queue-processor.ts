@@ -151,7 +151,7 @@ export async function procesarCola(
                       type: "push_batch",
                       payload: {
                         titulo: "¡Familiar Encontrado!",
-                        mensaje: `${reporte.nombre_buscado} ha sido registrado a salvo en el refugio: ${refugio || "Refugio de emergencia"}.`,
+                        mensaje: `${reporte.nombre_buscado} ha sido registrado localizado en el refugio: ${refugio || "Refugio de emergencia"}.`,
                         tipo: "info",
                         url: `/?q=${encodeURIComponent(reporte.nombre_buscado)}`
                       },

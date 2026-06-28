@@ -69,7 +69,7 @@ if (flyer?.tipo === "necesidad") {
   shareText = `🔴 SE BUSCA: ${nombre}${ubicacion ? ` - Último avistamiento: ${ubicacion}` : ""}. ¡Comparte! ${flyerUrl}`;
 } else if (flyer?.tipo === "encontrado") {
   const nombre = flyer?.nombre_buscado || "Persona encontrada";
-  shareText = `✅ PERSONA ENCONTRADA/A SALVO: ${nombre}. Informar a familiares. ${flyerUrl}`;
+  shareText = `✅ PERSONA ENCONTRADA/LOCALIZADO: ${nombre}. Informar a familiares. ${flyerUrl}`;
 } else {
   shareText = `🚨 Reporte de emergencia en dondeestan.org: ${flyerUrl}`;
 }

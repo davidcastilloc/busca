@@ -31,7 +31,7 @@ async function notifyChannel(
     } else if (titleUpper.includes("EMERGENCIA") || titleUpper.includes("NECESIDAD")) {
       emoji = "🆘"; tipoLabel = "NECESIDAD CRÍTICA";
     } else if (titleUpper.includes("ENCONTRAD") || titleUpper.includes("SALVO")) {
-      emoji = "✅"; tipoLabel = "PERSONA A SALVO";
+      emoji = "✅"; tipoLabel = "PERSONA LOCALIZADA";
     }
 
     // Descripción limpia sin etiquetas entre corchetes

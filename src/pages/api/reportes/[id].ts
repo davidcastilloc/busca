@@ -26,8 +26,8 @@ export const PATCH: APIRoute = async (context) => {
       voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
     }
 
-    // Reportar a salvo es la única acción pública. Todo lo demás requiere sesión de voluntario.
-    if (accion !== "reportar_a_salvo") {
+    // Reportar localizado es la única acción pública. Todo lo demás requiere sesión de voluntario.
+    if (accion !== "reportar_localizado") {
       if (!voluntario) {
         return new Response(JSON.stringify({ error: "No autorizado. Inicie sesión como voluntario." }), {
           status: 401,
@@ -66,13 +66,8 @@ export const PATCH: APIRoute = async (context) => {
     let nuevasNotasEvidencia = existente.notas_evidencia || null;
 
 
-    if (accion === "reportar_a_salvo") {
-      if (!body.foto_key) {
-        return new Response(JSON.stringify({ error: "Foto de evidencia es obligatoria para verificar reporte." }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" }
-        });
-      }
+    if (accion === "reportar_localizado") {
+
       if (!body.contacto) {
         return new Response(JSON.stringify({ error: "Contacto es obligatorio para verificar reporte." }), {
           status: 400,
@@ -130,7 +125,7 @@ export const PATCH: APIRoute = async (context) => {
       // Notificar administradores por Telegram
       try {
         const { notifyAdmins } = await import("../../../lib/telegram/notify");
-        const alertMsg = `⚠️ <b>Nueva Evidencia de Reporte Resuelto (A Salvo)</b>\n\n` +
+        const alertMsg = `⚠️ <b>Nueva Evidencia de Reporte Resuelto (Localizado)</b>\n\n` +
           `• <b>Persona:</b> ${existente.nombre_buscado || "Sin identificar"}\n` +
           `• <b>Cédula:</b> ${existente.cedula_buscado || "No especificada"}\n` +
           `• <b>Contacto reportante:</b> ${body.contacto}\n` +
@@ -153,7 +148,7 @@ export const PATCH: APIRoute = async (context) => {
       });
     }
 
-    if (accion === "aprobar_a_salvo") {
+    if (accion === "aprobar_localizado") {
       nuevaVerificacion = "verificado";
       
       await DB.prepare(`
@@ -196,7 +191,7 @@ export const PATCH: APIRoute = async (context) => {
       });
     }
 
-    if (accion === "rechazar_a_salvo") {
+    if (accion === "rechazar_localizado") {
       nuevoEstado = "abierto";
       nuevaVerificacion = "ninguna";
 

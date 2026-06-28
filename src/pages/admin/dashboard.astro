@@ -11,7 +11,7 @@ const filterRefugio = url.searchParams.get("refugio") || "";
 
 let stats = {
   total: 0,
-  vivo: 0,
+  localizado: 0,
   herido: 0,
   fallecido: 0,
   desconocido: 0
@@ -125,8 +125,8 @@ const formatFecha = (fechaStr: string) => {
         <div class="font-uber-display text-3xl text-ink mt-2">{stats.total}</div>
       </div>
       <div class="bg-canvas border border-green-500/20 p-5 rounded-xl shadow-sm text-center border-l-4">
-        <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Vivo / A Salvo</div>
-        <div class="font-uber-display text-3xl text-ink mt-2">{stats.vivo}</div>
+        <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Localizado</div>
+        <div class="font-uber-display text-3xl text-ink mt-2">{stats.localizado}</div>
       </div>
       <div class="bg-canvas border border-yellow-500/20 p-5 rounded-xl shadow-sm text-center border-l-4">
         <div class="text-xs text-body font-uber-text font-medium uppercase tracking-wider">Heridos</div>
@@ -296,7 +296,7 @@ const formatFecha = (fechaStr: string) => {
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Estado Médico</label>
               <select name="estado" class="select select-sm w-full font-uber-text">
                 <option value="">Todos</option>
-                <option value="vivo" selected={filterEstado === "vivo"}>Vivo / A Salvo</option>
+                <option value="localizado" selected={filterEstado === "localizado"}>Localizado</option>
                 <option value="herido" selected={filterEstado === "herido"}>Herido</option>
                 <option value="fallecido" selected={filterEstado === "fallecido"}>Fallecido</option>
                 <option value="desconocido" selected={filterEstado === "desconocido"}>Desconocido</option>
@@ -376,7 +376,7 @@ const formatFecha = (fechaStr: string) => {
                 ) : (
                   personas.map(p => {
                     const statusMap = {
-                      vivo: { badge: "border border-green-500/30 text-ink bg-canvas", dot: "bg-green-500" },
+                      localizado: { badge: "border border-green-500/30 text-ink bg-canvas", dot: "bg-green-500" },
                       herido: { badge: "border border-yellow-500/30 text-ink bg-canvas", dot: "bg-yellow-500" },
                       fallecido: { badge: "border border-red-500/30 text-ink bg-canvas", dot: "bg-red-500" },
                       desconocido: { badge: "border border-canvas-soft text-ink bg-canvas", dot: "bg-mute" }
@@ -425,7 +425,7 @@ const formatFecha = (fechaStr: string) => {
   </main>
 </Layout>
 
-<!-- Script de acciones del administrador para moderar reportes de a salvo -->
+<!-- Script de acciones del administrador para moderar reportes de localizado -->
 <script>
   const botonesAprobar = document.querySelectorAll(".btn-aprobar");
   const botonesRechazar = document.querySelectorAll(".btn-rechazar");
@@ -437,7 +437,7 @@ const formatFecha = (fechaStr: string) => {
       const tipo = target.getAttribute("data-tipo");
       if (!id || !tipo) return;
 
-      if (!confirm("¿Confirmar y marcar esta persona/reporte como verificado a salvo?")) return;
+      if (!confirm("¿Confirmar y marcar esta persona/reporte como verificado localizado?")) return;
 
       target.disabled = true;
       target.textContent = "Aprobando...";
@@ -447,7 +447,7 @@ const formatFecha = (fechaStr: string) => {
         const resp = await fetch(endpoint, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accion: "aprobar_a_salvo" })
+          body: JSON.stringify({ accion: "aprobar_localizado" })
         });
 
         if (resp.ok) {
@@ -473,7 +473,7 @@ const formatFecha = (fechaStr: string) => {
       const tipo = target.getAttribute("data-tipo");
       if (!id || !tipo) return;
 
-      if (!confirm("¿Rechazar este reporte de a salvo? La persona/reporte volverá a su estado anterior.")) return;
+      if (!confirm("¿Rechazar este reporte de localizado? La persona/reporte volverá a su estado anterior.")) return;
 
       target.disabled = true;
       target.textContent = "Rechazando...";
@@ -483,7 +483,7 @@ const formatFecha = (fechaStr: string) => {
         const resp = await fetch(endpoint, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accion: "rechazar_a_salvo" })
+          body: JSON.stringify({ accion: "rechazar_localizado" })
         });
 
         if (resp.ok) {

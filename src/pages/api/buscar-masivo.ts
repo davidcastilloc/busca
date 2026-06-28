@@ -28,7 +28,7 @@ export const POST: APIRoute = async ({ request }) => {
     const statements: any[] = [];
 
     // Por cada persona preparamos:
-    // 1. Búsqueda en censo de personas a salvo (tabla personas)
+    // 1. Búsqueda en censo de personas localizado (tabla personas)
     // 2. Búsqueda en reportes (tabla reportes)
     listaLimitada.forEach(p => {
       const nombreCompleto = p.nombre.trim();
@@ -79,7 +79,7 @@ export const POST: APIRoute = async ({ request }) => {
         id: pm.id,
         nombre: `${pm.nombre} ${pm.apellido || ""}`.trim(),
         cedula: pm.cedula,
-        estado: pm.estado, // vivo, herido, fallecido, desconocido
+        estado: pm.estado, // localizado, herido, fallecido, desconocido
         refugio: pm.refugio,
         contacto_enmascarado: enmascararContacto(pm.contacto),
         updated_at: pm.updated_at,
@@ -99,13 +99,13 @@ export const POST: APIRoute = async ({ request }) => {
       }));
 
       // Determinar estado de coincidencia general
-      let estadoCoincidencia = "sin_registro"; // vivo_al_salvo, reporte_activo, sin_registro
+      let estadoCoincidencia = "sin_registro"; // localizado_al_salvo, reporte_activo, sin_registro
       
-      const tieneVivo = personasFormateadas.some((f: any) => f.estado === "vivo" || f.estado === "herido");
+      const tieneVivo = personasFormateadas.some((f: any) => f.estado === "localizado" || f.estado === "herido");
       const tieneReporteAbierto = reportesFormateados.some((r: any) => r.estado_reporte === "abierto" && r.tipo === "desaparecido");
 
       if (tieneVivo) {
-        estadoCoincidencia = "vivo_al_salvo";
+        estadoCoincidencia = "localizado_al_salvo";
       } else if (tieneReporteAbierto) {
         estadoCoincidencia = "reporte_activo";
       }

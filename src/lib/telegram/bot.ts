@@ -321,7 +321,7 @@ async function sendWelcomeMessage(
   if (isAuthorized) {
     helpText += `🤝 <b>Acciones de Voluntario:</b>\n`;
     helpText += `📋 /inventario [centro] - Administrar stock de insumos.\n`;
-    helpText += `✅ /encontrado [cédula] - Marcar persona como a salvo.\n`;
+    helpText += `✅ /encontrado [cédula] - Marcar persona como localizado.\n`;
     helpText += `📷 /censo - Leer lista de nombres de papel con IA.\n`;
     helpText += `⛺ /refugio - Actualizar capacidad de un refugio.\n`;
     helpText += `🆘 /urgencia [insumo] - Alerta crítica de necesidad en terreno.\n\n`;

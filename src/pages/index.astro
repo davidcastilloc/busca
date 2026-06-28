@@ -36,7 +36,7 @@ try {
       <div class="flex flex-col sm:flex-row gap-3 justify-center mb-3 px-4 max-w-md mx-auto">
         <button id="btn-estoy-a-salvo" class="flex-1 btn bg-canvas text-ink hover:bg-canvas-soft border border-canvas-soft font-uber-text uber-body-md-strong px-6 py-3.5 rounded-full flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98] cursor-pointer">
           <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-          Estoy a salvo
+          Localizado
         </button>
         <a href="/reportar" class="flex-1 btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong px-6 py-3.5 rounded-full flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98] cursor-pointer">
           Reportar desaparecido
@@ -71,7 +71,7 @@ try {
             <ul class="text-xs text-body font-uber-text space-y-1.5 list-disc pl-4">
               <li>Encuentran persona viva/herida en escombros o refugio.</li>
               <li>Buscan nombre en plataforma.</li>
-              <li>Hacen clic en <span class="font-semibold">"✅ A salvo"</span> y añaden ubicación actual.</li>
+              <li>Hacen clic en <span class="font-semibold">"✅ Localizado"</span> y añaden ubicación actual.</li>
               <li>El sistema actualiza el estado.</li>
             </ul>
           </div>
@@ -84,7 +84,7 @@ try {
             <h4 class="font-uber-display text-sm font-bold text-ink mb-2">Familias</h4>
             <ul class="text-xs text-body font-uber-text space-y-1.5 list-disc pl-4">
               <li>Revisan plataforma desde casa.</li>
-              <li>Ven estado cambiar de "desaparecido" a "resuelto/a salvo".</li>
+              <li>Ven estado cambiar de "desaparecido" a "resuelto/localizado".</li>
               <li>Ven ubicación exacta del refugio.</li>
               <li>Recuperan contacto de inmediato.</li>
             </ul>
@@ -211,15 +211,15 @@ try {
   </main>
 </Layout>
 
-<!-- Modal "Estoy a salvo" -->
+<!-- Modal "Localizado" -->
 <div id="modal-salvo" class="fixed inset-0 z-[120] bg-black/60 hidden flex items-end sm:items-center justify-center animate-fade-in" style="backdrop-filter:blur(4px)">
   <div class="bg-canvas w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-xl border border-canvas-soft">
     <div class="flex justify-between items-center">
-      <h3 class="font-uber-display text-xl text-ink font-semibold">Estoy a salvo</h3>
+      <h3 class="font-uber-display text-xl text-ink font-semibold">Localizado</h3>
       <button id="btn-close-salvo" class="w-8 h-8 rounded-full bg-canvas-soft flex items-center justify-center text-ink text-sm hover:bg-surface-pressed cursor-pointer">✕</button>
     </div>
     <p class="text-sm text-body font-uber-text">
-      Si eres una persona reportada o deseas registrar que estás a salvo, ingresa tu cédula o nombre completo para buscarte en el censo.
+      Si eres una persona reportada o deseas registrar que estás localizado, ingresa tu cédula o nombre completo para buscarte en el censo.
     </p>
     
     <form id="form-salvo-buscar" class="space-y-3">
@@ -286,9 +286,9 @@ try {
           />
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="salvo-estado-salud">Tu Estado de Salud *</label>
+          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="salvo-estado-salud">Tu Estado de Salud (Opcional)</label>
           <select id="salvo-estado-salud" class="select w-full font-uber-text uber-body-md rounded-none bg-canvas-soft focus:border-ink border-transparent">
-            <option value="vivo">A salvo / Sin lesiones</option>
+            <option value="localizado">Localizado / Sin lesiones</option>
             <option value="herido">Herido / Requiere asistencia médica</option>
           </select>
         </div>
@@ -302,7 +302,7 @@ try {
           ></textarea>
         </div>
         <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text">Foto Evidencia * (Obligatoria)</label>
+          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text">Foto Evidencia (Opcional)</label>
           <div class="flex items-center gap-3 bg-canvas-soft border border-canvas-soft p-3 rounded-none">
             <input 
               type="file" 
@@ -344,7 +344,7 @@ try {
       </div>
 
       <div class="flex gap-2 pt-2">
-        <button id="btn-salvo-confirmar-enviar" class="btn bg-primary text-white hover:bg-black-elevated flex-1 font-uber-text uber-body-md-strong rounded-full cursor-pointer">Confirmar "A salvo"</button>
+        <button id="btn-salvo-confirmar-enviar" class="btn bg-primary text-white hover:bg-black-elevated flex-1 font-uber-text uber-body-md-strong rounded-full cursor-pointer">Confirmar "Localizado"</button>
         <button id="btn-salvo-confirmar-cancelar" type="button" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed flex-1 font-uber-text uber-body-md-strong rounded-full cursor-pointer">Atrás</button>
       </div>
     </div>
@@ -354,7 +354,7 @@ try {
       <div class="text-3xl">🎉</div>
       <h4 class="font-uber-display text-lg text-ink font-semibold">¡Estado actualizado!</h4>
       <p class="text-xs text-body font-uber-text">
-        Tu registro ha sido marcado como a salvo. Puedes compartir este reporte con familiares y amigos.
+        Tu registro ha sido marcado como localizado. Puedes compartir este reporte con familiares y amigos.
       </p>
       
       <div class="space-y-2 pt-2">
@@ -638,7 +638,7 @@ try {
 
       const contacto = salvoContacto?.value.trim();
       const refugio = salvoRefugio?.value.trim() || null;
-      const estadoSalud = salvoEstadoSalud?.value || "vivo";
+      const estadoSalud = salvoEstadoSalud?.value || "localizado";
       const notas = salvoNotas?.value.trim() || null;
       const fotoKey = salvoFotoKey?.value || null;
       const lat = salvoLatitud?.value ? parseFloat(salvoLatitud.value) : null;
@@ -651,10 +651,7 @@ try {
         return;
       }
 
-      if (!fotoKey) {
-        alert("La foto de evidencia es obligatoria para confirmar que estás a salvo.");
-        return;
-      }
+
 
       if (!confirmado) {
         alert("Debes confirmar que los datos son correctos.");
@@ -671,7 +668,7 @@ try {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              accion: "reportar_a_salvo",
+              accion: "reportar_localizado",
               estado: estadoSalud,
               contacto,
               refugio,
@@ -686,7 +683,7 @@ try {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              accion: "reportar_a_salvo",
+              accion: "reportar_localizado",
               estado_reporte: "resuelto",
               contacto,
               refugio,
@@ -709,19 +706,19 @@ try {
           const err = await patchResp.json();
           alert(`Error: ${err.error || "intente de nuevo"}`);
           btnSalvoConfirmarEnviar.disabled = false;
-          btnSalvoConfirmarEnviar.textContent = 'Confirmar "A salvo"';
+          btnSalvoConfirmarEnviar.textContent = 'Confirmar "Localizado"';
         }
       } catch {
         alert("Error de conexión");
         btnSalvoConfirmarEnviar.disabled = false;
-        btnSalvoConfirmarEnviar.textContent = 'Confirmar "A salvo"';
+        btnSalvoConfirmarEnviar.textContent = 'Confirmar "Localizado"';
       }
     });
 
     // Listeners de panel de éxito
     btnSalvoCompartir?.addEventListener("click", () => {
       const link = `${window.location.origin}/?q=${encodeURIComponent(personaNombreConfirmar)}`;
-      const texto = `¡Hola! He confirmado que estoy a salvo en la plataforma dondeestan.org. Puedes ver mis detalles aquí: ${link}`;
+      const texto = `¡Hola! He confirmado que localizado en la plataforma dondeestan.org. Puedes ver mis detalles aquí: ${link}`;
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, "_blank");
     });
 
@@ -785,7 +782,7 @@ try {
               let btnHtml = "";
               if (isPersona && item.estado === "desconocido") {
                 btnHtml = `<button class="btn btn-xs bg-success text-white px-2 py-1 rounded btn-salvo-marcar cursor-pointer">
-                             ✅ A salvo
+                             ✅ Localizado
                            </button>`;
               } else if (!isPersona && item.estado_reporte === "abierto") {
                 btnHtml = `<button class="btn btn-xs bg-success text-white px-2 py-1 rounded btn-salvo-reporte-marcar cursor-pointer">
@@ -793,7 +790,7 @@ try {
                            </button>`;
               } else {
                 const displayState = isPersona 
-                  ? (item.estado === "vivo" ? "A salvo" : item.estado)
+                  ? (item.estado === "localizado" ? "Localizado" : item.estado)
                   : (item.estado_reporte === "resuelto" ? "Resuelto" : item.estado_reporte);
                 btnHtml = `<span class="text-xs text-mute font-medium uppercase font-uber-text">${displayState}</span>`;
               }
@@ -926,7 +923,7 @@ try {
             } else {
               const isResuelto = p.tipo === "reporte" && p.estado_reporte === "resuelto";
               let badgeColor = "#EF4444"; // rojo por defecto
-              if (p.estado === "vivo" || isResuelto) badgeColor = "#22C55E";
+              if (p.estado === "localizado" || isResuelto) badgeColor = "#22C55E";
               else if (p.estado === "herido") badgeColor = "#F59E0B";
 
               const displayEstado = p.tipo === "reporte" ? (isResuelto ? "resuelto" : p.estado) : p.estado;

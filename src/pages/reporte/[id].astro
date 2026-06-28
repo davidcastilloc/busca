@@ -41,7 +41,7 @@ const reporteUrl = `${siteUrl}/reporte/${id}`;
 
 const tipoConfig: Record<string, { emoji: string; label: string; color: string; urgente: boolean }> = {
   desaparecido: { emoji: "🔴", label: "SE BUSCA", color: "bg-red-600", urgente: true },
-  encontrado:   { emoji: "✅", label: "A SALVO",  color: "bg-green-600", urgente: false },
+  encontrado:   { emoji: "✅", label: "LOCALIZADO",  color: "bg-green-600", urgente: false },
   necesidad:    { emoji: "🆘", label: "NECESIDAD CRÍTICA", color: "bg-orange-600", urgente: true },
   refugio:      { emoji: "🏠", label: "REFUGIO ACTIVO",    color: "bg-blue-600", urgente: false },
 };
@@ -70,7 +70,7 @@ let shareText = "";
 if (tipo === "desaparecido") {
   shareText = `🔴 SE BUSCA: ${titulo}${reporte?.ubicacion_nombre ? ` — Último avisto en ${reporte.ubicacion_nombre}` : ""}. ¡Comparte! ${reporteUrl}`;
 } else if (tipo === "encontrado") {
-  shareText = `✅ A SALVO: ${titulo}. Informa a sus familiares. ${reporteUrl}`;
+  shareText = `✅ LOCALIZADO: ${titulo}. Informa a sus familiares. ${reporteUrl}`;
 } else if (tipo === "necesidad") {
   const catMatch = (reporte?.descripcion || "").match(/\[TIPO NECESIDAD: (.*?)\]/);
   const cat = catMatch ? catMatch[1] : "Necesidad Urgente";

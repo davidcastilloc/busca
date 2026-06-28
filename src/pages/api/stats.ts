@@ -32,7 +32,7 @@ export const GET: APIRoute = async () => {
         DB.prepare("SELECT COUNT(*) as c FROM reportes").first<{ c: number }>(),
         DB.prepare("SELECT COUNT(*) as c FROM personas WHERE estado = 'desconocido'").first<{ c: number }>(),
         DB.prepare("SELECT COUNT(*) as c FROM reportes WHERE tipo = 'desaparecido' AND estado_reporte = 'abierto'").first<{ c: number }>(),
-        DB.prepare("SELECT COUNT(*) as c FROM personas WHERE estado IN ('vivo', 'herido')").first<{ c: number }>(),
+        DB.prepare("SELECT COUNT(*) as c FROM personas WHERE estado IN ('localizado', 'herido')").first<{ c: number }>(),
         DB.prepare("SELECT COUNT(*) as c FROM reportes WHERE estado_reporte = 'resuelto'").first<{ c: number }>(),
       ]);
 
