@@ -132,6 +132,16 @@ if (!voluntario) {
             <!-- Contenedor del mapa (común) -->
             <div id="ref-gps-map" class="w-full h-44 rounded-lg overflow-hidden border border-canvas-soft bg-canvas"></div>
             
+            <!-- Tarjeta de Info de Google Places (oculta por defecto) -->
+            <div id="google-place-info" class="hidden mt-2 p-3 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/80 to-indigo-50/60 space-y-2">
+              <div class="flex items-center gap-1.5 text-[11px] font-uber-text font-bold text-blue-700 uppercase tracking-wider">
+                <span>📍</span> Datos del lugar (Google)
+              </div>
+              <div id="gpi-content" class="grid gap-1.5 text-[11px] font-uber-text text-body">
+                <!-- Se llena dinámicamente -->
+              </div>
+            </div>
+
             <!-- Estatus de Ubicación -->
             <div id="ref-gps-status" class="text-[11px] text-mute font-uber-text italic">Obteniendo ubicación actual...</div>
           </div>
@@ -286,6 +296,79 @@ if (!voluntario) {
   const gpsStatus = document.getElementById("ref-gps-status");
   const btnGps = document.getElementById("btn-ref-gps");
 
+  /**
+   * Mostrar tarjeta de info de Google Places con todos los datos enriquecidos.
+   */
+  function mostrarInfoGoogle(data: any) {
+    const container = document.getElementById("google-place-info");
+    const content = document.getElementById("gpi-content");
+    if (!container || !content) return;
+
+    const items: string[] = [];
+
+    if (data.name) {
+      items.push(`<div class="flex items-center gap-1"><span class="font-semibold text-ink">🏛️ ${data.name}</span></div>`);
+    }
+
+    // Estado operativo
+    if (data.estado_operativo || data.estado_label) {
+      const label = data.estado_label || data.estado || data.estado_operativo;
+      const isOpen = data.estado_operativo === "OPERATIONAL";
+      const isClosed = data.estado_operativo?.includes("CLOSED");
+      const color = isOpen ? "text-green-700 bg-green-100" : isClosed ? "text-red-700 bg-red-100" : "text-gray-700 bg-gray-100";
+      items.push(`<div><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${color}">${isOpen ? "🟢" : isClosed ? "🔴" : "⚪"} ${label}</span></div>`);
+    }
+
+    // Abierto ahora
+    if (data.abierto_ahora !== undefined) {
+      const badge = data.abierto_ahora 
+        ? '<span class="text-green-700 font-semibold">✅ Abierto ahora</span>'
+        : '<span class="text-orange-600 font-semibold">🚫 Cerrado ahora</span>';
+      items.push(`<div>${badge}</div>`);
+    }
+
+    // Accesibilidad
+    if (data.accesible !== undefined) {
+      items.push(`<div>${data.accesible ? "♿ Acceso para silla de ruedas" : "⚠️ Sin acceso confirmado para silla de ruedas"}</div>`);
+    }
+
+    // Horario
+    if (data.horario && data.horario.length > 0) {
+      const horarioHtml = data.horario.map((h: string) => `<div class="pl-3 text-[10px]">${h}</div>`).join("");
+      items.push(`<details class="cursor-pointer"><summary class="font-semibold text-ink">🕐 Horario</summary><div class="mt-1 space-y-0.5">${horarioHtml}</div></details>`);
+    }
+
+    // Teléfono
+    if (data.phone_international || data.phone) {
+      const tel = data.phone_international || data.phone;
+      items.push(`<div>📞 <a href="tel:${tel.replace(/\s/g, '')}" class="text-blue-600 underline font-semibold">${tel}</a></div>`);
+    }
+
+    // Website
+    if (data.website) {
+      const domain = data.website.replace(/^https?:\/\//, "").replace(/\/$/, "").substring(0, 40);
+      items.push(`<div>🌐 <a href="${data.website}" target="_blank" rel="noopener" class="text-blue-600 underline">${domain}</a></div>`);
+    }
+
+    // Google Maps URL
+    if (data.google_maps_url) {
+      items.push(`<div>🗺️ <a href="${data.google_maps_url}" target="_blank" rel="noopener" class="text-blue-600 underline">Ver en Google Maps</a></div>`);
+    }
+
+    // Estado / Municipio
+    if (data.estado || data.municipio) {
+      const parts = [data.municipio, data.estado].filter(Boolean);
+      items.push(`<div>📌 ${parts.join(", ")}</div>`);
+    }
+
+    if (items.length > 0) {
+      content.innerHTML = items.join("");
+      container.classList.remove("hidden");
+    } else {
+      container.classList.add("hidden");
+    }
+  }
+
   function initMap(lat: number, lon: number, zoom = 15) {
     if (typeof (window as any).L === "undefined") return;
     const L = (window as any).L;
@@ -412,6 +495,9 @@ if (!voluntario) {
           if (selectTipo && selectTipo.value === "refugio") selectTipo.value = data.tipo;
         }
 
+        // Mostrar tarjeta con toda la info de Google Places
+        mostrarInfoGoogle(data);
+
         initMap(lat, lon, 15);
       } else {
         if (gpsStatus) {
@@ -511,6 +597,9 @@ if (!voluntario) {
           const selectTipo = document.getElementById("ref-tipo") as HTMLSelectElement;
           if (selectTipo && selectTipo.value === "refugio") selectTipo.value = data.tipo;
         }
+
+        // Mostrar tarjeta con toda la info de Google Places
+        mostrarInfoGoogle(data);
 
         if (data.aproximado) {
           if (gpsStatus) {

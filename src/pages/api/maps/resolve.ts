@@ -254,6 +254,94 @@ function inferirTipo(types: string[]): string {
 }
 
 /**
+ * Datos enriquecidos extraídos de Google Places.
+ */
+interface PlaceEnrichment {
+  name?: string;
+  formatted_address?: string;
+  phone?: string;
+  phone_international?: string;
+  tipo?: string;
+  website?: string;
+  google_maps_url?: string;
+  horario?: string[];
+  abierto_ahora?: boolean;
+  accesible?: boolean;
+  estado_operativo?: string;
+  estado?: string;
+  municipio?: string;
+}
+
+/**
+ * Extraer datos completos de Place Details dado un place_id.
+ */
+async function obtenerDetallesCompletos(placeId: string, apiKey: string): Promise<PlaceEnrichment> {
+  const fields = [
+    "name", "formatted_phone_number", "international_phone_number",
+    "types", "website", "business_status", "wheelchair_accessible_entrance",
+    "opening_hours", "url", "address_component", "formatted_address"
+  ].join(",");
+
+  const detUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}&language=es`;
+  const detResp = await fetch(detUrl);
+  if (!detResp.ok) return {};
+
+  const detData = await detResp.json() as any;
+  if (detData.status !== "OK" || !detData.result) return {};
+
+  const r = detData.result;
+  const enrichment: PlaceEnrichment = {};
+
+  enrichment.name = r.name || "";
+  enrichment.phone = r.formatted_phone_number || "";
+  enrichment.phone_international = r.international_phone_number || "";
+  enrichment.website = r.website || "";
+  enrichment.google_maps_url = r.url || "";
+  enrichment.formatted_address = r.formatted_address || "";
+
+  // Tipo inferido
+  if (r.types) {
+    enrichment.tipo = inferirTipo(r.types);
+  }
+
+  // Estado operativo
+  if (r.business_status) {
+    enrichment.estado_operativo = r.business_status;
+    const statusMap: Record<string, string> = {
+      "OPERATIONAL": "Operativo",
+      "CLOSED_TEMPORARILY": "Cerrado temporalmente",
+      "CLOSED_PERMANENTLY": "Cerrado permanentemente"
+    };
+    enrichment.estado = statusMap[r.business_status] || r.business_status;
+  }
+
+  // Accesibilidad
+  if (r.wheelchair_accessible_entrance !== undefined) {
+    enrichment.accesible = r.wheelchair_accessible_entrance;
+  }
+
+  // Horario
+  if (r.opening_hours) {
+    enrichment.horario = r.opening_hours.weekday_text || [];
+    enrichment.abierto_ahora = r.opening_hours.open_now;
+  }
+
+  // Estado/Municipio de address_components
+  if (r.address_components) {
+    for (const comp of r.address_components) {
+      if (comp.types?.includes("administrative_area_level_1")) {
+        enrichment.estado = enrichment.estado || comp.long_name;
+      }
+      if (comp.types?.includes("administrative_area_level_2") || comp.types?.includes("locality")) {
+        enrichment.municipio = comp.long_name;
+      }
+    }
+  }
+
+  return enrichment;
+}
+
+/**
  * Enriquecer coordenadas usando:
  * 1. Find Place from Text (si tenemos placeName del path de la URL)
  * 2. Nearby Search (busca establecimientos reales, no calles)
@@ -264,7 +352,7 @@ async function enriquecerCoordenadas(
   lng: number, 
   apiKey: string,
   placeName?: string
-): Promise<{ name?: string; phone?: string; tipo?: string; formatted_address?: string } | null> {
+): Promise<PlaceEnrichment | null> {
   try {
     // 1. Si tenemos nombre del lugar de la URL, usar Find Place from Text
     if (placeName) {
@@ -274,24 +362,14 @@ async function enriquecerCoordenadas(
         const findData = await findResp.json() as any;
         if (findData.status === "OK" && findData.candidates && findData.candidates.length > 0) {
           const candidate = findData.candidates[0];
-          let phone = "";
-          // Obtener teléfono con Place Details
           if (candidate.place_id) {
-            try {
-              const detUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${candidate.place_id}&fields=formatted_phone_number&key=${apiKey}&language=es`;
-              const detResp = await fetch(detUrl);
-              if (detResp.ok) {
-                const detData = await detResp.json() as any;
-                if (detData.status === "OK" && detData.result) {
-                  phone = detData.result.formatted_phone_number || "";
-                }
-              }
-            } catch { /* silenciar */ }
+            const enrichment = await obtenerDetallesCompletos(candidate.place_id, apiKey);
+            if (!enrichment.name) enrichment.name = candidate.name || placeName;
+            return enrichment;
           }
           return {
             name: candidate.name || placeName,
             formatted_address: candidate.formatted_address || "",
-            phone,
             tipo: inferirTipo(candidate.types || [])
           };
         }
@@ -312,23 +390,14 @@ async function enriquecerCoordenadas(
         });
         
         const mejor = establecimientos.length > 0 ? establecimientos[0] : nearbyData.results[0];
-        let phone = "";
         if (mejor.place_id) {
-          try {
-            const detUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${mejor.place_id}&fields=formatted_phone_number&key=${apiKey}&language=es`;
-            const detResp = await fetch(detUrl);
-            if (detResp.ok) {
-              const detData = await detResp.json() as any;
-              if (detData.status === "OK" && detData.result) {
-                phone = detData.result.formatted_phone_number || "";
-              }
-            }
-          } catch { /* silenciar */ }
+          const enrichment = await obtenerDetallesCompletos(mejor.place_id, apiKey);
+          if (!enrichment.name) enrichment.name = mejor.name || "";
+          return enrichment;
         }
         return {
           name: mejor.name || "",
           formatted_address: mejor.vicinity || "",
-          phone,
           tipo: inferirTipo(mejor.types || [])
         };
       }
@@ -343,7 +412,6 @@ async function enriquecerCoordenadas(
         return {
           name: "",
           formatted_address: revData.results[0].formatted_address || "",
-          phone: "",
           tipo: "refugio"
         };
       }
@@ -520,17 +588,36 @@ export const POST: APIRoute = async (context) => {
       if (placeName) break;
     }
 
+    // Variables para campos enriquecidos
+    let phone_international = "";
+    let website = "";
+    let google_maps_url = "";
+    let horario: string[] = [];
+    let abierto_ahora: boolean | undefined;
+    let accesible: boolean | undefined;
+    let estado_operativo = "";
+    let estado = "";
+    let municipio = "";
+
     // Enriquecer la respuesta:
     // - Si tenemos placeName de la URL, SIEMPRE intentar Find Place (prevalece sobre geocoding genérico)
     // - Si no tenemos placeName y tampoco name, intentar Nearby Search
     if (lat !== null && lng !== null && apiKey && (placeName || !name)) {
       const enrichment = await enriquecerCoordenadas(lat, lng, apiKey, placeName || undefined);
       if (enrichment) {
-        // Si el enrichment devuelve un nombre real, usarlo siempre
         if (enrichment.name) name = enrichment.name;
         if (enrichment.formatted_address) formatted_address = enrichment.formatted_address;
         if (enrichment.phone) phone = enrichment.phone;
+        if (enrichment.phone_international) phone_international = enrichment.phone_international;
         if (enrichment.tipo && enrichment.tipo !== "refugio") tipo = enrichment.tipo;
+        if (enrichment.website) website = enrichment.website;
+        if (enrichment.google_maps_url) google_maps_url = enrichment.google_maps_url;
+        if (enrichment.horario && enrichment.horario.length > 0) horario = enrichment.horario;
+        if (enrichment.abierto_ahora !== undefined) abierto_ahora = enrichment.abierto_ahora;
+        if (enrichment.accesible !== undefined) accesible = enrichment.accesible;
+        if (enrichment.estado_operativo) estado_operativo = enrichment.estado_operativo;
+        if (enrichment.estado) estado = enrichment.estado;
+        if (enrichment.municipio) municipio = enrichment.municipio;
       }
     }
 
@@ -543,7 +630,16 @@ export const POST: APIRoute = async (context) => {
         name: name || undefined,
         formatted_address: formatted_address || undefined,
         phone: phone || undefined,
-        tipo: tipo || undefined
+        phone_international: phone_international || undefined,
+        tipo: tipo || undefined,
+        website: website || undefined,
+        google_maps_url: google_maps_url || undefined,
+        horario: horario.length > 0 ? horario : undefined,
+        abierto_ahora,
+        accesible,
+        estado_operativo: estado_operativo || undefined,
+        estado: estado || undefined,
+        municipio: municipio || undefined,
       });
     }
 

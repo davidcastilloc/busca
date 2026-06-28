@@ -369,6 +369,15 @@ try {
             <!-- Contenedor del mapa (común) -->
             <div id="edit-gps-map" class="w-full h-40 rounded-lg overflow-hidden border border-canvas-soft bg-canvas"></div>
             
+            <!-- Tarjeta de Info de Google Places en Modal (oculta por defecto) -->
+            <div id="edit-google-place-info" class="hidden mt-2 p-3 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/80 to-indigo-50/60 space-y-2">
+              <div class="flex items-center gap-1.5 text-[11px] font-uber-text font-bold text-blue-700 uppercase tracking-wider">
+                <span>📍</span> Datos del lugar (Google)
+              </div>
+              <div id="edit-gpi-content" class="grid gap-1.5 text-[11px] font-uber-text text-body">
+              </div>
+            </div>
+
             <!-- Estatus de Ubicación -->
             <div id="edit-gps-status" class="text-[11px] text-mute font-uber-text italic">Ubicación cargada.</div>
           </div>
@@ -926,6 +935,71 @@ try {
   let editMap: any = null;
   let editMarker: any = null;
 
+  /**
+   * Mostrar tarjeta de info de Google Places en el modal de edición.
+   */
+  function mostrarInfoGoogleModal(data: any) {
+    const container = document.getElementById("edit-google-place-info");
+    const content = document.getElementById("edit-gpi-content");
+    if (!container || !content) return;
+
+    const items: string[] = [];
+
+    if (data.name) {
+      items.push(`<div class="flex items-center gap-1"><span class="font-semibold text-ink">🏛️ ${data.name}</span></div>`);
+    }
+
+    if (data.estado_operativo || data.estado_label) {
+      const label = data.estado_label || data.estado || data.estado_operativo;
+      const isOpen = data.estado_operativo === "OPERATIONAL";
+      const isClosed = data.estado_operativo?.includes("CLOSED");
+      const color = isOpen ? "text-green-700 bg-green-100" : isClosed ? "text-red-700 bg-red-100" : "text-gray-700 bg-gray-100";
+      items.push(`<div><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${color}">${isOpen ? "🟢" : isClosed ? "🔴" : "⚪"} ${label}</span></div>`);
+    }
+
+    if (data.abierto_ahora !== undefined) {
+      const badge = data.abierto_ahora 
+        ? '<span class="text-green-700 font-semibold">✅ Abierto ahora</span>'
+        : '<span class="text-orange-600 font-semibold">🚫 Cerrado ahora</span>';
+      items.push(`<div>${badge}</div>`);
+    }
+
+    if (data.accesible !== undefined) {
+      items.push(`<div>${data.accesible ? "♿ Acceso para silla de ruedas" : "⚠️ Sin acceso confirmado para silla de ruedas"}</div>`);
+    }
+
+    if (data.horario && data.horario.length > 0) {
+      const horarioHtml = data.horario.map((h: string) => `<div class="pl-3 text-[10px]">${h}</div>`).join("");
+      items.push(`<details class="cursor-pointer"><summary class="font-semibold text-ink">🕐 Horario</summary><div class="mt-1 space-y-0.5">${horarioHtml}</div></details>`);
+    }
+
+    if (data.phone_international || data.phone) {
+      const tel = data.phone_international || data.phone;
+      items.push(`<div>📞 <a href="tel:${tel.replace(/\s/g, '')}" class="text-blue-600 underline font-semibold">${tel}</a></div>`);
+    }
+
+    if (data.website) {
+      const domain = data.website.replace(/^https?:\/\//, "").replace(/\/$/, "").substring(0, 40);
+      items.push(`<div>🌐 <a href="${data.website}" target="_blank" rel="noopener" class="text-blue-600 underline">${domain}</a></div>`);
+    }
+
+    if (data.google_maps_url) {
+      items.push(`<div>🗺️ <a href="${data.google_maps_url}" target="_blank" rel="noopener" class="text-blue-600 underline">Ver en Google Maps</a></div>`);
+    }
+
+    if (data.estado || data.municipio) {
+      const parts = [data.municipio, data.estado].filter(Boolean);
+      items.push(`<div>📌 ${parts.join(", ")}</div>`);
+    }
+
+    if (items.length > 0) {
+      content.innerHTML = items.join("");
+      container.classList.remove("hidden");
+    } else {
+      container.classList.add("hidden");
+    }
+  }
+
   function initEditMap(lat: number, lon: number, zoom = 15) {
     if (typeof (window as any).L === "undefined") return;
     const L = (window as any).L;
@@ -1089,6 +1163,15 @@ try {
         if (data.formatted_address) {
           inputDireccion.value = data.formatted_address;
         }
+        if (data.phone && !inputContacto.value) {
+          inputContacto.value = data.phone;
+        }
+        if (data.tipo && selectTipo.value === "refugio") {
+          selectTipo.value = data.tipo;
+        }
+
+        // Mostrar tarjeta con info de Google Places
+        mostrarInfoGoogleModal(data);
 
         initEditMap(lat, lon, 15);
       } else {
@@ -1142,6 +1225,9 @@ try {
           selectTipo.value = data.tipo;
         }
 
+        // Mostrar tarjeta con info de Google Places
+        mostrarInfoGoogleModal(data);
+
         if (data.aproximado) {
           if (gpsEditStatus) {
             gpsEditStatus.textContent = `⚠️ Ubicación aproximada: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)} — Ajusta el pin tocando el mapa.`;
@@ -1185,6 +1271,10 @@ try {
       if (inputNecesidades) inputNecesidades.value = el.dataset.necesidades || "";
       if (inputContacto) inputContacto.value = el.dataset.contacto || "";
       if (editTitulo) editTitulo.textContent = `Actualizar: ${el.dataset.nombre}`;
+      
+      // Ocultar tarjeta de info de Google del uso anterior
+      const gpiCard = document.getElementById("edit-google-place-info");
+      if (gpiCard) gpiCard.classList.add("hidden");
 
       if (inputNinos) inputNinos.value = el.dataset.ninos || "0";
       if (inputBebes) inputBebes.value = el.dataset.bebes || "0";
