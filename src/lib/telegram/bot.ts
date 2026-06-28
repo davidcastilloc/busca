@@ -19,6 +19,29 @@ import { startCensus, handleCensusState } from "./handlers/census";
 import { startShelter, handleShelterState, handleShelterSelection, handleShelterStatusUpdate } from "./handlers/shelter";
 import { startSos, handleSosState } from "./handlers/sos";
 import { startBroadcast, handleBroadcastState } from "./handlers/broadcast";
+import { startLogin, handleLoginState } from "./handlers/login";
+
+// Helper para verificar si un ID de Telegram pertenece a un voluntario activo o admin
+async function checkIsVolunteerOrAdmin(
+  db: D1Database,
+  telegramId: string | number,
+  adminIdsEnv?: string
+): Promise<boolean> {
+  const adminIds = (adminIdsEnv || "").split(",").map((id) => id.trim());
+  if (adminIds.includes(String(telegramId))) {
+    return true;
+  }
+  try {
+    const vol = await db
+      .prepare("SELECT id FROM voluntarios WHERE telegram_id = ? AND activo = 1")
+      .bind(String(telegramId))
+      .first<{ id: number }>();
+    return !!vol;
+  } catch (err) {
+    console.error("Error al verificar autorización de voluntario en D1:", err);
+    return false;
+  }
+}
 
 export async function processTelegramUpdate(
   update: any,
@@ -41,14 +64,13 @@ export async function processTelegramUpdate(
     const messageId = cb.message.message_id;
     const data = cb.data;
 
-    // Verificar si el usuario es Admin/Voluntario
-    const adminIds = (env.TELEGRAM_ADMIN_IDS || "").split(",").map((id) => id.trim());
-    const isAdmin = adminIds.includes(String(telegramId));
+    // Verificar si el usuario es Admin o Voluntario autorizado
+    const isAuthorized = await checkIsVolunteerOrAdmin(db, telegramId, env.TELEGRAM_ADMIN_IDS);
 
     try {
-      if (!isAdmin) {
+      if (!isAuthorized) {
         await client.answerCallbackQuery(cb.id, {
-          text: "🚷 No tienes permisos para esta acción.",
+          text: "🚷 No tienes permisos para esta acción. Inicia sesión con /login.",
           show_alert: true,
         });
         return;
@@ -110,15 +132,20 @@ export async function processTelegramUpdate(
     const chatId = msg.chat.id;
     const text = msg.text?.trim();
 
-    // Verificar si es Admin
+    // Verificar permisos
     const adminIds = (env.TELEGRAM_ADMIN_IDS || "").split(",").map((id) => id.trim());
     const isAdmin = adminIds.includes(String(telegramId));
+    const isAuthorized = await checkIsVolunteerOrAdmin(db, telegramId, env.TELEGRAM_ADMIN_IDS);
 
     // Obtener sesión
     const session = await getSession(db, telegramId);
 
     // Si tiene sesión activa en un flujo conversacional
     if (session) {
+      if (session.step.startsWith("log_")) {
+        await handleLoginState(client, db, chatId, telegramId, session, text);
+        return;
+      }
       if (session.step.startsWith("rep_")) {
         await handleReportState(client, db, chatId, telegramId, session, text, msg.photo, env);
         return;
@@ -149,7 +176,7 @@ export async function processTelegramUpdate(
     if (text) {
       const lowerText = text.toLowerCase();
       if (lowerText === "/start" || lowerText === "/help" || lowerText === "/ayuda") {
-        await sendWelcomeMessage(client, chatId, isAdmin);
+        await sendWelcomeMessage(client, chatId, isAuthorized, isAdmin);
         return;
       }
 
@@ -159,9 +186,8 @@ export async function processTelegramUpdate(
         return;
       }
 
-      if (lowerText.startsWith("/inventario")) {
-        const args = text.substring(11).trim();
-        await handleInventory(client, db, chatId, isAdmin, args);
+      if (lowerText === "/login") {
+        await startLogin(client, db, chatId, telegramId);
         return;
       }
 
@@ -170,31 +196,81 @@ export async function processTelegramUpdate(
         return;
       }
 
+      // Comandos de Voluntarios (requieren isAuthorized)
+      if (lowerText.startsWith("/inventario")) {
+        if (!isAuthorized) {
+          await client.sendMessage(
+            chatId,
+            "🚷 Acceso denegado. Este comando es solo para voluntarios autorizados. Inicia sesión con /login."
+          );
+          return;
+        }
+        const args = text.substring(11).trim();
+        await handleInventory(client, db, chatId, isAuthorized, args);
+        return;
+      }
+
       if (lowerText.startsWith("/encontrado")) {
+        if (!isAuthorized) {
+          await client.sendMessage(
+            chatId,
+            "🚷 Acceso denegado. Este comando es solo para voluntarios autorizados. Inicia sesión con /login."
+          );
+          return;
+        }
         const args = text.substring(11).trim();
         await startFound(client, db, chatId, telegramId, args);
         return;
       }
 
       if (lowerText.startsWith("/censo")) {
+        if (!isAuthorized) {
+          await client.sendMessage(
+            chatId,
+            "🚷 Acceso denegado. Este comando es solo para voluntarios autorizados. Inicia sesión con /login."
+          );
+          return;
+        }
         const args = text.substring(6).trim();
         await startCensus(client, db, chatId, telegramId, args);
         return;
       }
 
       if (lowerText.startsWith("/refugio")) {
+        if (!isAuthorized) {
+          await client.sendMessage(
+            chatId,
+            "🚷 Acceso denegado. Este comando es solo para voluntarios autorizados. Inicia sesión con /login."
+          );
+          return;
+        }
         const args = text.substring(8).trim();
         await startShelter(client, db, chatId, telegramId, args);
         return;
       }
 
       if (lowerText.startsWith("/urgencia") || lowerText.startsWith("/sos")) {
+        if (!isAuthorized) {
+          await client.sendMessage(
+            chatId,
+            "🚷 Acceso denegado. Este comando es solo para voluntarios autorizados. Inicia sesión con /login."
+          );
+          return;
+        }
         const args = text.replace(/^\/(urgencia|sos)/i, "").trim();
         await startSos(client, db, chatId, telegramId, args);
         return;
       }
 
+      // Comandos de Admin (requieren isAdmin)
       if (lowerText.startsWith("/alerta") || lowerText.startsWith("/broadcast")) {
+        if (!isAdmin) {
+          await client.sendMessage(
+            chatId,
+            "🚷 Acceso denegado. Este comando es exclusivo para administradores globales."
+          );
+          return;
+        }
         const args = text.replace(/^\/(alerta|broadcast)/i, "").trim();
         await startBroadcast(client, db, chatId, telegramId, isAdmin, args);
         return;
@@ -214,30 +290,36 @@ export async function processTelegramUpdate(
     }
 
     // Mensaje no reconocido
-    await sendWelcomeMessage(client, chatId, isAdmin);
+    await sendWelcomeMessage(client, chatId, isAuthorized, isAdmin);
   }
 }
 
 async function sendWelcomeMessage(
   client: TelegramClient,
   chatId: string | number,
+  isAuthorized: boolean,
   isAdmin: boolean
 ): Promise<void> {
   let helpText = `👋 <b>Bienvenido al Bot de dondeestan.org</b>\n\n`;
   helpText += `Este bot te permite acceder y actualizar información de personas y centros en tiempo real.\n\n`;
-  helpText += `<b>Comandos disponibles:</b>\n`;
+  helpText += `<b>Comandos públicos:</b>\n`;
   helpText += `🔍 /buscar [nombre/cédula] - Buscar persona en el censo.\n`;
   helpText += `🚨 /reportar - Reportar una persona desaparecida.\n`;
-  helpText += `✅ /encontrado [cédula] - Marcar persona como a salvo.\n`;
-  helpText += `📷 /censo - Leer lista de nombres de papel con IA.\n`;
-  helpText += `⛺ /refugio - Actualizar capacidad de un refugio.\n`;
-  helpText += `🆘 /urgencia [insumo] - Alerta crítica de necesidad en terreno.\n\n`;
+  helpText += `👤 /login - Identificarte como voluntario registrado.\n\n`;
   helpText += `📍 <b>Enviar Ubicación GPS</b> - Adjunta tu ubicación para ver centros cercanos.\n`;
   helpText += `📷 <b>Enviar Foto de Flyer</b> - Decodificar un código QR.\n\n`;
 
-  if (isAdmin) {
-    helpText += `🔑 <b>Acciones de Admin/Comando:</b>\n`;
+  if (isAuthorized) {
+    helpText += `🤝 <b>Acciones de Voluntario:</b>\n`;
     helpText += `📋 /inventario [centro] - Administrar stock de insumos.\n`;
+    helpText += `✅ /encontrado [cédula] - Marcar persona como a salvo.\n`;
+    helpText += `📷 /censo - Leer lista de nombres de papel con IA.\n`;
+    helpText += `⛺ /refugio - Actualizar capacidad de un refugio.\n`;
+    helpText += `🆘 /urgencia [insumo] - Alerta crítica de necesidad en terreno.\n\n`;
+  }
+
+  if (isAdmin) {
+    helpText += `🔑 <b>Acciones de Admin Global:</b>\n`;
     helpText += `📢 /alerta [mensaje] - Enviar broadcast global a voluntarios.\n`;
   }
 
