@@ -306,10 +306,18 @@ if (!voluntario) {
   let map: any = null;
   let marker: any = null;
 
-  const latInput = document.getElementById("ref-latitud") as HTMLInputElement;
-  const lonInput = document.getElementById("ref-longitud") as HTMLInputElement;
-  const gpsStatus = document.getElementById("ref-gps-status");
-  const btnGps = document.getElementById("btn-ref-gps");
+  document.addEventListener('astro:page-load', () => {
+    // Limpieza de mapa previo
+    if (map) {
+      try { map.remove(); } catch (e) {}
+      map = null;
+    }
+    marker = null;
+
+    const latInput = document.getElementById("ref-latitud") as HTMLInputElement;
+    const lonInput = document.getElementById("ref-longitud") as HTMLInputElement;
+    const gpsStatus = document.getElementById("ref-gps-status");
+    const btnGps = document.getElementById("btn-ref-gps");
 
   /**
    * Mostrar tarjeta de info de Google Places con todos los datos enriquecidos.
@@ -862,4 +870,5 @@ if (!voluntario) {
       }
     }
   });
+});
 </script>
