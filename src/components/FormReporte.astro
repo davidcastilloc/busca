@@ -1,129 +1,239 @@
 ---
 import MapaUbicacion from "./MapaUbicacion.astro";
 import FotoUpload from "./FotoUpload.astro";
+
+interface Props {
+  isVolunteer?: boolean;
+  volunteerName?: string;
+  volunteerPhone?: string;
+}
+
+const { isVolunteer = false, volunteerName = "", volunteerPhone = "" } = Astro.props;
 ---
 
 <div class="max-w-2xl mx-auto px-4 py-4 sm:py-6">
-  <form id="form-reporte" class="space-y-8">
-    <!-- Bloque 1: Datos Reporte -->
-    <fieldset class="fieldset bg-canvas border border-canvas-soft p-4 sm:p-6 rounded-xl shadow-sm">
-      <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">1. Detalles del Reporte</legend>
-      
-      <div class="grid grid-cols-1 gap-4">
-        <div class="md:col-span-2">
-          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Tipo de Reporte *</label>
-          <select name="tipo" class="select w-full font-uber-text uber-body-md-strong">
-            <option value="desaparecido">Persona Desaparecida (Búsqueda)</option>
-            <option value="encontrado">Persona Encontrada (No Identificada)</option>
-            <option value="refugio">Solicitud / Reporte de Refugio</option>
-            <option value="necesidad">Necesidad Crítica (Médica, Agua, Comida)</option>
-          </select>
-        </div>
-        
-        <div>
-          <label id="label-nombre-buscado" class="block font-uber-text uber-body-sm-strong text-body mb-1">Nombre de Persona Involucrada</label>
-          <input type="text" name="nombre_buscado" class="input w-full font-uber-text uber-body-md" placeholder="Opcional (si se conoce)" />
-        </div>
-        <div>
-          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Cédula de Persona Involucrada</label>
-          <input type="text" name="cedula_buscado" class="input w-full font-uber-text uber-body-md" placeholder="Opcional (si se conoce)" />
-        </div>
+  <!-- Cabecera de Progreso -->
+  <div class="mb-8 flex justify-between items-center px-2">
+    <div class="flex items-center space-x-2">
+      <div id="step-ind-1" class="w-8 h-8 rounded-full flex items-center justify-center bg-primary text-white font-uber-display text-sm transition-colors">1</div>
+      <span id="step-txt-1" class="text-xs font-uber-text font-bold text-ink transition-colors">Tipo</span>
+    </div>
+    <div class="flex-grow h-0.5 bg-canvas-soft mx-2"></div>
+    <div class="flex items-center space-x-2">
+      <div id="step-ind-2" class="w-8 h-8 rounded-full flex items-center justify-center bg-canvas-soft text-mute font-uber-display text-sm transition-colors">2</div>
+      <span id="step-txt-2" class="text-xs font-uber-text text-body transition-colors">Detalles</span>
+    </div>
+    <div class="flex-grow h-0.5 bg-canvas-soft mx-2"></div>
+    <div class="flex items-center space-x-2">
+      <div id="step-ind-3" class="w-8 h-8 rounded-full flex items-center justify-center bg-canvas-soft text-mute font-uber-display text-sm transition-colors">3</div>
+      <span id="step-txt-3" class="text-xs font-uber-text text-body transition-colors">Confirmar</span>
+    </div>
+  </div>
 
-        <!-- Campos adicionales para desaparecido -->
-        <div id="campos-desaparecido" class="md:col-span-2 space-y-4 border-t border-canvas-soft pt-4 mt-2">
-          <p class="font-uber-display text-sm text-ink font-semibold">Datos adicionales de la persona desaparecida:</p>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Estado (Última ubicación) *</label>
-              <input type="text" name="extra_estado" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Distrito Capital" />
-            </div>
-            <div>
-              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Ciudad *</label>
-              <input type="text" name="extra_ciudad" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Caracas" />
-            </div>
-            <div>
-              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Sector / Zona *</label>
-              <input type="text" name="extra_sector" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Los Palos Grandes" />
-            </div>
-          </div>
-          <div>
-            <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Fecha y Hora de Último Contacto *</label>
-            <input type="datetime-local" name="extra_ultimo_contacto" class="input w-full font-uber-text uber-body-md" />
-          </div>
-          <div>
-            <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Señas Particulares y Vestimenta *</label>
-            <textarea name="extra_senas" class="textarea w-full h-20 font-uber-text uber-body-md" placeholder="Ej: Cicatriz en la ceja izquierda, vestía camisa azul y jean oscuro, usa lentes..."></textarea>
-          </div>
-        </div>
+  <!-- Info badge for authenticated volunteers -->
+  {isVolunteer && (
+    <div class="max-w-2xl mx-auto mb-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs px-4 py-2.5 rounded-xl font-uber-text flex items-center gap-2">
+      <span>🛡️</span>
+      <span>Voluntario Activo: Tu reporte se registrará bajo tu credencial.</span>
+    </div>
+  )}
 
-        <div class="md:col-span-2">
-          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Descripción Detallada *</label>
-          <textarea 
-            name="descripcion" 
-            required 
-            minlength="10"
-            class="textarea w-full h-32 font-uber-text uber-body-md" 
-            placeholder="Ej: Detalles de la desaparición o situación..."
-          ></textarea>
-          <span class="text-xs text-mute mt-1 block font-uber-text">La IA utilizará esta descripción para cruzar reportes.</span>
-        </div>
+  <form id="form-reporte" class="space-y-6">
+    <!-- PASO 1: TIPO DE REPORTE -->
+    <div id="pane-step-1" class="step-pane space-y-6">
+      <div class="text-center mb-6">
+        <h2 class="font-uber-display text-xl text-ink">¿Qué tipo de reporte deseas emitir?</h2>
+        <p class="text-xs text-body font-uber-text mt-1">Selecciona la opción que mejor describa la situación.</p>
       </div>
-    </fieldset>
 
-    <!-- Bloque 2: Ubicación del Reporte -->
-    <fieldset class="fieldset bg-canvas border border-canvas-soft p-4 sm:p-6 rounded-xl shadow-sm">
-      <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">2. Lugar del Reporte</legend>
-      
-      <div class="space-y-4">
-        <div>
-          <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Dirección / Lugar de Avistamiento</label>
-          <input type="text" name="ubicacion_nombre" class="input w-full font-uber-text uber-body-md" placeholder="Sector, calle o punto de referencia" />
-        </div>
-        
-        <MapaUbicacion />
-      </div>
-    </fieldset>
-
-    <!-- Bloque 3: Reportante y Evidencia -->
-    <fieldset class="fieldset bg-canvas border border-canvas-soft p-4 sm:p-6 rounded-xl shadow-sm">
-      <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">3. Reportante y Evidencia</legend>
-      
-      <div class="space-y-4">
-        <FotoUpload />
-
-        <!-- Opción de Flyer de Emergencia (adaptado a card-soft-tinted) -->
-        <div id="flyer-opt-in" class="hidden border border-canvas-soft bg-canvas-soft p-4 rounded-xl mt-2">
-          <label class="cursor-pointer flex items-start gap-3 select-none">
-            <input 
-              type="checkbox" 
-              name="generar_flyer" 
-              id="generar-flyer-chk" 
-              checked 
-              class="w-5 h-5 rounded-md border-2 border-primary bg-canvas text-primary focus:ring-0 focus:ring-offset-0 mt-0.5 accent-black" 
-            />
-            <div class="flex-grow">
-              <span class="font-uber-display text-sm text-ink block">
-                Generar cartel (flyer) de búsqueda descargable
-              </span>
-              <span class="text-xs text-body mt-1 block font-uber-text">
-                Al enviar el reporte, crearemos un cartel de difusión rápido en formato imagen listo para compartir en redes sociales y WhatsApp.
-              </span>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <button type="button" class="type-card text-left p-5 border border-canvas-soft bg-canvas rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" data-type="desaparecido">
+          <div>
+            <span class="text-3xl block mb-2">🔍</span>
+            <h3 class="font-uber-display text-base text-ink">Persona Desaparecida</h3>
+            <p class="text-xs text-body font-uber-text mt-1">Busca a un familiar o conocido con quien has perdido contacto.</p>
+          </div>
+        </button>
+        {isVolunteer && (
+          <button type="button" class="type-card text-left p-5 border border-canvas-soft bg-canvas rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" data-type="encontrado">
+            <div>
+              <span class="text-3xl block mb-2">🤝</span>
+              <h3 class="font-uber-display text-base text-ink">Persona Encontrada</h3>
+              <p class="text-xs text-body font-uber-text mt-1">Reporta a alguien localizado pero que aún no está identificado.</p>
             </div>
-          </label>
-        </div>
+          </button>
+          <button type="button" class="type-card text-left p-5 border border-canvas-soft bg-canvas rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" data-type="refugio">
+            <div>
+              <span class="text-3xl block mb-2">🏠</span>
+              <h3 class="font-uber-display text-base text-ink">Reportar Refugio</h3>
+              <p class="text-xs text-body font-uber-text mt-1">Registra información sobre la capacidad o estado de un refugio.</p>
+            </div>
+          </button>
+        )}
+        <button type="button" class="type-card text-left p-5 border border-canvas-soft bg-canvas rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" data-type="necesidad">
+          <div>
+            <span class="text-3xl block mb-2">🚨</span>
+            <h3 class="font-uber-display text-base text-ink">Necesidad Crítica</h3>
+            <p class="text-xs text-body font-uber-text mt-1">Petición urgente de agua, comida, medicina o rescate.</p>
+          </div>
+        </button>
+      </div>
+      <input type="hidden" name="tipo" id="input-tipo" />
 
+      <div class="flex justify-end pt-4">
+        <button type="button" id="btn-next-1" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text px-8" disabled>
+          Siguiente
+        </button>
+      </div>
+    </div>
+
+    <!-- PASO 2: DETALLES -->
+    <div id="pane-step-2" class="step-pane hidden space-y-6">
+      <!-- 2.1 Datos Personales -->
+      <fieldset class="fieldset bg-canvas border border-canvas-soft p-4 sm:p-6 rounded-xl shadow-sm">
+        <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">1. Detalles del Reporte</legend>
+        
         <div class="grid grid-cols-1 gap-4">
           <div>
-            <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Tu Nombre (Reportante)</label>
-            <input type="text" name="reportante_nombre" class="input w-full font-uber-text uber-body-md" placeholder="Opcional" />
+            <label id="label-nombre-buscado" class="block font-uber-text uber-body-sm-strong text-body mb-1">Nombre de Persona Involucrada</label>
+            <input type="text" name="nombre_buscado" class="input w-full font-uber-text uber-body-md" placeholder="Opcional (si se conoce)" />
           </div>
           <div>
-            <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Tu Contacto (Teléfono/Email)</label>
-            <input type="text" name="reportante_contacto" class="input w-full font-uber-text uber-body-md" placeholder="Para coordinar rescate" />
+            <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Cédula de Persona Involucrada</label>
+            <input type="text" name="cedula_buscado" class="input w-full font-uber-text uber-body-md" placeholder="Opcional (si se conoce)" />
+          </div>
+
+          <!-- Campos adicionales para desaparecido -->
+          <div id="campos-desaparecido" class="hidden space-y-4 border-t border-canvas-soft pt-4 mt-2">
+            <p class="font-uber-display text-sm text-ink font-semibold">Datos adicionales de la persona desaparecida:</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Estado (Última ubicación) *</label>
+                <input type="text" name="extra_estado" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Distrito Capital" />
+              </div>
+              <div>
+                <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Ciudad *</label>
+                <input type="text" name="extra_ciudad" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Caracas" />
+              </div>
+              <div>
+                <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Sector / Zona *</label>
+                <input type="text" name="extra_sector" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Los Palos Grandes" />
+              </div>
+            </div>
+            <div>
+              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Fecha y Hora de Último Contacto *</label>
+              <input type="datetime-local" name="extra_ultimo_contacto" class="input w-full font-uber-text uber-body-md" />
+            </div>
+            <div>
+              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Señas Particulares y Vestimenta *</label>
+              <textarea name="extra_senas" class="textarea w-full h-20 font-uber-text uber-body-md" placeholder="Ej: Cicatriz en la ceja izquierda, vestía camisa azul y jean oscuro..."></textarea>
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Descripción Detallada *</label>
+            <textarea 
+              name="descripcion" 
+              class="textarea w-full h-24 font-uber-text uber-body-md" 
+              placeholder="Ej: Detalles de la desaparición o situación..."
+            ></textarea>
+            <span class="text-xs text-mute mt-1 block font-uber-text">La IA utilizará esta descripción para cruzar reportes.</span>
           </div>
         </div>
+      </fieldset>
+
+      <!-- 2.2 Ubicación -->
+      <fieldset class="fieldset bg-canvas border border-canvas-soft p-4 sm:p-6 rounded-xl shadow-sm">
+        <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">2. Lugar del Reporte</legend>
+        <div class="space-y-4">
+          <div>
+            <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Dirección / Lugar de Avistamiento</label>
+            <input type="text" name="ubicacion_nombre" class="input w-full font-uber-text uber-body-md" placeholder="Sector, calle o punto de referencia" />
+          </div>
+          <MapaUbicacion />
+        </div>
+      </fieldset>
+
+      <!-- 2.3 Reportante y Evidencia -->
+      <fieldset class="fieldset bg-canvas border border-canvas-soft p-4 sm:p-6 rounded-xl shadow-sm">
+        <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">3. Reportante y Evidencia</legend>
+        <div class="space-y-4">
+          <FotoUpload />
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Tu Nombre (Reportante)</label>
+              <input type="text" name="reportante_nombre" class="input w-full font-uber-text uber-body-md" placeholder="Opcional" value={volunteerName} />
+            </div>
+            <div>
+              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Tu Contacto (Teléfono/Email)</label>
+              <input type="text" name="reportante_contacto" class="input w-full font-uber-text uber-body-md" placeholder="Para coordinar rescate" value={volunteerPhone} />
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="flex justify-between pt-4">
+        <button type="button" id="btn-back-2" class="btn btn-secondary font-uber-text px-8">
+          Atrás
+        </button>
+        <button type="button" id="btn-next-2" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text px-8">
+          Siguiente
+        </button>
       </div>
-    </fieldset>
+    </div>
+
+    <!-- PASO 3: CONFIRMACIÓN Y OPCIONES -->
+    <div id="pane-step-3" class="step-pane hidden space-y-6">
+      <div class="text-center mb-6">
+        <h2 class="font-uber-display text-xl text-ink">Confirmación de Reporte</h2>
+        <p class="text-xs text-body font-uber-text mt-1">Por favor, revisa las opciones finales antes de enviar.</p>
+      </div>
+
+      <!-- Resumen del reporte para revisión visual -->
+      <div class="border border-canvas-soft bg-canvas-soft p-5 rounded-xl space-y-3 font-uber-text uber-body-sm">
+        <p><strong class="text-ink">Tipo de Reporte:</strong> <span id="summary-tipo">-</span></p>
+        <p id="summary-row-nombre"><strong class="text-ink">Involucrado:</strong> <span id="summary-nombre">-</span></p>
+        <p><strong class="text-ink">Descripción:</strong> <span id="summary-descripcion">-</span></p>
+        <p><strong class="text-ink">Ubicación:</strong> <span id="summary-ubicacion">-</span></p>
+        <p><strong class="text-ink">Foto adjunta:</strong> <span id="summary-foto">No</span></p>
+      </div>
+
+      <!-- Opción de Flyer de Emergencia (sólo para desaparecido con foto) -->
+      <div id="flyer-opt-in" class="hidden border border-canvas-soft bg-canvas p-5 rounded-xl shadow-sm">
+        <label class="cursor-pointer flex items-start gap-4 select-none">
+          <input 
+            type="checkbox" 
+            name="generar_flyer" 
+            id="generar-flyer-chk" 
+            checked 
+            class="w-5 h-5 rounded-md border-2 border-primary bg-canvas text-primary focus:ring-0 focus:ring-offset-0 mt-0.5 accent-black" 
+          />
+          <div class="flex-grow">
+            <span class="font-uber-display text-sm text-ink block">
+              ✨ Generar cartel (flyer) de búsqueda descargable
+            </span>
+            <span class="text-xs text-body mt-1 block">
+              Crearemos automáticamente una imagen optimizada para compartir en redes sociales y WhatsApp con los datos provistos.
+            </span>
+          </div>
+        </label>
+      </div>
+
+      <!-- Tip de flyer si tipo desaparecido pero sin foto -->
+      <div id="flyer-no-photo-tip" class="hidden border border-amber-500/20 bg-amber-500/5 p-4 rounded-xl font-uber-text text-xs text-body">
+        💡 <strong>Tip:</strong> Si deseas generar un cartel de búsqueda descargable para WhatsApp y redes, puedes regresar al paso anterior y subir una foto de la persona desaparecida.
+      </div>
+
+      <div class="flex justify-between pt-4">
+        <button type="button" id="btn-back-3" class="btn btn-secondary font-uber-text px-8">
+          Atrás
+        </button>
+        <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text px-8">
+          Enviar reporte de emergencia
+        </button>
+      </div>
+    </div>
 
     <!-- Toast de estado estilo ex-toast -->
     <div id="toast-container-rep" class="toast-mobile hidden">
@@ -131,79 +241,217 @@ import FotoUpload from "./FotoUpload.astro";
         <span>Guardando...</span>
       </div>
     </div>
-
-    <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text uber-button-large py-4">
-      Emitir reporte de emergencia
-    </button>
   </form>
 </div>
 
 <script>
   import { encolarRegistro } from "../lib/offline-queue";
 
-  const form = document.getElementById("form-reporte") as HTMLFormElement;
-  const toastContainer = document.getElementById("toast-container-rep");
-  const toastMessage = document.getElementById("toast-message-rep");
+  function initFormReporte() {
+    const form = document.getElementById("form-reporte") as HTMLFormElement;
+    const toastContainer = document.getElementById("toast-container-rep");
+    const toastMessage = document.getElementById("toast-message-rep");
 
-  if (form && toastContainer && toastMessage) {
-    const tipoSelect = document.querySelector('select[name="tipo"]') as HTMLSelectElement;
-    const fotoFileInput = document.getElementById("foto-file") as HTMLInputElement;
-    const quitarFotoBtn = document.getElementById("btn-quitar-foto");
+    if (form && toastContainer && toastMessage) {
+    const inputTipo = document.getElementById("input-tipo") as HTMLInputElement;
+    const typeCards = document.querySelectorAll(".type-card");
+    const btnNext1 = document.getElementById("btn-next-1") as HTMLButtonElement;
+    const btnNext2 = document.getElementById("btn-next-2") as HTMLButtonElement;
+    const btnBack2 = document.getElementById("btn-back-2") as HTMLButtonElement;
+    const btnBack3 = document.getElementById("btn-back-3") as HTMLButtonElement;
+
+    // Inputs para validación
+    const inputNombre = document.querySelector('input[name="nombre_buscado"]') as HTMLInputElement;
+    const inputDescripcion = document.querySelector('textarea[name="descripcion"]') as HTMLTextAreaElement;
+    const inputEstado = document.querySelector('input[name="extra_estado"]') as HTMLInputElement;
+    const inputCiudad = document.querySelector('input[name="extra_ciudad"]') as HTMLInputElement;
+    const inputSector = document.querySelector('input[name="extra_sector"]') as HTMLInputElement;
+    const inputUltimoContacto = document.querySelector('input[name="extra_ultimo_contacto"]') as HTMLInputElement;
+    const inputSenas = document.querySelector('textarea[name="extra_senas"]') as HTMLTextAreaElement;
+    const inputFotoKey = document.getElementById("foto_key") as HTMLInputElement;
+
+    // Elementos del resumen paso 3
+    const summaryTipo = document.getElementById("summary-tipo");
+    const summaryNombre = document.getElementById("summary-nombre");
+    const summaryDescripcion = document.getElementById("summary-descripcion");
+    const summaryUbicacion = document.getElementById("summary-ubicacion");
+    const summaryFoto = document.getElementById("summary-foto");
+    const rowNombre = document.getElementById("summary-row-nombre");
     const flyerOptIn = document.getElementById("flyer-opt-in");
-    const camposDesaparecido = document.getElementById("campos-desaparecido");
-    const labelNombreBuscado = document.getElementById("label-nombre-buscado");
-    const inputNombreBuscado = document.querySelector('input[name="nombre_buscado"]') as HTMLInputElement;
+    const flyerNoPhotoTip = document.getElementById("flyer-no-photo-tip");
 
-    function actualizarVisibilidadFlyer() {
-      if (!tipoSelect || !flyerOptIn) return;
-      const esDesaparecido = tipoSelect.value === "desaparecido";
-      const tieneFoto = fotoFileInput && fotoFileInput.files && fotoFileInput.files.length > 0;
+    let currentStep = 1;
 
-      if (esDesaparecido && tieneFoto) {
-        flyerOptIn.classList.remove("hidden");
-      } else {
-        flyerOptIn.classList.add("hidden");
-      }
-    }
-
-    function toggleCamposDesaparecido() {
-      if (!tipoSelect || !camposDesaparecido || !labelNombreBuscado || !inputNombreBuscado) return;
-      const esDesaparecido = tipoSelect.value === "desaparecido";
+    function toggleCamposDesaparecido(tipo: string) {
+      const camposDesaparecido = document.getElementById("campos-desaparecido");
+      const labelNombreBuscado = document.getElementById("label-nombre-buscado");
       const labelFoto = Array.from(document.querySelectorAll("#form-reporte label")).find(el => el.textContent?.includes("Foto Evidencia"));
 
-      if (esDesaparecido) {
+      if (!camposDesaparecido || !labelNombreBuscado) return;
+
+      if (tipo === "desaparecido") {
         camposDesaparecido.classList.remove("hidden");
         labelNombreBuscado.innerHTML = 'Nombre de Persona Involucrada *';
-        inputNombreBuscado.placeholder = "Nombres y apellidos completos";
+        inputNombre.placeholder = "Nombres y apellidos completos";
         if (labelFoto) {
           labelFoto.innerHTML = '📸 Foto Evidencia (Requerida) *';
         }
       } else {
         camposDesaparecido.classList.add("hidden");
         labelNombreBuscado.innerHTML = 'Nombre de Persona Involucrada';
-        inputNombreBuscado.placeholder = "Opcional (si se conoce)";
+        inputNombre.placeholder = "Opcional (si se conoce)";
         if (labelFoto) {
           labelFoto.innerHTML = '📸 Foto Evidencia (Opcional)';
         }
       }
-      
-      actualizarVisibilidadFlyer();
     }
 
-    if (tipoSelect) {
-      tipoSelect.addEventListener("change", toggleCamposDesaparecido);
-      toggleCamposDesaparecido();
+    function validarPaso2(): boolean {
+      const tipo = inputTipo.value;
+      const descripcionVal = inputDescripcion.value.trim();
+
+      if (tipo === "desaparecido") {
+        if (!inputNombre.value.trim()) {
+          mostrarToast("❌ El nombre de la persona desaparecida es requerido.", "border-red-500/30");
+          return false;
+        }
+        if (!inputEstado.value.trim() || !inputCiudad.value.trim() || !inputSector.value.trim()) {
+          mostrarToast("❌ El estado, ciudad y sector de la última ubicación son requeridos.", "border-red-500/30");
+          return false;
+        }
+        if (!inputUltimoContacto.value.trim()) {
+          mostrarToast("❌ La fecha/hora del último contacto es requerida.", "border-red-500/30");
+          return false;
+        }
+        if (!inputSenas.value.trim()) {
+          mostrarToast("❌ Las señas particulares y vestimenta son requeridas.", "border-red-500/30");
+          return false;
+        }
+        if (!inputFotoKey.value.trim()) {
+          mostrarToast("❌ La foto de la persona desaparecida es requerida.", "border-red-500/30");
+          return false;
+        }
+      }
+
+      if (descripcionVal.length < 10) {
+        mostrarToast("❌ La descripción debe tener al menos 10 caracteres.", "border-red-500/30");
+        return false;
+      }
+
+      return true;
     }
-    if (fotoFileInput) {
-      fotoFileInput.addEventListener("change", () => {
-        setTimeout(actualizarVisibilidadFlyer, 150);
+
+    function actualizarResumen() {
+      if (!summaryTipo || !summaryNombre || !summaryDescripcion || !summaryUbicacion || !summaryFoto || !rowNombre || !flyerOptIn || !flyerNoPhotoTip) return;
+
+      const tipo = inputTipo.value;
+      const nombre = inputNombre.value.trim();
+      const desc = inputDescripcion.value.trim();
+      const ubicacion = (document.querySelector('input[name="ubicacion_nombre"]') as HTMLInputElement).value.trim();
+      const tieneFoto = !!inputFotoKey.value.trim();
+
+      let tipoText = tipo;
+      if (tipo === "desaparecido") tipoText = "Persona Desaparecida (Búsqueda)";
+      else if (tipo === "encontrado") tipoText = "Persona Encontrada (No Identificada)";
+      else if (tipo === "refugio") tipoText = "Reporte de Refugio";
+      else if (tipo === "necesidad") tipoText = "Necesidad Crítica";
+
+      summaryTipo.textContent = tipoText;
+      
+      if (nombre) {
+        rowNombre.classList.remove("hidden");
+        summaryNombre.textContent = nombre;
+      } else {
+        rowNombre.classList.add("hidden");
+      }
+
+      summaryDescripcion.textContent = desc.substring(0, 100) + (desc.length > 100 ? "..." : "");
+      summaryUbicacion.textContent = ubicacion || "No especificada (ubicación por mapa/GPS si se marcó)";
+      summaryFoto.textContent = tieneFoto ? "✓ Sí, adjunta" : "No";
+
+      if (tipo === "desaparecido") {
+        if (tieneFoto) {
+          flyerOptIn.classList.remove("hidden");
+          flyerNoPhotoTip.classList.add("hidden");
+        } else {
+          flyerOptIn.classList.add("hidden");
+          flyerNoPhotoTip.classList.remove("hidden");
+        }
+      } else {
+        flyerOptIn.classList.add("hidden");
+        flyerNoPhotoTip.classList.add("hidden");
+      }
+    }
+
+    function goToStep(step: number) {
+      if (step > currentStep) {
+        if (currentStep === 1 && !inputTipo.value) {
+          mostrarToast("❌ Selecciona un tipo de reporte.", "border-red-500/30");
+          return;
+        }
+        if (currentStep === 2 && !validarPaso2()) {
+          return;
+        }
+      }
+
+      document.getElementById(`pane-step-${currentStep}`)?.classList.add("hidden");
+      document.getElementById(`pane-step-${step}`)?.classList.remove("hidden");
+
+      for (let i = 1; i <= 3; i++) {
+        const ind = document.getElementById(`step-ind-${i}`);
+        const txt = document.getElementById(`step-txt-${i}`);
+        if (ind && txt) {
+          if (i < step) {
+            ind.className = "w-8 h-8 rounded-full flex items-center justify-center bg-green-500 text-white font-uber-display text-sm transition-colors";
+            ind.innerHTML = "✓";
+            txt.className = "text-xs font-uber-text font-bold text-ink transition-colors";
+          } else if (i === step) {
+            ind.className = "w-8 h-8 rounded-full flex items-center justify-center bg-primary text-white font-uber-display text-sm transition-colors";
+            ind.innerHTML = String(i);
+            txt.className = "text-xs font-uber-text font-bold text-ink transition-colors";
+          } else {
+            ind.className = "w-8 h-8 rounded-full flex items-center justify-center bg-canvas-soft text-mute font-uber-display text-sm transition-colors";
+            ind.innerHTML = String(i);
+            txt.className = "text-xs font-uber-text text-body transition-colors";
+          }
+        }
+      }
+
+      if (step === 3) {
+        actualizarResumen();
+      }
+
+      currentStep = step;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Eventos de selección de cartas Paso 1
+    typeCards.forEach(card => {
+      card.addEventListener("click", () => {
+        typeCards.forEach(c => {
+          c.classList.remove("border-primary", "bg-canvas-softer", "scale-98");
+          c.classList.add("border-canvas-soft", "bg-canvas");
+        });
+
+        card.classList.remove("border-canvas-soft", "bg-canvas");
+        card.classList.add("border-primary", "bg-canvas-softer", "scale-98");
+
+        const selectedType = card.getAttribute("data-type") || "";
+        inputTipo.value = selectedType;
+        btnNext1.disabled = false;
+
+        toggleCamposDesaparecido(selectedType);
+
+        setTimeout(() => {
+          goToStep(2);
+        }, 350);
       });
-    }
-    if (quitarFotoBtn) {
-      quitarFotoBtn.addEventListener("click", () => {
-        setTimeout(actualizarVisibilidadFlyer, 150);
-      });
-    }
+    });
+
+    btnNext1.addEventListener("click", () => goToStep(2));
+    btnNext2.addEventListener("click", () => goToStep(3));
+    btnBack2.addEventListener("click", () => goToStep(1));
+    btnBack3.addEventListener("click", () => goToStep(2));
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -214,39 +462,11 @@ import FotoUpload from "./FotoUpload.astro";
       let descConcatenada = String(data.descripcion).trim();
       
       if (data.tipo === "desaparecido") {
-        if (!data.nombre_buscado || !String(data.nombre_buscado).trim()) {
-          mostrarToast("❌ El nombre de la persona desaparecida es requerido.", "border-red-500/30");
-          return;
-        }
-        if (!data.extra_estado || !String(data.extra_estado).trim() ||
-            !data.extra_ciudad || !String(data.extra_ciudad).trim() ||
-            !data.extra_sector || !String(data.extra_sector).trim()) {
-          mostrarToast("❌ El estado, ciudad y sector de la última ubicación son requeridos.", "border-red-500/30");
-          return;
-        }
-        if (!data.extra_ultimo_contacto || !String(data.extra_ultimo_contacto).trim()) {
-          mostrarToast("❌ La fecha/hora del último contacto es requerida.", "border-red-500/30");
-          return;
-        }
-        if (!data.extra_senas || !String(data.extra_senas).trim()) {
-          mostrarToast("❌ Las señas particulares y vestimenta son requeridas.", "border-red-500/30");
-          return;
-        }
-        if (!data.foto_key || !String(data.foto_key).trim()) {
-          mostrarToast("❌ La foto de la persona desaparecida es requerida.", "border-red-500/30");
-          return;
-        }
-
         const fechaContacto = String(data.extra_ultimo_contacto).replace("T", " ");
         const ubicacion = `${String(data.extra_estado).trim()}, ${String(data.extra_ciudad).trim()}, Sector ${String(data.extra_sector).trim()}`;
         const senas = String(data.extra_senas).trim();
         
         descConcatenada = `[FECHA ÚLTIMO CONTACTO: ${fechaContacto}]\n[UBICACIÓN: ${ubicacion}]\n[SEÑAS: ${senas}]\n\n${descConcatenada}`;
-      }
-
-      if (descConcatenada.length < 10) {
-        mostrarToast("❌ La descripción debe tener al menos 10 caracteres.", "border-red-500/30");
-        return;
       }
 
       const payload = {
@@ -284,7 +504,7 @@ import FotoUpload from "./FotoUpload.astro";
                 const flyerPayload = {
                   title: `SE BUSCA: ${payload.nombre_buscado || "Persona Desaparecida"}`,
                   description: payload.descripcion,
-                  foto_key: payload.foto_key,
+                  photo_key: payload.foto_key,
                   phones: payload.reportante_contacto ? [payload.reportante_contacto] : [],
                   socials: [],
                   registrarEnBusca: false
@@ -312,7 +532,16 @@ import FotoUpload from "./FotoUpload.astro";
             mostrarToast("✓ Reporte emitido con éxito.", "border-green-500/30");
             form.reset();
             document.getElementById("btn-quitar-foto")?.click();
-            toggleCamposDesaparecido();
+            
+            // Volver al paso 1 reseteando la selección
+            typeCards.forEach(c => {
+              c.classList.remove("border-primary", "bg-canvas-softer", "scale-98");
+              c.classList.add("border-canvas-soft", "bg-canvas");
+            });
+            inputTipo.value = "";
+            btnNext1.disabled = true;
+            goToStep(1);
+
           } else {
             const errData = await response.json();
             throw new Error(errData.error || "Error al procesar en servidor");
@@ -332,7 +561,15 @@ import FotoUpload from "./FotoUpload.astro";
         mostrarToast("⚠️ Guardado localmente sin red. Se sincronizará automáticamente.", "border-yellow-500/30");
         form.reset();
         document.getElementById("btn-quitar-foto")?.click();
-        toggleCamposDesaparecido();
+        
+        // Volver al paso 1 reseteando la selección
+        typeCards.forEach(c => {
+          c.classList.remove("border-primary", "bg-canvas-softer", "scale-98");
+          c.classList.add("border-canvas-soft", "bg-canvas");
+        });
+        inputTipo.value = "";
+        btnNext1.disabled = true;
+        goToStep(1);
 
         const event = new CustomEvent("offline-record-added");
         window.dispatchEvent(event);
@@ -353,4 +590,8 @@ import FotoUpload from "./FotoUpload.astro";
       }, 5000);
     }
   }
+  }
+
+  // Ejecutar inicialización al cargar la página y en navegaciones de ClientRouter
+  document.addEventListener("astro:page-load", initFormReporte);
 </script>

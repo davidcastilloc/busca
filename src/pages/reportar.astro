@@ -2,8 +2,17 @@
 import Layout from "../layouts/Layout.astro";
 import Navbar from "../components/Navbar.astro";
 import FormReporte from "../components/FormReporte.astro";
+import { env } from "cloudflare:workers";
+import { obtenerVoluntarioSesion } from "../lib/auth-helpers";
 
 export const prerender = false;
+
+const sessionToken = Astro.cookies.get("session_token")?.value;
+const { DB } = env;
+const voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
+const isVolunteer = !!voluntario;
+const volunteerName = voluntario ? voluntario.nombre : "";
+const volunteerPhone = voluntario ? voluntario.telefono : "";
 ---
 
 <Layout title="Reportar Persona Desaparecida o Emergencia - dondeestan.org">
@@ -17,6 +26,10 @@ export const prerender = false;
       </p>
     </div>
 
-    <FormReporte />
+    <FormReporte 
+      isVolunteer={isVolunteer} 
+      volunteerName={volunteerName} 
+      volunteerPhone={volunteerPhone} 
+    />
   </main>
 </Layout>

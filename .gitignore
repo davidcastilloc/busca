@@ -30,3 +30,9 @@ pnpm-debug.log*
 persons_full.json
 seed.sql
 
+# agents and scratch
+.agents/
+.claude/
+scratch/
+
+
