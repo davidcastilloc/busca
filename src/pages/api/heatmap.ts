@@ -148,7 +148,9 @@ export const GET: APIRoute = async () => {
         nombre: nombreMostrar,
         tipo: "necesidad",
         estado: n.estado,
-        estado_reporte: n.estado // reutilizando field para UI
+        estado_reporte: n.estado, // reutilizando field para UI
+        descripcion: n.descripcion,
+        gravedad: n.gravedad
       });
     }
 
