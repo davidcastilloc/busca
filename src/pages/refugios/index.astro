@@ -1131,6 +1131,17 @@ try {
         latEditInput.value = data.lat.toFixed(6);
         lonEditInput.value = data.lng.toFixed(6);
 
+        // Autorrellenar datos enriquecidos de Google en el modal
+        if (data.formatted_address) {
+          inputDireccion.value = data.formatted_address;
+        }
+        if (data.phone && !inputContacto.value) {
+          inputContacto.value = data.phone;
+        }
+        if (data.tipo && selectTipo.value === "refugio") {
+          selectTipo.value = data.tipo;
+        }
+
         if (data.aproximado) {
           if (gpsEditStatus) {
             gpsEditStatus.textContent = `⚠️ Ubicación aproximada: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)} — Ajusta el pin tocando el mapa.`;

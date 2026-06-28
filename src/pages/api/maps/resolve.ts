@@ -144,9 +144,12 @@ async function geocodificarNominatim(queries: string[]): Promise<{ lat: number; 
 }
 
 /**
- * Geocodificar una dirección usando la API de Google Maps Geocoding.
+ * Geocodificar una dirección usando la API de Google Maps Geocoding y Place Details.
  */
-async function geocodificarGoogle(queries: string[], apiKey: string): Promise<{ lat: number; lng: number } | null> {
+async function geocodificarGoogle(
+  queries: string[], 
+  apiKey: string
+): Promise<{ lat: number; lng: number; name?: string; phone?: string; tipo?: string; formatted_address?: string } | null> {
   for (const q of queries) {
     try {
       const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(q)}&components=country:VE&key=${apiKey}`;
@@ -154,13 +157,104 @@ async function geocodificarGoogle(queries: string[], apiKey: string): Promise<{ 
       if (res.ok) {
         const data = await res.json() as any;
         if (data.status === "OK" && data.results && data.results.length > 0) {
-          const loc = data.results[0].geometry.location;
-          return { lat: loc.lat, lng: loc.lng };
+          const firstResult = data.results[0];
+          const loc = firstResult.geometry.location;
+          
+          let name = "";
+          let phone = "";
+          let inferredType = "refugio";
+          
+          if (firstResult.place_id) {
+            try {
+              const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${firstResult.place_id}&fields=name,formatted_phone_number,types&key=${apiKey}&language=es`;
+              const detailsResp = await fetch(detailsUrl);
+              if (detailsResp.ok) {
+                const detailsData = await detailsResp.json() as any;
+                if (detailsData.status === "OK" && detailsData.result) {
+                  name = detailsData.result.name || "";
+                  phone = detailsData.result.formatted_phone_number || "";
+                  if (detailsData.result.types) {
+                    const types = detailsData.result.types as string[];
+                    const esHospital = types.some(t => ["hospital", "health", "doctor", "pharmacy", "medical_clinic"].includes(t));
+                    if (esHospital) inferredType = "hospital";
+                    else {
+                      const esAcopio = types.some(t => ["warehouse", "storage", "supermarket", "grocery_or_supermarket"].includes(t));
+                      if (esAcopio) inferredType = "centro_acopio";
+                    }
+                  }
+                }
+              }
+            } catch (err) {
+              console.error("Error en Place Details de resolve:", err);
+            }
+          }
+
+          return { 
+            lat: loc.lat, 
+            lng: loc.lng,
+            name: name || firstResult.formatted_address.split(",")[0],
+            formatted_address: firstResult.formatted_address,
+            phone,
+            tipo: inferredType
+          };
         }
       }
     } catch {
       // Continuar
     }
+  }
+  return null;
+}
+
+/**
+ * Enriquecer coordenadas usando Reverse Geocoding y Place Details.
+ */
+async function enriquecerCoordenadas(
+  lat: number, 
+  lng: number, 
+  apiKey: string
+): Promise<{ name?: string; phone?: string; tipo?: string; formatted_address?: string } | null> {
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=es`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json() as any;
+      if (data.status === "OK" && data.results && data.results.length > 0) {
+        const firstResult = data.results[0];
+        let name = "";
+        let phone = "";
+        let inferredType = "refugio";
+        
+        if (firstResult.place_id) {
+          const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${firstResult.place_id}&fields=name,formatted_phone_number,types&key=${apiKey}&language=es`;
+          const detailsResp = await fetch(detailsUrl);
+          if (detailsResp.ok) {
+            const detailsData = await detailsResp.json() as any;
+            if (detailsData.status === "OK" && detailsData.result) {
+              name = detailsData.result.name || "";
+              phone = detailsData.result.formatted_phone_number || "";
+              if (detailsData.result.types) {
+                const types = detailsData.result.types as string[];
+                const esHospital = types.some(t => ["hospital", "health", "doctor", "pharmacy", "medical_clinic"].includes(t));
+                if (esHospital) inferredType = "hospital";
+                else {
+                  const esAcopio = types.some(t => ["warehouse", "storage", "supermarket", "grocery_or_supermarket"].includes(t));
+                  if (esAcopio) inferredType = "centro_acopio";
+                }
+              }
+            }
+          }
+        }
+        return {
+          name: name || firstResult.formatted_address.split(",")[0],
+          formatted_address: firstResult.formatted_address,
+          phone,
+          tipo: inferredType
+        };
+      }
+    }
+  } catch (err) {
+    console.error("Error en enriquecerCoordenadas:", err);
   }
   return null;
 }
@@ -181,114 +275,170 @@ export const POST: APIRoute = async (context) => {
 
     const apiKey = (env as any).GOOGLE_MAPS_API_KEY;
 
+    let lat: number | null = null;
+    let lng: number | null = null;
+    let aproximado = false;
+    let name = "";
+    let formatted_address = "";
+    let phone = "";
+    let tipo = "refugio";
+
     // A. Intentar extraer de la URL directa (sin hacer peticiones)
     const coordenadasDirectas = extraerDeUrl(url);
     if (coordenadasDirectas && !coordenadasDirectas.aproximado) {
-      return jsonResp({ success: true, lat: coordenadasDirectas.lat, lng: coordenadasDirectas.lng });
+      lat = coordenadasDirectas.lat;
+      lng = coordenadasDirectas.lng;
     }
 
     // B. Redirect manual (enlaces cortos goo.gl, maps.app.goo.gl)
     let targetUrl = url;
-    const response = await fetch(targetUrl, {
-      method: "GET",
-      redirect: "manual",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      }
-    });
-
-    if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get("location");
-      if (location) {
-        targetUrl = location;
-
-        // Intentar extraer coords exactas de la URL redireccionada
-        const coordenadasRedir = extraerDeUrl(targetUrl);
-        if (coordenadasRedir && !coordenadasRedir.aproximado) {
-          return jsonResp({ success: true, lat: coordenadasRedir.lat, lng: coordenadasRedir.lng });
+    if (lat === null) {
+      const response = await fetch(targetUrl, {
+        method: "GET",
+        redirect: "manual",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
+      });
 
-        // C. Si la URL tiene dirección pero no coords exactas, geocodificar
-        const queries = extraerDireccionDeUrl(targetUrl);
-        if (queries.length > 0) {
-          const geocoded = apiKey
-            ? await geocodificarGoogle(queries, apiKey)
-            : await geocodificarNominatim(queries);
-          if (geocoded) {
-            return jsonResp({ success: true, lat: geocoded.lat, lng: geocoded.lng });
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get("location");
+        if (location) {
+          targetUrl = location;
+
+          // Intentar extraer coords exactas de la URL redireccionada
+          const coordenadasRedir = extraerDeUrl(targetUrl);
+          if (coordenadasRedir && !coordenadasRedir.aproximado) {
+            lat = coordenadasRedir.lat;
+            lng = coordenadasRedir.lng;
+          }
+
+          // C. Si la URL tiene dirección pero no coords exactas, geocodificar
+          if (lat === null) {
+            const queries = extraerDireccionDeUrl(targetUrl);
+            if (queries.length > 0) {
+              const geocoded = apiKey
+                ? await geocodificarGoogle(queries, apiKey)
+                : await geocodificarNominatim(queries);
+              if (geocoded) {
+                lat = geocoded.lat;
+                lng = geocoded.lng;
+                if ('name' in geocoded && geocoded.name) {
+                  name = geocoded.name;
+                  formatted_address = geocoded.formatted_address || "";
+                  phone = geocoded.phone || "";
+                  tipo = geocoded.tipo || "refugio";
+                }
+              }
+            }
           }
         }
       }
     }
 
     // D. Fetch final con cookie de consentimiento
-    const res = await fetch(targetUrl, {
-      method: "GET",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Cookie": "SOCS=CAESHAgCEitib3NleGNhX2Jvb2ttYXJrX2NvbnNlbnRfZ2xvYmFsX2FjY2VwdGVkEgRpdCBJADACGgJpdCABGgQIP1gA",
-        "Cache-Control": "no-cache, no-store",
-        "Pragma": "no-cache"
-      },
-      // @ts-ignore — Cloudflare Workers: deshabilitar cache de edge
-      cf: { cacheTtl: 0 }
-    });
+    if (lat === null) {
+      const res = await fetch(targetUrl, {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Cookie": "SOCS=CAESHAgCEitib3NleGNhX2Jvb2ttYXJrX2NvbnNlbnRfZ2xvYmFsX2FjY2VwdGVkEgRpdCBJADACGgJpdCABGgQIP1gA",
+          "Cache-Control": "no-cache, no-store",
+          "Pragma": "no-cache"
+        },
+        // @ts-ignore
+        cf: { cacheTtl: 0 }
+      });
 
-    const finalUrl = res.url;
+      const finalUrl = res.url;
 
-    // Extraer de la URL final
-    const coordenadasFinalUrl = extraerDeUrl(finalUrl);
-    if (coordenadasFinalUrl && !coordenadasFinalUrl.aproximado) {
-      return jsonResp({ success: true, lat: coordenadasFinalUrl.lat, lng: coordenadasFinalUrl.lng });
-    }
+      // Extraer de la URL final
+      const coordenadasFinalUrl = extraerDeUrl(finalUrl);
+      if (coordenadasFinalUrl && !coordenadasFinalUrl.aproximado) {
+        lat = coordenadasFinalUrl.lat;
+        lng = coordenadasFinalUrl.lng;
+      }
 
-    // E. consent.google.com → extraer del parámetro "continue"
-    if (finalUrl.includes("consent.google") || finalUrl.includes("google.com/consent")) {
-      const urlObj = new URL(finalUrl);
-      const continueUrl = urlObj.searchParams.get("continue");
-      if (continueUrl) {
-        const coordenadasContinue = extraerDeUrl(continueUrl);
-        if (coordenadasContinue) {
-          return jsonResp({
-            success: true,
-            lat: coordenadasContinue.lat,
-            lng: coordenadasContinue.lng,
-            aproximado: coordenadasContinue.aproximado || false
-          });
+      // E. consent.google.com → extraer del parámetro "continue"
+      if (lat === null && (finalUrl.includes("consent.google") || finalUrl.includes("google.com/consent"))) {
+        const urlObj = new URL(finalUrl);
+        const continueUrl = urlObj.searchParams.get("continue");
+        if (continueUrl) {
+          const coordenadasContinue = extraerDeUrl(continueUrl);
+          if (coordenadasContinue) {
+            lat = coordenadasContinue.lat;
+            lng = coordenadasContinue.lng;
+            aproximado = coordenadasContinue.aproximado || false;
+          }
+        }
+      }
+
+      // F. Parsear HTML
+      if (lat === null) {
+        const html = await res.text();
+        const coordenadasHtml = extraerDeHtml(html);
+        if (coordenadasHtml && !coordenadasHtml.aproximado) {
+          lat = coordenadasHtml.lat;
+          lng = coordenadasHtml.lng;
+        }
+
+        // G. Si solo tenemos coords aproximadas, intentar geocodificar dirección de la URL original o targetUrl
+        if (lat === null) {
+          const urlsParaDireccion = [targetUrl, url, finalUrl];
+          for (const u of urlsParaDireccion) {
+            const queries = extraerDireccionDeUrl(u);
+            if (queries.length > 0) {
+              const geocoded = apiKey
+                ? await geocodificarGoogle(queries, apiKey)
+                : await geocodificarNominatim(queries);
+              if (geocoded) {
+                lat = geocoded.lat;
+                lng = geocoded.lng;
+                if ('name' in geocoded && geocoded.name) {
+                  name = geocoded.name;
+                  formatted_address = geocoded.formatted_address || "";
+                  phone = geocoded.phone || "";
+                  tipo = geocoded.tipo || "refugio";
+                }
+              }
+              break;
+            }
+          }
+        }
+
+        // H. Último recurso: coordenadas aproximadas del HTML o URL
+        if (lat === null) {
+          const aproxCoords = coordenadasHtml || coordenadasDirectas || coordenadasFinalUrl;
+          if (aproxCoords) {
+            lat = aproxCoords.lat;
+            lng = aproxCoords.lng;
+            aproximado = true;
+          }
         }
       }
     }
 
-    // F. Parsear HTML
-    const html = await res.text();
-    const coordenadasHtml = extraerDeHtml(html);
-    if (coordenadasHtml && !coordenadasHtml.aproximado) {
-      return jsonResp({ success: true, lat: coordenadasHtml.lat, lng: coordenadasHtml.lng });
-    }
-
-    // G. Si solo tenemos coords aproximadas, intentar geocodificar dirección de la URL original o targetUrl
-    const urlsParaDireccion = [targetUrl, url, finalUrl];
-    for (const u of urlsParaDireccion) {
-      const queries = extraerDireccionDeUrl(u);
-      if (queries.length > 0) {
-        const geocoded = apiKey
-          ? await geocodificarGoogle(queries, apiKey)
-          : await geocodificarNominatim(queries);
-        if (geocoded) {
-          return jsonResp({ success: true, lat: geocoded.lat, lng: geocoded.lng });
-        }
-        break; // Ya intentamos, no repetir
+    // Enriquecer la respuesta si obtuvimos coordenadas pero faltan metadatos (como nombre/teléfono)
+    if (lat !== null && lng !== null && apiKey && !name) {
+      const enrichment = await enriquecerCoordenadas(lat, lng, apiKey);
+      if (enrichment) {
+        name = enrichment.name || "";
+        formatted_address = enrichment.formatted_address || "";
+        phone = enrichment.phone || "";
+        tipo = enrichment.tipo || "refugio";
       }
     }
 
-    // H. Último recurso: coordenadas aproximadas
-    const aproxCoords = coordenadasHtml || coordenadasDirectas || coordenadasFinalUrl;
-    if (aproxCoords) {
+    if (lat !== null && lng !== null) {
       return jsonResp({
         success: true,
-        lat: aproxCoords.lat,
-        lng: aproxCoords.lng,
-        aproximado: true
+        lat,
+        lng,
+        aproximado,
+        name: name || undefined,
+        formatted_address: formatted_address || undefined,
+        phone: phone || undefined,
+        tipo: tipo || undefined
       });
     }
 
