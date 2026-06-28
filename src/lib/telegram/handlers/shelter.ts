@@ -113,6 +113,7 @@ export async function handleShelterStatusUpdate(
   client: TelegramClient,
   db: D1Database,
   chatId: string | number,
+  telegramId: string | number,
   refugioId: string,
   porcentaje: number,
   messageId?: number
@@ -130,6 +131,18 @@ export async function handleShelterStatusUpdate(
     .prepare("UPDATE refugios SET ocupacion_actual = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
     .bind(nuevaOcupacion, refugioId)
     .run();
+
+  const voluntario = await db.prepare("SELECT id FROM voluntarios WHERE telegram_id = ?").bind(String(telegramId)).first<{id: number}>();
+  if (voluntario) {
+    await db.prepare(`
+      UPDATE refugios SET updated_by = ? WHERE id = ?
+    `).bind(voluntario.id, refugioId).run();
+
+    await db.prepare(`
+      INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
+      VALUES (?, 'EDITAR', 'refugios', ?)
+    `).bind(voluntario.id, refugioId).run();
+  }
 
   const text = `✅ <b>${r.nombre}</b> actualizado.\n\nNueva ocupación estimada: <b>${nuevaOcupacion}</b> personas (${porcentaje}%).`;
 

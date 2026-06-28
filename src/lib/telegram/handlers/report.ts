@@ -150,6 +150,14 @@ export async function handleReportState(
     // Enviar a la cola
     try {
       if (env?.CENSO_QUEUE) {
+        let voluntarioId: number | null = null;
+        try {
+          const v = await db.prepare("SELECT id FROM voluntarios WHERE telegram_id = ?").bind(String(telegramId)).first<{id: number}>();
+          if (v) voluntarioId = v.id;
+        } catch (e) {
+          // ignorar error
+        }
+
         const payload = {
           tipo: "desaparecido",
           nombre_buscado: data.nombre_buscado,
@@ -159,6 +167,7 @@ export async function handleReportState(
           reportante_nombre: `Bot Telegram`,
           reportante_contacto: `User ID: ${telegramId}`,
           foto_key: data.foto_key,
+          created_by: voluntarioId
         };
 
         await env.CENSO_QUEUE.send({

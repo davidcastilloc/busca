@@ -109,7 +109,7 @@ export async function processTelegramUpdate(
         await handleShelterSelection(client, db, chatId, refugioId, messageId);
       } else if (data.startsWith("shl_sta:")) {
         const [, refugioId, porcentaje] = data.split(":");
-        await handleShelterStatusUpdate(client, db, chatId, refugioId, parseInt(porcentaje), messageId);
+        await handleShelterStatusUpdate(client, db, chatId, telegramId, refugioId, parseInt(porcentaje), messageId);
       } else if (data === "ref_list") {
         await handleRefugioList(client, chatId, messageId, db);
       }

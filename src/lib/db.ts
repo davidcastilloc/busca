@@ -30,6 +30,7 @@ export interface ReporteData {
   longitud?: number | null;
   foto_key?: string | null;
   refugio_id?: number | null;
+  created_by?: number | null;
 }
 
 /**
@@ -112,9 +113,9 @@ export async function insertReporte(db: D1Database, data: ReporteData): Promise<
     INSERT INTO reportes (
       tipo, nombre_buscado, cedula_buscado, descripcion, 
       reportante_nombre, reportante_contacto, ubicacion_nombre, 
-      latitud, longitud, foto_key, refugio_id
+      latitud, longitud, foto_key, refugio_id, created_by
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING id
   `).bind(
     data.tipo,
@@ -127,8 +128,16 @@ export async function insertReporte(db: D1Database, data: ReporteData): Promise<
     data.latitud || null,
     data.longitud || null,
     data.foto_key || null,
-    data.refugio_id || null
+    data.refugio_id || null,
+    data.created_by || null
   ).first<{ id: number }>();
+
+  if (result?.id && data.created_by) {
+    await db.prepare(`
+      INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
+      VALUES (?, 'CREAR', 'reportes', ?)
+    `).bind(data.created_by, result.id).run();
+  }
 
   return result?.id || null;
 }

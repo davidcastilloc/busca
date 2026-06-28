@@ -27,7 +27,8 @@ export const ReporteSchema = z.object({
   ubicacion_nombre: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
   latitud: z.coerce.number().min(-90).max(90).nullable().optional(),
   longitud: z.coerce.number().min(-180).max(180).nullable().optional(),
-  foto_key: z.string().trim().nullable().optional().transform(v => v === "" ? null : v)
+  foto_key: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
+  created_by: z.number().nullable().optional()
 });
 
 export type PersonaInput = z.infer<typeof PersonaSchema>;

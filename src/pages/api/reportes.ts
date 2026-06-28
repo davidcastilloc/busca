@@ -1,14 +1,25 @@
 import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
 import { ReporteSchema } from "../../lib/validators";
+import { obtenerVoluntarioSesion } from "../../lib/auth-helpers";
 
 export const prerender = false;
 
 export const POST: APIRoute = async (context) => {
   try {
+    const { DB } = env;
     const body = await context.request.json();
 
     const validated = ReporteSchema.parse(body);
+
+    // Adjuntar voluntario_id si está logueado
+    const sessionToken = context.cookies.get("session_token")?.value;
+    if (sessionToken && DB) {
+      const voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
+      if (voluntario) {
+        validated.created_by = voluntario.id;
+      }
+    }
 
     await env.CENSO_QUEUE.send({
       type: "reporte",

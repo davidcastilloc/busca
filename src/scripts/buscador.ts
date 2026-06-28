@@ -60,49 +60,54 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-// ═══ DOM ELEMENTS ═══
-const formSearchExact = document.getElementById("form-search-exact") as HTMLFormElement;
-const queryExact = document.getElementById("query-exact") as HTMLInputElement;
-const btnBuscar = document.getElementById("btn-buscar") as HTMLButtonElement;
-const btnBuscarIcon = document.getElementById("btn-buscar-icon");
-const btnBuscarSpinner = document.getElementById("btn-buscar-spinner");
-const loader = document.getElementById("results-loader");
-const resultsHeader = document.getElementById("results-header");
-const resultsContainer = document.getElementById("results-container");
-const scrollSentinel = document.getElementById("scroll-sentinel");
-const emptyState = document.getElementById("empty-state");
-const noResultsCta = document.getElementById("no-results-cta");
+// ═══ DOM ELEMENTS (definidos con let para re-evaluar con view transitions) ═══
+let formSearchExact: HTMLFormElement | null = null;
+let queryExact: HTMLInputElement | null = null;
+let btnBuscar: HTMLButtonElement | null = null;
+let btnBuscarIcon: HTMLElement | null = null;
+let btnBuscarSpinner: HTMLElement | null = null;
+let loader: HTMLElement | null = null;
+let resultsHeader: HTMLElement | null = null;
+let resultsContainer: HTMLElement | null = null;
+let scrollSentinel: HTMLElement | null = null;
+let emptyState: HTMLElement | null = null;
+let noResultsCta: HTMLElement | null = null;
 
 // Foto search
-const btnFotoSearch = document.getElementById("btn-foto-search");
-const fotoSearchInput = document.getElementById("foto-search-input") as HTMLInputElement;
-const fotoSearchStatus = document.getElementById("foto-search-status");
+let btnFotoSearch: HTMLElement | null = null;
+let fotoSearchInput: HTMLInputElement | null = null;
+let fotoSearchStatus: HTMLElement | null = null;
 
 // Stats
-const statTotal = document.getElementById("stat-total");
-const statActivos = document.getElementById("stat-activos");
-const statLocalizados = document.getElementById("stat-localizados");
+let statTotal: HTMLElement | null = null;
+let statActivos: HTMLElement | null = null;
+let statLocalizados: HTMLElement | null = null;
 
 // Historial
-const historialContainer = document.getElementById("historial-container");
-const historialChips = document.getElementById("historial-chips");
+let historialContainer: HTMLElement | null = null;
+let historialChips: HTMLElement | null = null;
 
 // Filtros
-const filterStateBar = document.getElementById("filter-state-bar") as HTMLDivElement;
-const btnFilterAll = document.getElementById("btn-filter-all");
-const btnFilterNoContact = document.getElementById("btn-filter-nocontact");
-const btnFilterLocated = document.getElementById("btn-filter-located");
-const btnToggleAdvanced = document.getElementById("btn-toggle-advanced-filters");
-const advancedFilters = document.getElementById("advanced-filters");
-const filterSexo = document.getElementById("filter-sexo") as HTMLSelectElement;
-const filterEdad = document.getElementById("filter-edad") as HTMLSelectElement;
+let filterStateBar: HTMLDivElement | null = null;
+let btnFilterAll: HTMLElement | null = null;
+let btnFilterNoContact: HTMLElement | null = null;
+let btnFilterLocated: HTMLElement | null = null;
+let btnToggleAdvanced: HTMLElement | null = null;
+let advancedFilters: HTMLElement | null = null;
+let filterSexo: HTMLSelectElement | null = null;
+let filterEdad: HTMLSelectElement | null = null;
 
 // Modal elements
-const modalDetalle = document.getElementById("modal-detalle");
-const modalClose = document.getElementById("modal-close");
-const modalBody = document.getElementById("modal-body");
-const modalActions = document.getElementById("modal-actions");
-const modalTipoBadge = document.getElementById("modal-tipo-badge");
+let modalDetalle: HTMLElement | null = null;
+let modalClose: HTMLElement | null = null;
+let modalBody: HTMLElement | null = null;
+let modalActions: HTMLElement | null = null;
+let modalTipoBadge: HTMLElement | null = null;
+
+// Refugio
+let globalRefugioSelect: HTMLSelectElement | null = null;
+let globalRefugioOtroWrap: HTMLElement | null = null;
+let globalRefugioOtroInput: HTMLInputElement | null = null;
 
 // Estado global
 let currentData: any = null;
@@ -146,8 +151,6 @@ function animarContador(el: HTMLElement | null, target: number) {
   requestAnimationFrame(tick);
 }
 
-cargarStats();
-
 // ═══ HISTORIAL (localStorage) ═══
 const HISTORIAL_KEY = "dondeestan_historial";
 const MAX_HISTORIAL = 5;
@@ -183,68 +186,7 @@ function renderHistorial() {
   });
 }
 
-renderHistorial();
 
-// ═══ BÚSQUEDA POR FOTO ═══
-btnFotoSearch?.addEventListener("click", () => fotoSearchInput?.click());
-
-fotoSearchInput?.addEventListener("change", async (e) => {
-  const target = e.target as HTMLInputElement;
-  if (!target.files || target.files.length === 0) return;
-  
-  try {
-    if (fotoSearchStatus) {
-      fotoSearchStatus.textContent = "Procesando imagen...";
-      fotoSearchStatus.classList.remove("hidden");
-    }
-    
-    const compressed = await comprimirImagen(target.files[0]);
-    const base64 = await blobToBase64(compressed);
-    
-    if (fotoSearchStatus) fotoSearchStatus.textContent = "Buscando con IA...";
-    
-    await realizarBusqueda("", base64);
-    
-    if (fotoSearchStatus) fotoSearchStatus.classList.add("hidden");
-  } catch (err) {
-    console.error("Error en búsqueda por foto:", err);
-    if (fotoSearchStatus) {
-      fotoSearchStatus.textContent = "❌ Error al procesar foto";
-      fotoSearchStatus.classList.remove("hidden");
-    }
-  } finally {
-    if (fotoSearchInput) fotoSearchInput.value = "";
-  }
-});
-
-// ═══ FILTROS ═══
-btnFilterAll?.addEventListener("click", () => {
-  currentSubTab = "todos";
-  actualizarFiltroUI();
-  aplicarFiltrosYRenderizar();
-});
-btnFilterNoContact?.addEventListener("click", () => {
-  currentSubTab = "sin_contacto";
-  actualizarFiltroUI();
-  aplicarFiltrosYRenderizar();
-});
-btnFilterLocated?.addEventListener("click", () => {
-  currentSubTab = "localizados";
-  actualizarFiltroUI();
-  aplicarFiltrosYRenderizar();
-});
-
-// Toggle filtros avanzados
-btnToggleAdvanced?.addEventListener("click", () => {
-  if (advancedFilters) {
-    const hidden = advancedFilters.classList.toggle("hidden");
-    if (btnToggleAdvanced) btnToggleAdvanced.textContent = hidden ? "↓ Más filtros" : "↑ Menos filtros";
-  }
-});
-
-// Filtros avanzados reactivos
-filterSexo?.addEventListener("change", () => aplicarFiltrosYRenderizar());
-filterEdad?.addEventListener("change", () => aplicarFiltrosYRenderizar());
 
 function actualizarFiltroUI() {
   if (!btnFilterAll || !btnFilterNoContact || !btnFilterLocated) return;
@@ -353,29 +295,7 @@ async function realizarBusqueda(q: string, fotoBase64?: string, append = false) 
   }
 }
 
-// Observer para scroll infinito
-if (scrollSentinel) {
-  const observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
-      offset += limit;
-      realizarBusqueda(currentQuery, undefined, true);
-    }
-  }, { rootMargin: "150px" });
-  observer.observe(scrollSentinel);
-}
 
-// Submit del formulario
-if (formSearchExact) {
-  formSearchExact.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const q = queryExact?.value.trim();
-    if (!q) {
-      queryExact?.focus();
-      return;
-    }
-    realizarBusqueda(q);
-  });
-}
 
 // ═══ UTILIDADES ═══
 function mostrarLoader(show: boolean) {
@@ -812,23 +732,7 @@ async function obtenerGpsReporte(gpsStatus: HTMLElement | null, latInput: HTMLIn
   );
 }
 
-// Registar listener de refugio rápido una sola vez
-const globalRefugioSelect = document.getElementById("reporte-rapido-refugio") as HTMLSelectElement;
-const globalRefugioOtroWrap = document.getElementById("reporte-rapido-refugio-otro-wrap");
-const globalRefugioOtroInput = document.getElementById("reporte-rapido-refugio-otro") as HTMLInputElement;
 
-if (globalRefugioSelect) {
-  globalRefugioSelect.addEventListener("change", () => {
-    if (globalRefugioSelect.value === "otro") {
-      globalRefugioOtroWrap?.classList.remove("hidden");
-      globalRefugioOtroInput?.setAttribute("required", "true");
-      globalRefugioOtroInput?.focus();
-    } else {
-      globalRefugioOtroWrap?.classList.add("hidden");
-      globalRefugioOtroInput?.removeAttribute("required");
-    }
-  });
-}
 
 function abrirReporteRapido() {
   const modal = document.getElementById("modal-reporte-rapido");
@@ -1394,31 +1298,181 @@ function formatFechaLocal(fechaStr: string) {
   }
 }
 
-// Cargar búsqueda o anuncio desde URL si existe
-const urlParams = new URLSearchParams(window.location.search);
-const qParam = urlParams.get("q");
-const personaParam = urlParams.get("persona");
-const reporteParam = urlParams.get("reporte");
+// ═══════════════════════════════════════════════════════
+// INICIALIZACIÓN (SOPORTE PARA ASTRO VIEW TRANSITIONS)
+// ═══════════════════════════════════════════════════════
 
-if (qParam && queryExact) {
-  queryExact.value = qParam;
-  realizarBusquedaUnificada(qParam);
-} else if (personaParam) {
-  fetch(`/api/personas/${personaParam}`)
-    .then(r => r.json())
-    .then(data => {
-      if (!data.error) {
-        abrirModalDetalle(data, "persona");
+function initBuscador() {
+  // 1. Asignar DOM elements
+  formSearchExact = document.getElementById("form-search-exact") as HTMLFormElement;
+  queryExact = document.getElementById("query-exact") as HTMLInputElement;
+  btnBuscar = document.getElementById("btn-buscar") as HTMLButtonElement;
+  btnBuscarIcon = document.getElementById("btn-buscar-icon");
+  btnBuscarSpinner = document.getElementById("btn-buscar-spinner");
+  loader = document.getElementById("results-loader");
+  resultsHeader = document.getElementById("results-header");
+  resultsContainer = document.getElementById("results-container");
+  scrollSentinel = document.getElementById("scroll-sentinel");
+  emptyState = document.getElementById("empty-state");
+  noResultsCta = document.getElementById("no-results-cta");
+
+  btnFotoSearch = document.getElementById("btn-foto-search");
+  fotoSearchInput = document.getElementById("foto-search-input") as HTMLInputElement;
+  fotoSearchStatus = document.getElementById("foto-search-status");
+
+  statTotal = document.getElementById("stat-total");
+  statActivos = document.getElementById("stat-activos");
+  statLocalizados = document.getElementById("stat-localizados");
+
+  historialContainer = document.getElementById("historial-container");
+  historialChips = document.getElementById("historial-chips");
+
+  filterStateBar = document.getElementById("filter-state-bar") as HTMLDivElement;
+  btnFilterAll = document.getElementById("btn-filter-all");
+  btnFilterNoContact = document.getElementById("btn-filter-nocontact");
+  btnFilterLocated = document.getElementById("btn-filter-located");
+  btnToggleAdvanced = document.getElementById("btn-toggle-advanced-filters");
+  advancedFilters = document.getElementById("advanced-filters");
+  filterSexo = document.getElementById("filter-sexo") as HTMLSelectElement;
+  filterEdad = document.getElementById("filter-edad") as HTMLSelectElement;
+
+  modalDetalle = document.getElementById("modal-detalle");
+  modalClose = document.getElementById("modal-close");
+  modalBody = document.getElementById("modal-body");
+  modalActions = document.getElementById("modal-actions");
+  modalTipoBadge = document.getElementById("modal-tipo-badge");
+
+  globalRefugioSelect = document.getElementById("reporte-rapido-refugio") as HTMLSelectElement;
+  globalRefugioOtroWrap = document.getElementById("reporte-rapido-refugio-otro-wrap");
+  globalRefugioOtroInput = document.getElementById("reporte-rapido-refugio-otro") as HTMLInputElement;
+
+  // Si no estamos en la página del buscador, salir
+  if (!formSearchExact) return;
+
+  // 2. Registrar Event Listeners
+  globalRefugioSelect?.addEventListener("change", () => {
+    if (globalRefugioSelect && globalRefugioSelect.value === "otro") {
+      globalRefugioOtroWrap?.classList.remove("hidden");
+      globalRefugioOtroInput?.setAttribute("required", "true");
+      globalRefugioOtroInput?.focus();
+    } else {
+      globalRefugioOtroWrap?.classList.add("hidden");
+      globalRefugioOtroInput?.removeAttribute("required");
+    }
+  });
+
+  btnFotoSearch?.addEventListener("click", () => fotoSearchInput?.click());
+
+  fotoSearchInput?.addEventListener("change", async (e) => {
+    const target = e.target as HTMLInputElement;
+    if (!target.files || target.files.length === 0) return;
+    
+    try {
+      if (fotoSearchStatus) {
+        fotoSearchStatus.textContent = "Procesando imagen...";
+        fotoSearchStatus.classList.remove("hidden");
       }
-    })
-    .catch(err => console.error(err));
-} else if (reporteParam) {
-  fetch(`/api/reportes/${reporteParam}`)
-    .then(r => r.json())
-    .then(data => {
-      if (!data.error) {
-        abrirModalDetalle(data, "reporte");
+      
+      const compressed = await comprimirImagen(target.files[0]);
+      const base64 = await blobToBase64(compressed);
+      
+      if (fotoSearchStatus) fotoSearchStatus.textContent = "Buscando con IA...";
+      
+      await realizarBusqueda("", base64);
+      
+      if (fotoSearchStatus) fotoSearchStatus.classList.add("hidden");
+    } catch (err) {
+      console.error("Error en búsqueda por foto:", err);
+      if (fotoSearchStatus) {
+        fotoSearchStatus.textContent = "❌ Error al procesar foto";
+        fotoSearchStatus.classList.remove("hidden");
       }
-    })
-    .catch(err => console.error(err));
+    } finally {
+      if (fotoSearchInput) fotoSearchInput.value = "";
+    }
+  });
+
+  btnFilterAll?.addEventListener("click", () => {
+    currentSubTab = "todos";
+    actualizarFiltroUI();
+    aplicarFiltrosYRenderizar();
+  });
+  btnFilterNoContact?.addEventListener("click", () => {
+    currentSubTab = "sin_contacto";
+    actualizarFiltroUI();
+    aplicarFiltrosYRenderizar();
+  });
+  btnFilterLocated?.addEventListener("click", () => {
+    currentSubTab = "localizados";
+    actualizarFiltroUI();
+    aplicarFiltrosYRenderizar();
+  });
+
+  btnToggleAdvanced?.addEventListener("click", () => {
+    if (advancedFilters) {
+      const hidden = advancedFilters.classList.toggle("hidden");
+      if (btnToggleAdvanced) btnToggleAdvanced.textContent = hidden ? "↓ Más filtros" : "↑ Menos filtros";
+    }
+  });
+
+  filterSexo?.addEventListener("change", () => aplicarFiltrosYRenderizar());
+  filterEdad?.addEventListener("change", () => aplicarFiltrosYRenderizar());
+
+  formSearchExact.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const q = queryExact?.value.trim();
+    if (!q) {
+      queryExact?.focus();
+      return;
+    }
+    realizarBusqueda(q);
+  });
+
+  if (scrollSentinel) {
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+        offset += limit;
+        realizarBusqueda(currentQuery, undefined, true);
+      }
+    }, { rootMargin: "150px" });
+    observer.observe(scrollSentinel);
+  }
+
+  // Cargar stats e historial
+  cargarStats();
+  renderHistorial();
+  
+  // Cargar búsqueda o anuncio desde URL si existe
+  const urlParams = new URLSearchParams(window.location.search);
+  const qParam = urlParams.get("q");
+  const personaParam = urlParams.get("persona");
+  const reporteParam = urlParams.get("reporte");
+
+  if (qParam && queryExact) {
+    queryExact.value = qParam;
+    realizarBusqueda(qParam);
+  } else if (personaParam) {
+    fetch(`/api/personas/${personaParam}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.error) {
+          abrirModalDetalle(data, "persona");
+        }
+      })
+      .catch(err => console.error(err));
+  } else if (reporteParam) {
+    fetch(`/api/reportes/${reporteParam}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.error) {
+          abrirModalDetalle(data, "reporte");
+        }
+      })
+      .catch(err => console.error(err));
+  }
+}
+
+// Registrar con Astro Page Load
+if (typeof document !== "undefined") {
+  document.addEventListener("astro:page-load", initBuscador);
 }

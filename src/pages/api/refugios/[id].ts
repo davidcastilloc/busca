@@ -177,12 +177,20 @@ export const PATCH: APIRoute = async (context) => {
     // Agregar fecha de censo y de actualización automáticas
     fields.push("fecha_registro = datetime('now')");
     fields.push("updated_at = datetime('now')");
+    fields.push("updated_by = ?");
+    params.push(voluntario.id);
 
     // Parámetro ID final
     params.push(id);
 
     const sql = `UPDATE refugios SET ${fields.join(", ")} WHERE id = ?`;
     await DB.prepare(sql).bind(...params).run();
+
+    // Loguear actividad
+    await DB.prepare(`
+      INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
+      VALUES (?, 'EDITAR', 'refugios', ?)
+    `).bind(voluntario.id, id).run();
 
     // Enviar notificación push si hay cambio significativo
     try {
