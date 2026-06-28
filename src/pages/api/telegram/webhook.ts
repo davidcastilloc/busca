@@ -19,11 +19,11 @@ export const POST: APIRoute = async (context) => {
     const update = await context.request.json();
 
     // Procesar asíncronamente usando waitUntil si está disponible para evitar bloqueos
-    const runtime = context.locals.runtime;
+    const cfContext = (context.locals as any).cfContext || (context.locals as any).runtime?.ctx;
     const promise = processTelegramUpdate(update, cfEnv);
 
-    if (runtime?.ctx?.waitUntil) {
-      runtime.ctx.waitUntil(promise);
+    if (cfContext?.waitUntil) {
+      cfContext.waitUntil(promise);
     } else {
       // Degradación graciosa para entornos locales de desarrollo
       await promise;

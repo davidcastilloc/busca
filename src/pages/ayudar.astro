@@ -8,57 +8,218 @@ export const prerender = false;
 
 const sessionToken = Astro.cookies.get("session_token")?.value;
 let voluntario: any = null;
+let errorMsg = "";
+let successMsg = "";
+let refugios: any[] = [];
 
 try {
   const { DB } = env;
-  if (DB && sessionToken) {
-    voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
+  if (DB) {
+    if (sessionToken) {
+      voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
+    }
+
+    // Procesar POST si es un voluntario logueado
+    if (voluntario && Astro.request.method === "POST") {
+      const formData = await Astro.request.formData();
+      const action = formData.get("action");
+
+      if (action === "update_refugio") {
+        const refugioId = formData.get("refugio_id");
+        const ocupacion = parseInt(formData.get("ocupacion") as string, 10);
+
+        if (isNaN(ocupacion) || ocupacion < 0) {
+          errorMsg = "La ocupación debe ser un número válido mayor o igual a 0.";
+        } else {
+          await DB.prepare(`
+            UPDATE refugios 
+            SET ocupacion_actual = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+          `).bind(ocupacion, refugioId).run();
+          successMsg = "Ocupación del refugio actualizada con éxito.";
+        }
+      }
+    }
+
+    // Cargar refugios si está logueado
+    if (voluntario) {
+      const query = await DB.prepare("SELECT * FROM refugios ORDER BY nombre ASC").all();
+      refugios = query.results || [];
+    }
   }
-} catch (error) {
-  console.error("Error al obtener sesión en /ayudar:", error);
+} catch (error: any) {
+  console.error("Error en backend de /ayudar:", error);
+  errorMsg = error.message || "Error al conectar con la base de datos.";
 }
+
+const formatFecha = (fechaStr: string) => {
+  try {
+    const d = new Date(fechaStr + " UTC");
+    return d.toLocaleString("es-ES", { timeZone: "America/Caracas" });
+  } catch (e) {
+    return fechaStr;
+  }
+};
 ---
 
 <Layout title="Panel de Voluntarios - dondeestan.org">
   <Navbar />
   
-  <main class="flex-grow py-6 sm:py-12 px-4 bg-canvas max-w-md mx-auto w-full">
+  <main class="flex-grow py-6 sm:py-12 px-4 bg-canvas max-w-3xl mx-auto w-full">
     {voluntario ? (
       // Vista de Voluntario Autenticado
-      <div class="space-y-6">
-        <div class="text-center">
-          <span class="text-3xl">👷</span>
-          <h1 class="font-uber-display text-2xl text-ink tracking-tight mt-2">
-            ¡Hola, {voluntario.nombre}!
-          </h1>
-          <p class="text-xs text-body font-uber-text mt-1">
-            Panel de control para gestión y censo de centros de ayuda.
-          </p>
+      <div class="space-y-8">
+        <!-- Encabezado y Cerrar Sesión -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-canvas-soft">
+          <div>
+            <h1 class="font-uber-display text-3xl text-ink tracking-tight">¡Hola, {voluntario.nombre}!</h1>
+            <p class="text-sm text-body font-uber-text mt-1">
+              Panel de control de voluntarios. Gestiona refugios e inventarios desde el terreno.
+            </p>
+          </div>
+          <button id="btn-logout" class="btn bg-canvas-soft text-ink hover:bg-red-50 hover:text-red-600 font-uber-text uber-body-md-strong border border-canvas-soft h-10 px-4 flex items-center justify-center cursor-pointer">
+            🚪 Cerrar sesión
+          </button>
         </div>
 
-        <div class="bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm space-y-4">
-          <h3 class="text-sm font-bold text-ink uppercase tracking-wider font-uber-text border-b border-canvas-soft pb-2">Acciones rápidas</h3>
-          
-          <a href="/refugios/nuevo" class="w-full btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong py-3.5 rounded-full flex items-center justify-center gap-2 shadow-sm">
-            ➕ Registrar nuevo Centro
-          </a>
-          
-          <a href="/refugios" class="w-full btn bg-canvas text-ink hover:bg-canvas-soft border border-canvas-soft font-uber-text uber-body-md-strong py-3.5 rounded-full flex items-center justify-center gap-2 shadow-sm">
-            📋 Gestionar Inventario de Centros
-          </a>
-        </div>
+        {errorMsg && (
+          <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl font-uber-text text-sm animate-fade-in">
+            ⚠️ {errorMsg}
+          </div>
+        )}
+        {successMsg && (
+          <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl font-uber-text text-sm animate-fade-in">
+            ✅ {successMsg}
+          </div>
+        )}
 
-        <div class="bg-canvas-soft border border-canvas-soft p-4 rounded-xl space-y-2">
-          <span class="text-xs font-semibold text-ink font-uber-text block">Datos de Cuenta</span>
-          <div class="text-xs text-body font-uber-text space-y-1">
-            <div>📞 Teléfono: <strong class="text-ink">{voluntario.telefono}</strong></div>
-            <div>📅 Registro: <strong class="text-ink">{new Date(voluntario.created_at).toLocaleDateString()}</strong></div>
+        <!-- Tarjetas de herramientas y cuenta -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-canvas border border-canvas-soft p-5 rounded-2xl shadow-sm md:col-span-2 flex flex-col justify-between">
+            <div>
+              <h3 class="text-xs font-bold text-mute uppercase tracking-wider font-uber-text mb-3">Acciones Rápidas</h3>
+              <p class="text-xs text-body font-uber-text mb-4">Registra nuevos centros de acopio o gestiona inventario detallado (insumos médicos, comida, agua).</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3">
+              <a href="/refugios/nuevo" class="flex-1 btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong h-11 flex items-center justify-center gap-2 shadow-sm rounded-xl">
+                ➕ Registrar Centro
+              </a>
+              <a href="/refugios" class="flex-1 btn bg-canvas text-ink hover:bg-canvas-soft border border-canvas-soft font-uber-text uber-body-md-strong h-11 flex items-center justify-center gap-2 shadow-sm rounded-xl">
+                📋 Ver Inventarios
+              </a>
+            </div>
+          </div>
+
+          <div class="bg-canvas-soft border border-canvas-soft p-5 rounded-2xl flex flex-col justify-between">
+            <div>
+              <h3 class="text-xs font-bold text-mute uppercase tracking-wider font-uber-text mb-3">Datos de Cuenta</h3>
+              <div class="text-xs text-body font-uber-text space-y-1.5">
+                <div>📞 Teléfono: <strong class="text-ink">{voluntario.telefono}</strong></div>
+                <div>📅 Rol: <strong class="text-ink">Voluntario Activo</strong></div>
+              </div>
+            </div>
+            <div class="text-[10px] text-mute font-uber-text mt-4">
+              Registrado: {new Date(voluntario.created_at).toLocaleDateString()}
+            </div>
           </div>
         </div>
 
-        <button id="btn-logout" class="w-full btn bg-canvas-soft text-red-600 hover:bg-red-500/10 border border-transparent font-uber-text uber-body-md-strong py-3.5 rounded-full flex items-center justify-center gap-2">
-          🚪 Cerrar sesión
-        </button>
+        <!-- Lista de Refugios para Ocupación Rápida -->
+        <div class="space-y-6 pt-4">
+          <h2 class="font-uber-display text-xl text-ink flex items-center gap-2">
+            ⛺ Ocupación de Refugios en Vivo
+          </h2>
+
+          {refugios.length === 0 ? (
+            <div class="text-center py-10 bg-canvas border border-canvas-soft rounded-2xl">
+              <p class="font-uber-text text-body text-sm">No hay refugios registrados en la base de datos.</p>
+            </div>
+          ) : (
+            refugios.map((r) => {
+              const cap = r.capacidad_maxima || 100;
+              const ocu = r.ocupacion_actual || 0;
+              const pct = Math.min(100, Math.round((ocu / cap) * 100));
+
+              let pctColor = "bg-green-500";
+              if (pct >= 90) pctColor = "bg-red-600";
+              else if (pct >= 75) pctColor = "bg-yellow-500";
+
+              return (
+                <div class="bg-canvas border border-canvas-soft rounded-2xl p-6 shadow-sm hover:shadow transition-shadow">
+                  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                    <div>
+                      <h3 class="font-uber-display text-lg text-ink font-semibold">{r.nombre}</h3>
+                      {r.direccion && <p class="text-xs text-body font-uber-text mt-0.5">{r.direccion}</p>}
+                    </div>
+                    <div class="text-xs text-mute font-uber-text">
+                      Modificado: {formatFecha(r.updated_at)}
+                    </div>
+                  </div>
+
+                  <!-- Progreso -->
+                  <div class="mb-4">
+                    <div class="flex justify-between text-xs font-uber-text mb-1">
+                      <span class="text-body">Estado de capacidad</span>
+                      <span class="text-ink font-bold">{ocu} / {cap} personas ({pct}%)</span>
+                    </div>
+                    <div class="w-full bg-canvas-soft h-2.5 rounded-full overflow-hidden border border-canvas-soft/40">
+                      <div class={`h-full ${pctColor} transition-all duration-500`} style={`width: ${pct}%`}></div>
+                    </div>
+                  </div>
+
+                  <!-- Formulario rápido -->
+                  <form method="POST" class="flex flex-wrap items-end gap-3 bg-canvas-soft/40 p-4 rounded-xl border border-canvas-soft/30">
+                    <input type="hidden" name="action" value="update_refugio" />
+                    <input type="hidden" name="refugio_id" value={r.id} />
+
+                    <div class="flex-grow min-w-[140px]">
+                      <label class="block text-[10px] font-uber-text font-bold text-mute uppercase tracking-wider mb-1">Nº Personas en Sitio</label>
+                      <input 
+                        type="number" 
+                        name="ocupacion" 
+                        value={ocu} 
+                        min="0"
+                        max={cap * 2}
+                        class="input w-full h-10 bg-canvas border-canvas-soft text-ink font-uber-text font-semibold text-center rounded-lg" 
+                        id={`input-${r.id}`}
+                        required 
+                      />
+                    </div>
+
+                    <!-- Botones rápidos -->
+                    <div class="flex gap-1.5">
+                      <button 
+                        type="button" 
+                        class="btn btn-sm bg-canvas text-xs text-ink border border-canvas-soft hover:bg-surface-pressed h-10 px-3 cursor-pointer rounded-lg"
+                        onclick={`document.getElementById('input-${r.id}').value = Math.round(${cap} * 0.25)`}
+                      >
+                        25%
+                      </button>
+                      <button 
+                        type="button" 
+                        class="btn btn-sm bg-canvas text-xs text-ink border border-canvas-soft hover:bg-surface-pressed h-10 px-3 cursor-pointer rounded-lg"
+                        onclick={`document.getElementById('input-${r.id}').value = Math.round(${cap} * 0.75)`}
+                      >
+                        75%
+                      </button>
+                      <button 
+                        type="button" 
+                        class="btn btn-sm bg-canvas text-xs text-ink border border-canvas-soft hover:bg-surface-pressed h-10 px-3 cursor-pointer rounded-lg"
+                        onclick={`document.getElementById('input-${r.id}').value = ${cap}`}
+                      >
+                        100%
+                      </button>
+                    </div>
+
+                    <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong h-10 px-5 ml-auto flex items-center justify-center cursor-pointer rounded-lg">
+                      Actualizar
+                    </button>
+                  </form>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     ) : (
       // Vista de Registro / Ingreso

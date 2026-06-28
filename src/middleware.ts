@@ -43,6 +43,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
+
+
   // ═══════════════════════════════════════════════════════════
   // Rate limiting para rutas de API
   // ═══════════════════════════════════════════════════════════

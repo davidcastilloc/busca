@@ -63,10 +63,28 @@ export async function handleReportState(
       data.cedula_buscado = null;
     }
 
+    await setSession(db, telegramId, chatId, "rep_ubicacion", data);
+    await client.sendMessage(
+      chatId,
+      "Cédula registrada.\n\nAhora, escribe <b>dónde estuvo últimamente</b> (última ubicación conocida):"
+    );
+    return;
+  }
+
+  // 2.5 Esperando Ubicación
+  if (currentStep === "rep_ubicacion") {
+    if (!text || text.trim().length < 3) {
+      await client.sendMessage(
+        chatId,
+        "⚠️ Indica la última ubicación conocida (ej. 'Centro de Caracas' o 'No se sabe'):"
+      );
+      return;
+    }
+    data.ubicacion_nombre = text.trim();
     await setSession(db, telegramId, chatId, "rep_desc", data);
     await client.sendMessage(
       chatId,
-      "Cédula registrada.\n\nEscribe una <b>descripción detallada</b> (última vez visto, señas particulares, vestimenta, estado de salud - mínimo 10 caracteres):"
+      "Ubicación registrada.\n\nEscribe una <b>descripción detallada</b> (señas particulares, vestimenta, estado de salud - mínimo 10 caracteres):"
     );
     return;
   }
@@ -137,6 +155,7 @@ export async function handleReportState(
           nombre_buscado: data.nombre_buscado,
           cedula_buscado: data.cedula_buscado,
           descripcion: data.descripcion,
+          ubicacion_nombre: data.ubicacion_nombre,
           reportante_nombre: `Bot Telegram`,
           reportante_contacto: `User ID: ${telegramId}`,
           foto_key: data.foto_key,
