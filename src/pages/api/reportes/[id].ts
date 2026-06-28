@@ -101,6 +101,26 @@ export const PATCH: APIRoute = async (context) => {
         Number(id)
       ).run();
 
+      // Notificar administradores por Telegram
+      try {
+        const { notifyAdmins } = await import("../../../lib/telegram/notify");
+        const alertMsg = `⚠️ <b>Nueva Evidencia de Reporte Resuelto (A Salvo)</b>\n\n` +
+          `• <b>Persona:</b> ${existente.nombre_buscado || "Sin identificar"}\n` +
+          `• <b>Cédula:</b> ${existente.cedula_buscado || "No especificada"}\n` +
+          `• <b>Contacto reportante:</b> ${body.contacto}\n` +
+          `• <b>Notas:</b> <i>"${body.notes || body.notas || "Sin comentarios"}"</i>\n\n` +
+          `🔗 <a href="https://dondeestan.org/admin/dashboard">Verificar en Panel de Rescatistas</a>`;
+        
+        const runtime = context.locals.runtime;
+        if (runtime?.ctx?.waitUntil) {
+          runtime.ctx.waitUntil(notifyAdmins(env, alertMsg));
+        } else {
+          await notifyAdmins(env, alertMsg);
+        }
+      } catch (err) {
+        console.error("Error enviando notificación de reporte resuelto a Telegram:", err);
+      }
+
       return new Response(JSON.stringify({ ok: true, id: Number(id), estado_reporte: nuevoEstado, verificacion: nuevaVerificacion }), {
         status: 200,
         headers: { "Content-Type": "application/json" }

@@ -99,6 +99,21 @@ export async function procesarCola(
 
         if (result && result.id) {
           const reporteId = result.id;
+
+          // Notificar administradores por Telegram
+          try {
+            const { notifyAdmins } = await import("./telegram/notify");
+            const alertMsg = `🚨 <b>Nuevo Reporte Recibido (#${reporteId})</b>\n\n` +
+              `• <b>Nombre buscado:</b> ${data.nombre_buscado || "Sin identificar"}\n` +
+              `• <b>Cédula:</b> ${data.cedula_buscado || "No especificada"}\n` +
+              `• <b>Tipo:</b> ${data.tipo}\n` +
+              `• <b>Ubicación:</b> ${data.ubicacion_nombre || "No especificada"}\n\n` +
+              `📝 <b>Descripción:</b> <i>"${data.descripcion}"</i>\n\n` +
+              `🔗 <a href="https://dondeestan.org/admin/dashboard">Ir al Panel de Moderación</a>`;
+            ctx.waitUntil(notifyAdmins(env, alertMsg));
+          } catch (err) {
+            console.error("Error importando/ejecutando notifyAdmins:", err);
+          }
           
           // Si el reporte es de tipo 'encontrado', resolver reportes de búsqueda relacionados
           if (data.tipo === "encontrado") {

@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
 
 export const prerender = false;
 
@@ -142,6 +143,28 @@ async function geocodificarNominatim(queries: string[]): Promise<{ lat: number; 
   return null;
 }
 
+/**
+ * Geocodificar una dirección usando la API de Google Maps Geocoding.
+ */
+async function geocodificarGoogle(queries: string[], apiKey: string): Promise<{ lat: number; lng: number } | null> {
+  for (const q of queries) {
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(q)}&components=country:VE&key=${apiKey}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json() as any;
+        if (data.status === "OK" && data.results && data.results.length > 0) {
+          const loc = data.results[0].geometry.location;
+          return { lat: loc.lat, lng: loc.lng };
+        }
+      }
+    } catch {
+      // Continuar
+    }
+  }
+  return null;
+}
+
 function jsonResp(data: any, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -155,6 +178,8 @@ export const POST: APIRoute = async (context) => {
     if (!url) {
       return jsonResp({ error: "URL requerida" }, 400);
     }
+
+    const apiKey = (env as any).GOOGLE_MAPS_API_KEY;
 
     // A. Intentar extraer de la URL directa (sin hacer peticiones)
     const coordenadasDirectas = extraerDeUrl(url);
@@ -183,10 +208,12 @@ export const POST: APIRoute = async (context) => {
           return jsonResp({ success: true, lat: coordenadasRedir.lat, lng: coordenadasRedir.lng });
         }
 
-        // C. Si la URL tiene dirección pero no coords exactas, geocodificar con Nominatim
+        // C. Si la URL tiene dirección pero no coords exactas, geocodificar
         const queries = extraerDireccionDeUrl(targetUrl);
         if (queries.length > 0) {
-          const geocoded = await geocodificarNominatim(queries);
+          const geocoded = apiKey
+            ? await geocodificarGoogle(queries, apiKey)
+            : await geocodificarNominatim(queries);
           if (geocoded) {
             return jsonResp({ success: true, lat: geocoded.lat, lng: geocoded.lng });
           }
@@ -244,7 +271,9 @@ export const POST: APIRoute = async (context) => {
     for (const u of urlsParaDireccion) {
       const queries = extraerDireccionDeUrl(u);
       if (queries.length > 0) {
-        const geocoded = await geocodificarNominatim(queries);
+        const geocoded = apiKey
+          ? await geocodificarGoogle(queries, apiKey)
+          : await geocodificarNominatim(queries);
         if (geocoded) {
           return jsonResp({ success: true, lat: geocoded.lat, lng: geocoded.lng });
         }

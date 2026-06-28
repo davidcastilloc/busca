@@ -1074,24 +1074,27 @@ try {
     }
 
     try {
-      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dir + ", Venezuela")}&limit=1`);
+      const resp = await fetch(`/api/maps/geocode?address=${encodeURIComponent(dir)}`);
       if (resp.ok) {
-        const res = await resp.json();
-        if (res && res.length > 0) {
-          const lat = parseFloat(res[0].lat);
-          const lon = parseFloat(res[0].lon);
-          latEditInput.value = lat.toFixed(6);
-          lonEditInput.value = lon.toFixed(6);
-          if (gpsEditStatus) {
-            gpsEditStatus.textContent = `Encontrado: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-            gpsEditStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
-          }
-          initEditMap(lat, lon, 15);
-        } else {
-          if (gpsEditStatus) {
-            gpsEditStatus.textContent = "No encontrado.";
-            gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
-          }
+        const data = await resp.json();
+        const lat = data.lat;
+        const lon = data.lng;
+        latEditInput.value = lat.toFixed(6);
+        lonEditInput.value = lon.toFixed(6);
+        if (gpsEditStatus) {
+          gpsEditStatus.textContent = `Encontrado: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+          gpsEditStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
+        }
+        
+        if (data.formatted_address) {
+          inputDireccion.value = data.formatted_address;
+        }
+
+        initEditMap(lat, lon, 15);
+      } else {
+        if (gpsEditStatus) {
+          gpsEditStatus.textContent = "No encontrado. Intenta con más detalles.";
+          gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
         }
       }
     } catch {
