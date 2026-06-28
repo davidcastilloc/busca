@@ -58,7 +58,8 @@ export const CATEGORIAS_INVENTARIO: CategoriaInventario[] = [
       { id: "antibioticos", nombre: "Antibióticos de amplio espectro", unidad_medida: "Cajas", es_critico: true },
       { id: "suero_hidratacion", nombre: "Suero de hidratación oral", unidad_medida: "Litros / Sobres", es_critico: true },
       { id: "tapabocas_guantes", nombre: "Tapabocas / Guantes desechables", unidad_medida: "Cajas" },
-      { id: "termometros", nombre: "Termómetros", unidad_medida: "Unidades" }
+      { id: "termometros", nombre: "Termómetros", unidad_medida: "Unidades" },
+      { id: "agujas_inyectadoras", nombre: "Agujas / Inyectadoras", unidad_medida: "Unidades", es_critico: true }
     ]
   },
   {
