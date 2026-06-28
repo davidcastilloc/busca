@@ -272,6 +272,15 @@ input[type="radio"] {
   min-height: 22px;
 }
 
+/* Prevenir selección de texto accidental en elementos interactivos */
+button,
+.btn,
+[role="button"],
+.cursor-pointer {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Optimización de Renderizado para LTE/3G */
 .cv-auto {
   content-visibility: auto;

@@ -640,14 +640,7 @@ function cerrarModal() {
   currentTipo = "";
 }
 
-// Close handlers
-modalClose?.addEventListener("click", cerrarModal);
-modalDetalle?.addEventListener("click", (e) => {
-  if (e.target === modalDetalle) cerrarModal();
-});
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") cerrarModal();
-});
+// Close handlers se registran dentro de initBuscador()
 
 // ═══ CAMPO HELPER ═══
 function campo(label: string, value: string | null | undefined): string {
@@ -1349,7 +1342,24 @@ function initBuscador() {
   // Si no estamos en la página del buscador, salir
   if (!formSearchExact) return;
 
-  // 2. Registrar Event Listeners
+  // 2a. Registrar Close handlers del modal (deben vivir aquí para re-registrarse con ClientRouter)
+  modalClose?.addEventListener("click", cerrarModal);
+  modalDetalle?.addEventListener("click", (e) => {
+    if (e.target === modalDetalle) cerrarModal();
+  });
+  // Cleanup del listener global de Escape para evitar acumulación entre navegaciones
+  if ((window as any).__buscadorEscapeCleanup) {
+    (window as any).__buscadorEscapeCleanup();
+  }
+  const escapeHandler = (e: KeyboardEvent) => {
+    if (e.key === "Escape") cerrarModal();
+  };
+  document.addEventListener("keydown", escapeHandler);
+  (window as any).__buscadorEscapeCleanup = () => {
+    document.removeEventListener("keydown", escapeHandler);
+  };
+
+  // 2b. Registrar Event Listeners
   globalRefugioSelect?.addEventListener("change", () => {
     if (globalRefugioSelect && globalRefugioSelect.value === "otro") {
       globalRefugioOtroWrap?.classList.remove("hidden");

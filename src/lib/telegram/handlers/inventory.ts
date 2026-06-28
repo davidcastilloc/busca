@@ -277,7 +277,7 @@ export async function setItemStatus(
 
     // 3. Guardar en BD
     await db
-      .prepare("UPDATE refugios SET inventario = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .prepare("UPDATE refugios SET inventario = ?, updated_at = datetime('now', '-4 hours') WHERE id = ?")
       .bind(JSON.stringify(inv), refugioId)
       .run();
 

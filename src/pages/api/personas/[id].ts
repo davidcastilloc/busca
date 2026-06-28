@@ -96,7 +96,7 @@ export const PATCH: APIRoute = async (context) => {
             foto_evidencia_key = ?,
             contacto_evidencia = ?,
             notas_evidencia = ?,
-            updated_at = datetime('now') 
+            updated_at = datetime('now', '-4 hours') 
         WHERE id = ?
       `).bind(
         nuevoEstado, 
@@ -145,7 +145,7 @@ export const PATCH: APIRoute = async (context) => {
       await DB.prepare(`
         UPDATE personas 
         SET verificacion = ?,
-            updated_at = datetime('now') 
+            updated_at = datetime('now', '-4 hours') 
         WHERE id = ?
       `).bind(nuevaVerificacion, Number(id)).run();
 
@@ -154,7 +154,7 @@ export const PATCH: APIRoute = async (context) => {
         await DB.prepare(`
           UPDATE reportes 
           SET estado_reporte = 'resuelto', 
-              updated_at = datetime('now') 
+              updated_at = datetime('now', '-4 hours') 
           WHERE cedula_buscado = ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
         `).bind(existente.cedula).run();
       }
@@ -164,7 +164,7 @@ export const PATCH: APIRoute = async (context) => {
         await DB.prepare(`
           UPDATE reportes 
           SET estado_reporte = 'resuelto', 
-              updated_at = datetime('now') 
+              updated_at = datetime('now', '-4 hours') 
           WHERE nombre_buscado LIKE ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
         `).bind(`%${nombreCompleto}%`).run();
       }
@@ -186,7 +186,7 @@ export const PATCH: APIRoute = async (context) => {
             foto_evidencia_key = NULL,
             contacto_evidencia = NULL,
             notas_evidencia = NULL,
-            updated_at = datetime('now') 
+            updated_at = datetime('now', '-4 hours') 
         WHERE id = ?
       `).bind(nuevoEstado, nuevaVerificacion, Number(id)).run();
 
@@ -207,7 +207,7 @@ export const PATCH: APIRoute = async (context) => {
           ubicacion_nombre = ?, 
           notas = ?, 
           foto_key = ?, 
-          updated_at = datetime('now') 
+          updated_at = datetime('now', '-4 hours') 
       WHERE id = ?
     `).bind(nuevoEstado, nuevoRefugio, nuevoContacto, nuevaLat, nuevaLon, nuevaUbiNombre, nuevasNotas, nuevaFotoKey, Number(id)).run();
 
@@ -217,7 +217,7 @@ export const PATCH: APIRoute = async (context) => {
         await DB.prepare(`
           UPDATE reportes 
           SET estado_reporte = 'resuelto', 
-              updated_at = datetime('now') 
+              updated_at = datetime('now', '-4 hours') 
           WHERE cedula_buscado = ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
         `).bind(existente.cedula).run();
       }
@@ -227,7 +227,7 @@ export const PATCH: APIRoute = async (context) => {
         await DB.prepare(`
           UPDATE reportes 
           SET estado_reporte = 'resuelto', 
-              updated_at = datetime('now') 
+              updated_at = datetime('now', '-4 hours') 
           WHERE nombre_buscado LIKE ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
         `).bind(`%${nombreCompleto}%`).run();
       }
