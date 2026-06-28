@@ -690,23 +690,35 @@ try {
 </style>
 
 <script>
-  let esVoluntario = false;
-  // Obtener estado de voluntario desde el botón del DOM
-  const btnEdits = document.querySelectorAll(".btn-edit-refugio");
-  if (btnEdits.length > 0) {
-    esVoluntario = true;
-  }
-
-  // Elementos UI
-  const searchInput = document.getElementById("search-refugios") as HTMLInputElement;
-  const filterBtns = document.querySelectorAll(".filter-btn");
-  const cards = document.querySelectorAll(".refugio-card");
-  const btnGeolocalizar = document.getElementById("btn-geolocalizar");
-
-  // Instancia de Mapa Leaflet
   let map: any = null;
+  let editMap: any = null;
+  let editMarker: any = null;
   const marcadores = new Map<string, any>();
   let userMarker: any = null;
+  let esVoluntario = false;
+
+  document.addEventListener('astro:page-load', () => {
+    // Limpieza de mapas e instancias previas
+    if (map) {
+      try { map.remove(); } catch (e) {}
+      map = null;
+    }
+    if (editMap) {
+      try { editMap.remove(); } catch (e) {}
+      editMap = null;
+    }
+    editMarker = null;
+    userMarker = null;
+    marcadores.clear();
+
+    const btnEdits = document.querySelectorAll(".btn-edit-refugio");
+    esVoluntario = btnEdits.length > 0;
+
+    // Elementos UI
+    const searchInput = document.getElementById("search-refugios") as HTMLInputElement;
+    const filterBtns = document.querySelectorAll(".filter-btn");
+    const cards = document.querySelectorAll(".refugio-card");
+    const btnGeolocalizar = document.getElementById("btn-geolocalizar");
 
   // Inicializar Mapa
   function initMap() {
@@ -1082,8 +1094,7 @@ try {
     renderEditPreviews();
   });
 
-  let editMap: any = null;
-  let editMarker: any = null;
+  // editMap y editMarker se inicializan a nivel de módulo
 
   /**
    * Mostrar tarjeta de info de Google Places en el modal de edición.
@@ -1645,4 +1656,5 @@ try {
       }
     }
   });
+});
 </script>
