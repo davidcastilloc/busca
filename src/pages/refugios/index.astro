@@ -782,6 +782,10 @@ try {
       const group = new L.featureGroup(Array.from(marcadores.values()));
       map.fitBounds(group.getBounds().pad(0.15));
     }
+
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 250);
   }
 
   // Filtro de Búsqueda y Tipo

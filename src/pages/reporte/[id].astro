@@ -1,0 +1,348 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Navbar from "../../components/Navbar.astro";
+import { env } from "cloudflare:workers";
+
+export const prerender = false;
+
+const { id } = Astro.params;
+const url = new URL(Astro.request.url);
+
+let reporte: any = null;
+
+try {
+  const { DB } = env;
+  if (DB && id) {
+    reporte = await DB.prepare("SELECT * FROM reportes WHERE id = ?").bind(id).first();
+  }
+} catch (error) {
+  console.error("Error al cargar reporte:", error);
+}
+
+const formatFecha = (fechaStr: string) => {
+  try {
+    const d = new Date(fechaStr + " UTC");
+    return d.toLocaleDateString("es-ES", {
+      timeZone: "America/Caracas",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return fechaStr;
+  }
+};
+
+// Metadatos por tipo para SEO y compartir
+const siteUrl = "https://dondeestan.org";
+const reporteUrl = `${siteUrl}/reporte/${id}`;
+
+const tipoConfig: Record<string, { emoji: string; label: string; color: string; urgente: boolean }> = {
+  desaparecido: { emoji: "🔴", label: "SE BUSCA", color: "bg-red-600", urgente: true },
+  encontrado:   { emoji: "✅", label: "A SALVO",  color: "bg-green-600", urgente: false },
+  necesidad:    { emoji: "🆘", label: "NECESIDAD CRÍTICA", color: "bg-orange-600", urgente: true },
+  refugio:      { emoji: "🏠", label: "REFUGIO ACTIVO",    color: "bg-blue-600", urgente: false },
+};
+
+const tipo = reporte?.tipo || "desaparecido";
+const cfg = tipoConfig[tipo] || tipoConfig.desaparecido;
+
+// Descripción limpia para SEO
+const descLimpia = (reporte?.descripcion || "")
+  .replace(/\[.*?\]/g, "")
+  .trim()
+  .substring(0, 300);
+
+const titulo = tipo === "desaparecido" || tipo === "encontrado"
+  ? reporte?.nombre_buscado || "Persona"
+  : reporte?.nombre_buscado || "Emergencia";
+
+const pageTitle = `${cfg.emoji} ${cfg.label}: ${titulo} — dondeestan.org`;
+const ogImage = reporte?.foto_key
+  ? `${siteUrl}/api/upload?key=${encodeURIComponent(reporte.foto_key)}`
+  : `${siteUrl}/icons/icon-512.png`;
+
+// Texto adaptado para compartir en redes
+const contacto = reporte?.reportante_contacto || "";
+let shareText = "";
+if (tipo === "desaparecido") {
+  shareText = `🔴 SE BUSCA: ${titulo}${reporte?.ubicacion_nombre ? ` — Último avisto en ${reporte.ubicacion_nombre}` : ""}. ¡Comparte! ${reporteUrl}`;
+} else if (tipo === "encontrado") {
+  shareText = `✅ A SALVO: ${titulo}. Informa a sus familiares. ${reporteUrl}`;
+} else if (tipo === "necesidad") {
+  const catMatch = (reporte?.descripcion || "").match(/\[TIPO NECESIDAD: (.*?)\]/);
+  const cat = catMatch ? catMatch[1] : "Necesidad Urgente";
+  shareText = `🆘 NECESIDAD CRÍTICA: ${cat}${reporte?.ubicacion_nombre ? ` en ${reporte.ubicacion_nombre}` : ""}${contacto ? `. Contactar: ${contacto}` : ""}. ¡Comparte y ayuda! ${reporteUrl}`;
+} else if (tipo === "refugio") {
+  shareText = `🏠 REFUGIO ACTIVO: ${titulo}${reporte?.ubicacion_nombre ? ` — ${reporte.ubicacion_nombre}` : ""}${contacto ? `. Encargado: ${contacto}` : ""}. ${reporteUrl}`;
+} else {
+  shareText = `🚨 Reporte de emergencia en dondeestan.org: ${reporteUrl}`;
+}
+
+// Extraer campos estructurados de la descripción
+const extractBracket = (text: string, key: string) => {
+  const m = text.match(new RegExp(`\\[${key}: (.*?)\\]`));
+  return m ? m[1] : null;
+};
+const desc = reporte?.descripcion || "";
+const metaNecesidad = extractBracket(desc, "TIPO NECESIDAD");
+const metaUrgencia  = extractBracket(desc, "URGENCIA");
+const metaAfectados = extractBracket(desc, "AFECTADOS");
+const metaCentro    = extractBracket(desc, "TIPO CENTRO");
+const metaOcupacion = extractBracket(desc, "OCUPACIÓN");
+const metaFecha     = extractBracket(desc, "FECHA ÚLTIMO CONTACTO");
+const metaUbicacion = extractBracket(desc, "UBICACIÓN");
+const metaSenas     = extractBracket(desc, "SEÑAS");
+---
+
+<Layout
+  title={pageTitle}
+  description={`${cfg.label}: ${titulo}. ${descLimpia}`}
+  ogImage={ogImage}
+  ogUrl={reporteUrl}
+>
+  <Navbar />
+
+  <main class="flex-grow py-8 px-4 max-w-2xl mx-auto w-full">
+    {reporte ? (
+      <article class="space-y-5">
+
+        <!-- Header de tipo de reporte -->
+        <div class={`${cfg.color} text-white rounded-2xl px-5 py-4 flex items-center gap-3 shadow-md`}>
+          <span class="text-4xl" aria-hidden="true">{cfg.emoji}</span>
+          <div>
+            <div class="text-xs font-uber-text uppercase tracking-widest opacity-80">Reporte #{id} • {formatFecha(reporte.created_at)}</div>
+            <h1 class="font-uber-display text-2xl font-black leading-tight">{cfg.label}</h1>
+          </div>
+        </div>
+
+        <!-- Título principal -->
+        <div class="bg-canvas-soft rounded-2xl p-5 shadow-sm space-y-1">
+          <p class="text-xs text-mute font-uber-text uppercase tracking-wider">
+            {tipo === "desaparecido" || tipo === "encontrado" ? "Persona" : "Nombre / Lugar"}
+          </p>
+          <h2 class="font-uber-display text-3xl font-black text-ink">{titulo}</h2>
+          {reporte.cedula_buscado && (
+            <p class="text-sm text-body font-uber-text">Cédula: <strong>{reporte.cedula_buscado}</strong></p>
+          )}
+        </div>
+
+        <!-- Foto si existe -->
+        {reporte.foto_key && (
+          <div class="rounded-2xl overflow-hidden shadow-sm">
+            <img
+              src={`/api/upload?key=${encodeURIComponent(reporte.foto_key)}`}
+              alt={`Foto de ${titulo}`}
+              class="w-full max-h-80 object-cover"
+              loading="eager"
+              fetchpriority="high"
+            />
+          </div>
+        )}
+
+        <!-- Datos estructurados por tipo -->
+        {(metaNecesidad || metaUrgencia || metaAfectados) && (
+          <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-2xl p-4 space-y-2 font-uber-text">
+            {metaNecesidad && (
+              <div class="flex justify-between">
+                <span class="text-xs text-mute uppercase tracking-wider">Tipo de Necesidad</span>
+                <span class="font-bold text-sm text-ink">{metaNecesidad}</span>
+              </div>
+            )}
+            {metaUrgencia && (
+              <div class="flex justify-between">
+                <span class="text-xs text-mute uppercase tracking-wider">Urgencia</span>
+                <span class="font-bold text-sm text-ink">{metaUrgencia}</span>
+              </div>
+            )}
+            {metaAfectados && (
+              <div class="flex justify-between">
+                <span class="text-xs text-mute uppercase tracking-wider">Personas Afectadas</span>
+                <span class="font-bold text-sm text-ink">{metaAfectados}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {(metaCentro || metaOcupacion) && (
+          <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 space-y-2 font-uber-text">
+            {metaCentro && (
+              <div class="flex justify-between">
+                <span class="text-xs text-mute uppercase tracking-wider">Tipo de Centro</span>
+                <span class="font-bold text-sm text-ink">{metaCentro}</span>
+              </div>
+            )}
+            {metaOcupacion && (
+              <div class="flex justify-between">
+                <span class="text-xs text-mute uppercase tracking-wider">Ocupación</span>
+                <span class="font-bold text-sm text-ink">{metaOcupacion}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {(metaFecha || metaUbicacion || metaSenas) && (
+          <div class="bg-canvas-soft rounded-2xl p-4 space-y-2 font-uber-text">
+            {metaFecha && (
+              <div>
+                <span class="text-xs text-mute uppercase tracking-wider block">Último Contacto</span>
+                <span class="font-bold text-sm text-ink">{metaFecha}</span>
+              </div>
+            )}
+            {metaUbicacion && (
+              <div>
+                <span class="text-xs text-mute uppercase tracking-wider block">Ubicación</span>
+                <span class="font-bold text-sm text-ink">{metaUbicacion}</span>
+              </div>
+            )}
+            {metaSenas && (
+              <div>
+                <span class="text-xs text-mute uppercase tracking-wider block">Señas Particulares</span>
+                <span class="text-sm text-ink">{metaSenas}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <!-- Ubicación geográfica -->
+        {reporte.ubicacion_nombre && (
+          <div class="bg-canvas-soft rounded-2xl p-4 font-uber-text">
+            <span class="text-xs text-mute uppercase tracking-wider block mb-1">📍 Ubicación Reportada</span>
+            <span class="font-bold text-sm text-ink">{reporte.ubicacion_nombre}</span>
+            {reporte.latitud && reporte.longitud && (
+              <a
+                href={`https://maps.google.com/?q=${reporte.latitud},${reporte.longitud}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="block mt-2 text-xs text-primary font-bold underline"
+              >
+                Ver en Google Maps →
+              </a>
+            )}
+          </div>
+        )}
+
+        <!-- Descripción -->
+        {descLimpia && (
+          <div class="bg-canvas-soft rounded-2xl p-5 font-uber-text">
+            <p class="text-xs text-mute uppercase tracking-wider mb-2">Descripción</p>
+            <p class="text-sm text-ink whitespace-pre-wrap leading-relaxed">{descLimpia}</p>
+          </div>
+        )}
+
+        <!-- Contacto: botones de acción directa -->
+        {reporte.reportante_contacto && (
+          <div class="bg-primary/5 border border-primary/20 rounded-2xl p-5 space-y-3">
+            <p class="text-xs text-mute font-uber-text uppercase tracking-wider">📞 Contacto para coordinar</p>
+            <p class="font-uber-display text-xl font-black text-ink">{reporte.reportante_contacto}</p>
+            <div class="flex gap-2 flex-wrap">
+              <a
+                href={`tel:${reporte.reportante_contacto.replace(/\s|-/g, "")}`}
+                class="btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong flex-1 min-w-[130px] text-center"
+              >
+                📞 Llamar ahora
+              </a>
+              <a
+                href={`https://wa.me/${reporte.reportante_contacto.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn bg-[#25D366] text-white hover:opacity-90 font-uber-text uber-body-md-strong flex-1 min-w-[130px] text-center"
+              >
+                WhatsApp
+              </a>
+            </div>
+          </div>
+        )}
+
+        <!-- Reportante -->
+        {reporte.reportante_nombre && (
+          <div class="font-uber-text text-xs text-mute px-1">
+            Reportado por: <strong class="text-body">{reporte.reportante_nombre}</strong>
+            {reporte.estado_reporte === "resuelto" && (
+              <span class="ml-2 text-green-600 font-bold">✅ RESUELTO</span>
+            )}
+          </div>
+        )}
+
+        <!-- Botones de compartir -->
+        <div class="space-y-2 pt-2">
+          <p class="text-xs text-mute font-uber-text text-center uppercase tracking-wider">Compartir este reporte</p>
+          <div class="grid grid-cols-3 gap-2">
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border border-canvas-soft bg-[#25D366]/10 hover:bg-[#25D366]/20 transition-colors text-center font-uber-text uber-body-sm-strong text-ink"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#25D366" class="w-6 h-6"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+              <span class="text-xs">WhatsApp</span>
+            </a>
+            <a
+              href={`https://t.me/share/url?url=${encodeURIComponent(reporteUrl)}&text=${encodeURIComponent(shareText.replace(reporteUrl, "").trim())}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border border-canvas-soft bg-[#229ED9]/10 hover:bg-[#229ED9]/20 transition-colors text-center font-uber-text uber-body-sm-strong text-ink"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#229ED9" class="w-6 h-6"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+              <span class="text-xs">Telegram</span>
+            </a>
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border border-canvas-soft bg-[#000]/5 hover:bg-[#000]/10 transition-colors text-center font-uber-text uber-body-sm-strong text-ink"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.259 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+              <span class="text-xs">Twitter/X</span>
+            </a>
+          </div>
+          <button
+            id="btn-copy-reporte"
+            class="w-full btn bg-canvas text-ink border border-canvas-soft hover:bg-canvas-soft font-uber-text uber-body-md-strong"
+          >
+            🔗 Copiar enlace de este reporte
+          </button>
+        </div>
+
+        <!-- Link al flyer si existe -->
+        <div class="text-center pt-2 space-y-2">
+          <a href="/reportar" class="link-blue font-uber-text uber-body-sm-strong block">
+            ← Emitir un nuevo reporte de emergencia
+          </a>
+        </div>
+
+      </article>
+    ) : (
+      <div class="text-center py-16 space-y-4">
+        <div class="text-5xl">⚠️</div>
+        <h1 class="font-uber-display text-2xl text-ink">Reporte no encontrado</h1>
+        <p class="text-sm text-body font-uber-text">
+          El reporte #{id} no existe o fue archivado del sistema.
+        </p>
+        <div class="pt-4">
+          <a href="/" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong">
+            Volver al inicio
+          </a>
+        </div>
+      </div>
+    )}
+  </main>
+
+  <script>
+    const btnCopy = document.getElementById("btn-copy-reporte");
+    if (btnCopy) {
+      btnCopy.addEventListener("click", () => {
+        navigator.clipboard.writeText(window.location.href);
+        const orig = btnCopy.textContent;
+        btnCopy.textContent = "✓ Enlace copiado";
+        btnCopy.classList.add("opacity-75");
+        setTimeout(() => {
+          btnCopy.textContent = orig;
+          btnCopy.classList.remove("opacity-75");
+        }, 2000);
+      });
+    }
+  </script>
+</Layout>

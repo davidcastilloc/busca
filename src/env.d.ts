@@ -19,4 +19,9 @@ interface Env {
   CENSO_QUEUE: Queue<any>;
   VECTOR_INDEX: VectorizeIndex;
   AI: any;
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_ADMIN_IDS?: string;
+  TELEGRAM_WEBHOOK_SECRET?: string;
+  /** ID o @username del canal público donde se publican los flyers automáticamente */
+  TELEGRAM_CHANNEL_ID?: string;
 }
