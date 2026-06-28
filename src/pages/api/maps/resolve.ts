@@ -520,14 +520,17 @@ export const POST: APIRoute = async (context) => {
       if (placeName) break;
     }
 
-    // Enriquecer la respuesta si obtuvimos coordenadas pero faltan metadatos (como nombre/teléfono)
-    if (lat !== null && lng !== null && apiKey && !name) {
+    // Enriquecer la respuesta:
+    // - Si tenemos placeName de la URL, SIEMPRE intentar Find Place (prevalece sobre geocoding genérico)
+    // - Si no tenemos placeName y tampoco name, intentar Nearby Search
+    if (lat !== null && lng !== null && apiKey && (placeName || !name)) {
       const enrichment = await enriquecerCoordenadas(lat, lng, apiKey, placeName || undefined);
       if (enrichment) {
-        name = enrichment.name || "";
-        formatted_address = enrichment.formatted_address || formatted_address || "";
-        phone = enrichment.phone || "";
-        tipo = enrichment.tipo || "refugio";
+        // Si el enrichment devuelve un nombre real, usarlo siempre
+        if (enrichment.name) name = enrichment.name;
+        if (enrichment.formatted_address) formatted_address = enrichment.formatted_address;
+        if (enrichment.phone) phone = enrichment.phone;
+        if (enrichment.tipo && enrichment.tipo !== "refugio") tipo = enrichment.tipo;
       }
     }
 
