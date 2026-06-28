@@ -1,0 +1,1346 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+export const prerender = false;
+---
+
+<Layout title="Mapa Unificado de Emergencia - dondeestan.org" description="Mapa interactivo unificado para localizar personas, refugios, centros de acopio y necesidades críticas en tiempo real.">
+  <!-- Leaflet CSS + JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- MarkerCluster CSS + JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script is:inline src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <!-- Leaflet Heatmap Plugin -->
+  <script is:inline src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+  <!-- BARRA SUPERIOR DE BÚSQUEDA Y CAPAS -->
+  <div id="map-top-bar" class="fixed top-0 left-0 right-0 z-[1000] bg-canvas/95 backdrop-blur-xl border-b border-canvas-soft shadow-sm">
+    <!-- Fila 1: Volver + Buscar -->
+    <div class="flex items-center gap-2 px-3 py-2">
+      <a href="/" class="flex items-center justify-center w-9 h-9 rounded-xl bg-canvas-soft hover:bg-surface-pressed transition-colors shrink-0" aria-label="Volver">
+        <span class="text-lg">←</span>
+      </a>
+      <div class="relative flex-1">
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Buscar personas, refugios, necesidades o direcciones..."
+          class="w-full h-9 pl-9 pr-3 rounded-xl bg-canvas-soft border border-canvas-soft text-sm font-uber-text text-ink placeholder-mute focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+        />
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-mute text-sm">🔍</span>
+        <!-- Dropdown de resultados de búsqueda -->
+        <div id="search-results" class="hidden absolute top-full left-0 right-0 mt-1 bg-canvas rounded-xl border border-canvas-soft shadow-xl max-h-64 overflow-y-auto z-[2000]">
+        </div>
+      </div>
+    </div>
+
+    <!-- Fila 2: Capas Toggle (Píldoras) -->
+    <div class="flex items-center gap-1.5 px-3 pb-2 overflow-x-auto no-scrollbar">
+      <button class="layer-pill active" data-layer="todos">📍 Todos</button>
+      <button class="layer-pill" data-layer="refugios">🏠 Refugios</button>
+      <button class="layer-pill" data-layer="necesidades">📦 Necesidades</button>
+      <button class="layer-pill" data-layer="personas">👥 Personas</button>
+      <span class="w-px h-5 bg-canvas-soft shrink-0"></span>
+      <button class="layer-pill" data-layer="calor">🔥 Mapa Calor</button>
+      <button class="layer-pill" data-layer="cobertura">⭕ Cobertura Gaps</button>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR DEL MAPA FULLSCREEN -->
+  <div id="map-fullscreen" class="fixed inset-0 z-0 bg-canvas-soft"></div>
+
+  <!-- BOTONES FLOTANTES (FABs) -->
+  <div class="fixed z-[500] flex flex-col gap-2" style="bottom: 100px; right: 12px;">
+    <button id="btn-north" class="map-fab animate-fade-in" aria-label="Orientar al Norte" title="Orientar Norte">🧭</button>
+    <button id="btn-geolocate" class="map-fab animate-fade-in" aria-label="Mi ubicación" title="Mi ubicación">📍</button>
+  </div>
+
+  <!-- BOTÓN RADAR "CERCA" -->
+  <button id="btn-radar" class="fixed z-[500] flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-white font-uber-text font-bold text-sm shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 active:scale-95 transition-all" style="bottom: 100px; left: 12px;">
+    <span class="radar-icon">🎯</span> Radar Cerca
+  </button>
+
+  <!-- BOTTOM SHEET (MOBILE-FIRST INTERACTIVE PANEL) -->
+  <div id="bottom-sheet" class="fixed left-0 right-0 z-[900] bg-canvas rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out" style="top: 100%; transform: translateY(-80px);">
+    <!-- Tirador (Handle) -->
+    <div id="sheet-handle" class="flex justify-center py-2 cursor-grab active:cursor-grabbing">
+      <div class="w-10 h-1.5 rounded-full bg-canvas-soft"></div>
+    </div>
+
+    <!-- Cabecera de la hoja -->
+    <div id="sheet-header" class="px-4 pb-2 border-b border-canvas-soft">
+      <div class="flex items-center justify-between">
+        <h2 class="font-uber-display text-base font-bold text-ink" id="sheet-title">
+          Cargando datos...
+        </h2>
+        <button id="btn-sheet-close" class="text-mute hover:text-ink transition-colors text-lg p-1">✕</button>
+      </div>
+    </div>
+
+    <!-- Contenedor dinámico (Detalle o Lista) -->
+    <div id="sheet-content" class="px-4 py-3 overflow-y-auto" style="max-height: calc(80vh - 80px);">
+      <!-- Aquí se inyectan las listas por defecto o los detalles del pin seleccionado -->
+      <div id="default-list" class="space-y-2">
+        <div class="text-center py-8 text-mute text-sm font-uber-text">Obteniendo coordenadas del servidor...</div>
+      </div>
+      <div id="detail-view" class="hidden">
+        <!-- El contenido detallado se inyecta por JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- RUTA OVERLAY INFO -->
+  <div id="route-info" class="hidden fixed z-[800] left-3 right-3 bg-canvas/95 backdrop-blur-xl rounded-2xl border border-canvas-soft shadow-xl p-4 animate-slide-up" style="bottom: 90px;">
+    <div class="flex items-center justify-between">
+      <div class="min-w-0 flex-1 pr-3">
+        <div class="font-uber-text font-bold text-ink text-sm truncate" id="route-dest-name"></div>
+        <div class="font-uber-text text-mute text-xs mt-0.5">
+          <span id="route-distance"></span> · <span id="route-time"></span> caminando
+        </div>
+      </div>
+      <div class="flex gap-2 shrink-0">
+        <a id="route-gmaps" href="#" target="_blank" rel="noopener" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-uber-text font-bold hover:opacity-90 transition-opacity">🗺️ Maps</a>
+        <a id="route-waze" href="#" target="_blank" rel="noopener" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#33ccff] text-white text-xs font-uber-text font-bold hover:opacity-90 transition-opacity">🚗 Waze</a>
+        <button id="btn-route-close" class="flex items-center justify-center w-8 h-8 rounded-lg bg-canvas-soft text-mute hover:text-ink transition-colors">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OFFLINE BANNER -->
+  <div id="offline-banner" class="hidden fixed top-0 left-0 right-0 z-[2000] bg-amber-500 text-white text-center py-1.5 text-xs font-uber-text font-bold">
+    📡 Modo offline — datos locales cargados desde caché
+  </div>
+</Layout>
+
+<style is:global>
+  /* Quitar scrollbar horizontal en filtros */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Píldoras de capa */
+  .layer-pill {
+    white-space: nowrap;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-uber-text, 'Inter', sans-serif);
+    border: 1px solid var(--canvas-soft, #e5e5e5);
+    background: var(--canvas, #fff);
+    color: var(--body, #6b7280);
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    flex-shrink: 0;
+  }
+  .layer-pill:hover { background: var(--surface-pressed, #f3f3f3); }
+  .layer-pill.active {
+    background: var(--ink, #1a1a1a);
+    color: white;
+    border-color: var(--ink, #1a1a1a);
+  }
+
+  /* Botones FAB */
+  .map-fab {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: var(--canvas, #fff);
+    border: 1px solid var(--canvas-soft, #e5e5e5);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .map-fab:hover { box-shadow: 0 6px 16px rgba(0,0,0,0.15); transform: scale(1.05); }
+  .map-fab:active { transform: scale(0.95); }
+
+  /* Marcadores personalizados */
+  .custom-marker {
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 9999px; border: 2.5px solid white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    width: 38px; height: 38px; position: relative;
+    color: white; font-size: 16px;
+    transition: transform 0.2s;
+  }
+  .custom-marker:hover { transform: scale(1.15); }
+  .custom-marker.highlighted {
+    transform: scale(1.3);
+    box-shadow: 0 0 0 4px rgba(59,130,246,0.4), 0 4px 10px rgba(0,0,0,0.25);
+  }
+
+  .marker-refugio { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+  .marker-acopio { background: linear-gradient(135deg, #f59e0b, #b45309); }
+  .marker-hospital { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+  .marker-necesidad { background: linear-gradient(135deg, #a855f7, #6b21a8); }
+  .marker-persona { background: linear-gradient(135deg, #10b981, #047857); }
+
+  /* Badges de semáforo en marcadores */
+  .custom-marker-badge {
+    position: absolute; top: -3px; right: -3px;
+    width: 12px; height: 12px; border-radius: 9999px; border: 1.5px solid white;
+  }
+  .badge-verde { background-color: #10b981; }
+  .badge-amarillo { background-color: #f59e0b; }
+  .badge-rojo { background-color: #ef4444; }
+
+  /* Pulso para crítico o urgente */
+  .custom-marker-pulse {
+    position: absolute; top: -3px; right: -3px;
+    width: 12px; height: 12px; border-radius: 9999px;
+    background-color: #ef4444;
+    animation: marker-pulse-anim 1.5s infinite;
+    border: 1.5px solid white;
+  }
+  @keyframes marker-pulse-anim {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+  }
+
+  /* Ubicación usuario */
+  .user-location-marker {
+    width: 20px; height: 20px; border-radius: 9999px;
+    background-color: #2563eb; border: 3px solid white;
+    box-shadow: 0 0 12px rgba(37,99,235,0.6); position: relative;
+  }
+  .user-location-pulse {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    border-radius: 9999px; background-color: rgba(37,99,235,0.4);
+    animation: user-pulse 2s infinite;
+  }
+  @keyframes user-pulse {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(4.5); opacity: 0; }
+  }
+
+  /* Radar pulse */
+  .radar-pulse-ring {
+    position: absolute; top: 50%; left: 50%;
+    width: 60px; height: 60px;
+    margin: -30px 0 0 -30px;
+    border-radius: 50%;
+    border: 2px solid rgba(59,130,246,0.6);
+    animation: radar-expand 1.8s ease-out forwards;
+  }
+  @keyframes radar-expand {
+    0% { transform: scale(0); opacity: 1; }
+    100% { transform: scale(12); opacity: 0; }
+  }
+  .radar-active .radar-icon {
+    animation: radar-spin 1s ease-in-out infinite;
+  }
+  @keyframes radar-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* Leaflet Popups */
+  .leaflet-popup-content-wrapper {
+    border-radius: 18px !important;
+    padding: 0 !important;
+    border: 1px solid var(--canvas-soft, #e5e5e5) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+  }
+  .leaflet-popup-content { margin: 0 !important; }
+  .leaflet-popup-tip { border-top-color: var(--canvas, #fff) !important; }
+
+  /* Línea de ruta animada */
+  .route-line {
+    stroke-dasharray: 8, 12;
+    animation: route-dash 1.2s linear infinite;
+  }
+  @keyframes route-dash {
+    to { stroke-dashoffset: -24; }
+  }
+
+  /* Clusters dinámicos con temas de color */
+  .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+    background: rgba(37,99,235,0.15) !important;
+  }
+  .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+    color: white !important;
+    font-family: var(--font-uber-text, 'Inter', sans-serif) !important;
+    font-weight: 700 !important;
+    border: 2px solid white;
+  }
+  
+  .cluster-necesidad { background: rgba(168,85,247,0.15) !important; }
+  .cluster-necesidad div { background: linear-gradient(135deg, #a855f7, #6b21a8) !important; }
+  
+  .cluster-persona { background: rgba(16,185,129,0.15) !important; }
+  .cluster-persona div { background: linear-gradient(135deg, #10b981, #047857) !important; }
+
+  .cluster-rojo { background: rgba(239,68,68,0.15) !important; }
+  .cluster-rojo div { background: linear-gradient(135deg, #ef4444, #b91c1c) !important; }
+
+  /* Animaciones */
+  .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+  .animate-slide-up { animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* Opciones de la hoja */
+  .sheet-card {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .sheet-card:hover { transform: translateY(-1px); }
+
+  #map-fullscreen .leaflet-control-zoom { margin-bottom: 120px !important; }
+</style>
+
+<script>
+  let map: any = null;
+  
+  // Capas / Grupos de Leaflet
+  let refugiosCluster: any = null;
+  let necesidadesCluster: any = null;
+  let personasCluster: any = null;
+  let heatmapLayer: any = null;
+  let coverageGroup: any = null; // Para círculos de cobertura de refugios
+  let coverageGapsGroup: any = null; // Círculos rojos para zonas sin cobertura
+  
+  // Referencias a marcadores y datos
+  let markers: Map<string, any> = new Map();
+  let dataStore = {
+    refugios: [] as any[],
+    necesidades: [] as any[],
+    personas: [] as any[]
+  };
+
+  let userMarker: any = null;
+  let userLatLng: [number, number] | null = null;
+  let routeLine: any = null;
+  let radarLine: any = null;
+  let radarHighlights: any[] = [];
+  
+  let activeLayer = "todos"; // todos, refugios, necesidades, personas, calor, cobertura
+  let sheetState: "colapsado" | "medio" | "expandido" = "colapsado";
+  let selectedEntity: { id: string; tipo: string } | null = null;
+
+  // Haversine
+  function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // Esperar Leaflet
+  function waitForLeaflet(cb: () => void) {
+    if (typeof (window as any).L !== "undefined" && typeof (window as any).L.markerClusterGroup === "function") {
+      cb();
+    } else {
+      const iv = setInterval(() => {
+        if (typeof (window as any).L !== "undefined" && typeof (window as any).L.markerClusterGroup === "function") {
+          clearInterval(iv);
+          cb();
+        }
+      }, 100);
+    }
+  }
+
+  document.addEventListener("astro:page-load", () => {
+    // Limpieza
+    if (map) {
+      try { map.remove(); } catch {}
+      map = null;
+    }
+    markers.clear();
+    userMarker = null;
+    userLatLng = null;
+    routeLine = null;
+    radarLine = null;
+    radarHighlights = [];
+    selectedEntity = null;
+    sheetState = "colapsado";
+
+    // Iniciar
+    waitForLeaflet(async () => {
+      const L = (window as any).L;
+
+      // Calcular offsets de TopBar
+      const topBar = document.getElementById("map-top-bar");
+      const topBarHeight = topBar?.offsetHeight || 90;
+      const mapDiv = document.getElementById("map-fullscreen")!;
+      mapDiv.style.top = topBarHeight + "px";
+
+      map = L.map("map-fullscreen", {
+        zoomControl: false,
+        attributionControl: false,
+      }).setView([8.0, -66.0], 7);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+      }).addTo(map);
+
+      L.control.zoom({ position: "bottomright" }).addTo(map);
+      L.control.attribution({ position: "bottomleft", prefix: false })
+        .addTo(map)
+        .addAttribution('© <a href="https://osm.org/copyright">OpenStreetMap</a>');
+
+      // Crear grupos de capas
+      refugiosCluster = L.markerClusterGroup({
+        maxClusterRadius: 50,
+        showCoverageOnHover: false,
+        iconCreateFunction: (cluster: any) => {
+          const children = cluster.getAllChildMarkers();
+          let hasRojo = false, hasAmarillo = false;
+          children.forEach((m: any) => {
+            if (m.options._semaforo === "rojo") hasRojo = true;
+            if (m.options._semaforo === "amarillo") hasAmarillo = true;
+          });
+          const clusterClass = hasRojo ? "cluster-rojo" : hasAmarillo ? "cluster-amarillo" : "cluster-verde";
+          return L.divIcon({
+            html: `<div><span>${children.length}</span></div>`,
+            className: `marker-cluster marker-cluster-small ${clusterClass}`,
+            iconSize: L.point(40, 40),
+          });
+        }
+      });
+
+      necesidadesCluster = L.markerClusterGroup({
+        maxClusterRadius: 50,
+        showCoverageOnHover: false,
+        iconCreateFunction: (cluster: any) => {
+          return L.divIcon({
+            html: `<div><span>${cluster.getChildCount()}</span></div>`,
+            className: `marker-cluster marker-cluster-small cluster-necesidad`,
+            iconSize: L.point(40, 40),
+          });
+        }
+      });
+
+      personasCluster = L.markerClusterGroup({
+        maxClusterRadius: 50,
+        showCoverageOnHover: false,
+        iconCreateFunction: (cluster: any) => {
+          return L.divIcon({
+            html: `<div><span>${cluster.getChildCount()}</span></div>`,
+            className: `marker-cluster marker-cluster-small cluster-persona`,
+            iconSize: L.point(40, 40),
+          });
+        }
+      });
+
+      coverageGroup = L.layerGroup();
+      coverageGapsGroup = L.layerGroup();
+
+      // Cargar datos
+      await fetchUnifiedData();
+
+      // Setup UI Events
+      setupUIEvents();
+    });
+  });
+
+  async function fetchUnifiedData() {
+    try {
+      const resp = await fetch("/api/maps/unified");
+      if (!resp.ok) throw new Error("Error en servidor");
+      const payload = await resp.json();
+      if (!payload.success) throw new Error(payload.error);
+
+      dataStore = {
+        refugios: payload.refugios || [],
+        necesidades: payload.necesidades || [],
+        personas: payload.personas || []
+      };
+
+      // Guardar en caché offline
+      localStorage.setItem("cache_unified_maps", JSON.stringify(dataStore));
+
+      buildMapMarkers();
+      renderDefaultList();
+    } catch (err) {
+      console.warn("Error cargando API. Cargando caché local offline si existe.", err);
+      const cache = localStorage.getItem("cache_unified_maps");
+      if (cache) {
+        dataStore = JSON.parse(cache);
+        buildMapMarkers();
+        renderDefaultList();
+        document.getElementById("offline-banner")?.classList.remove("hidden");
+      }
+    }
+  }
+
+  function buildMapMarkers() {
+    const L = (window as any).L;
+
+    // Limpiar marcadores viejos
+    refugiosCluster.clearLayers();
+    necesidadesCluster.clearLayers();
+    personasCluster.clearLayers();
+    coverageGroup.clearLayers();
+    coverageGapsGroup.clearLayers();
+    markers.clear();
+
+    // 1. Refugios
+    dataStore.refugios.forEach((r: any) => {
+      const emoji = r.tipo === "hospital" ? "🏥" : r.tipo === "centro_acopio" ? "📦" : "🏠";
+      const markerClass = r.tipo === "hospital" ? "marker-hospital" : r.tipo === "centro_acopio" ? "marker-acopio" : "marker-refugio";
+
+      const badgeHtml = r.semaforo === "rojo"
+        ? `<div class="custom-marker-pulse"></div>`
+        : `<div class="custom-marker-badge badge-${r.semaforo}"></div>`;
+
+      const icon = L.divIcon({
+        html: `<div class="custom-marker ${markerClass}" data-id="${r.id}">${emoji}${badgeHtml}</div>`,
+        className: "",
+        iconSize: [38, 38],
+        iconAnchor: [19, 38],
+        popupAnchor: [0, -40]
+      });
+
+      const popupHtml = buildRefugioPopupHtml(r);
+      const marker = L.marker([r.lat, r.lng], {
+        icon,
+        _tipo: "refugio",
+        _semaforo: r.semaforo,
+        _id: r.id
+      }).bindPopup(popupHtml, { maxWidth: 280 });
+
+      marker.on("click", () => showEntityDetail("refugio", r.id));
+
+      markers.set(`refugio-${r.id}`, marker);
+      refugiosCluster.addLayer(marker);
+
+      // Círculo de cobertura servida (5km)
+      L.circle([r.lat, r.lng], {
+        radius: 5000,
+        color: r.tipo === "hospital" ? "#ef4444" : "#3b82f6",
+        fillColor: r.tipo === "hospital" ? "#fca5a5" : "#93c5fd",
+        fillOpacity: 0.15,
+        weight: 1.5,
+        interactive: false
+      }).addTo(coverageGroup);
+    });
+
+    // 2. Necesidades
+    dataStore.necesidades.forEach((n: any) => {
+      const icon = L.divIcon({
+        html: `<div class="custom-marker marker-necesidad" data-id="${n.id}">📦</div>`,
+        className: "",
+        iconSize: [38, 38],
+        iconAnchor: [19, 38],
+        popupAnchor: [0, -40]
+      });
+
+      const popupHtml = buildNecesidadPopupHtml(n);
+      const marker = L.marker([n.lat, n.lng], {
+        icon,
+        _tipo: "necesidad",
+        _id: n.id
+      }).bindPopup(popupHtml, { maxWidth: 280 });
+
+      marker.on("click", () => showEntityDetail("necesidad", n.id));
+
+      markers.set(`necesidad-${n.id}`, marker);
+      necesidadesCluster.addLayer(marker);
+
+      // Comprobar cobertura (distancia al refugio más cercano)
+      checkCoverageGap("necesidad", n);
+    });
+
+    // 3. Personas
+    dataStore.personas.forEach((p: any) => {
+      let emojiStatus = "👥";
+      if (p.estado === "herido") emojiStatus = "🤕";
+      else if (p.estado === "fallecido") emojiStatus = "💀";
+      else if (p.estado === "localizado") emojiStatus = "🟢";
+
+      const icon = L.divIcon({
+        html: `<div class="custom-marker marker-persona" data-id="${p.id}">${emojiStatus}</div>`,
+        className: "",
+        iconSize: [38, 38],
+        iconAnchor: [19, 38],
+        popupAnchor: [0, -40]
+      });
+
+      const popupHtml = buildPersonaPopupHtml(p);
+      const marker = L.marker([p.lat, p.lng], {
+        icon,
+        _tipo: "persona",
+        _id: p.id
+      }).bindPopup(popupHtml, { maxWidth: 280 });
+
+      marker.on("click", () => showEntityDetail("persona", p.id));
+
+      markers.set(`persona-${p.id}`, marker);
+      personasCluster.addLayer(marker);
+
+      // Comprobar cobertura (distancia al refugio más cercano)
+      checkCoverageGap("persona", p);
+    });
+
+    // 4. Mapa de Calor
+    const heatPoints = [
+      ...dataStore.necesidades.map(n => [n.lat, n.lng, n.gravedad === "Alta" ? 3 : n.gravedad === "Media" ? 2 : 1]),
+      ...dataStore.personas.map(p => [p.lat, p.lng, p.estado === "desconocido" ? 2.5 : p.estado === "herido" ? 2 : 1])
+    ];
+    heatmapLayer = L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 17 });
+
+    // Renderizar capas iniciales
+    applyLayerFilter();
+
+    // Centrar mapa dinámicamente si hay puntos
+    if (dataStore.refugios.length > 0) {
+      const bounds = L.latLngBounds(dataStore.refugios.map(r => [r.lat, r.lng]));
+      map.fitBounds(bounds.pad(0.1));
+    }
+  }
+
+  function checkCoverageGap(tipo: string, ent: any) {
+    const L = (window as any).L;
+    let minDist = Infinity;
+    
+    dataStore.refugios.forEach(r => {
+      const d = haversine(ent.lat, ent.lng, r.lat, r.lng);
+      if (d < minDist) minDist = d;
+    });
+
+    // Si no hay refugio a menos de 5 km, marcamos la zona como "Gap de Cobertura"
+    if (minDist > 5.0 && minDist !== Infinity) {
+      L.circle([ent.lat, ent.lng], {
+        radius: 3000,
+        color: "#f97316", // naranja de advertencia
+        fillColor: "#ffedd5",
+        fillOpacity: 0.1,
+        weight: 1.5,
+        dashArray: "4, 6",
+        interactive: false
+      }).addTo(coverageGapsGroup);
+    }
+  }
+
+  function applyLayerFilter() {
+    if (!map) return;
+
+    // Remover todo primero
+    map.removeLayer(refugiosCluster);
+    map.removeLayer(necesidadesCluster);
+    map.removeLayer(personasCluster);
+    map.removeLayer(heatmapLayer);
+    map.removeLayer(coverageGroup);
+    map.removeLayer(coverageGapsGroup);
+
+    if (activeLayer === "todos") {
+      map.addLayer(refugiosCluster);
+      map.addLayer(necesidadesCluster);
+      map.addLayer(personasCluster);
+    } else if (activeLayer === "refugios") {
+      map.addLayer(refugiosCluster);
+    } else if (activeLayer === "necesidades") {
+      map.addLayer(necesidadesCluster);
+    } else if (activeLayer === "personas") {
+      map.addLayer(personasCluster);
+    } else if (activeLayer === "calor") {
+      map.addLayer(heatmapLayer);
+    } else if (activeLayer === "cobertura") {
+      map.addLayer(coverageGroup);
+      map.addLayer(coverageGapsGroup);
+      map.addLayer(refugiosCluster);
+      map.addLayer(necesidadesCluster);
+    }
+  }
+
+  // --- RENDERING POPUPS ---
+  function buildRefugioPopupHtml(r: any) {
+    const semColor = r.semaforo === "rojo" ? "#ef4444" : r.semaforo === "amarillo" ? "#f59e0b" : "#10b981";
+    const semText = r.semaforo === "rojo" ? "Crítico" : r.semaforo === "amarillo" ? "Alerta" : "Estable";
+    const pct = Math.min(Math.round((r.ocupacion / r.capacidad) * 100), 100);
+    const pctColor = pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-green-500";
+
+    return `
+      <div class="p-3 font-uber-text min-w-[240px]">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg">${r.tipo === "hospital" ? "🏥" : r.tipo === "centro_acopio" ? "📦" : "🏠"}</span>
+          <h4 class="font-bold text-sm text-ink m-0 leading-tight">${r.nombre}</h4>
+        </div>
+        <p class="text-xs text-mute mb-2">📍 ${r.direccion}</p>
+        <div class="mb-2 bg-canvas-soft p-2 rounded-lg">
+          <div class="flex justify-between text-[11px] mb-1 font-bold text-ink">
+            <span>Ocupación</span>
+            <span>${r.ocupacion}/${r.capacidad} (${pct}%)</span>
+          </div>
+          <div class="h-1.5 w-full bg-canvas-soft rounded-full overflow-hidden border border-canvas-soft">
+            <div class="h-full ${pctColor} rounded-full" style="width: ${pct}%"></div>
+          </div>
+        </div>
+        <div class="text-[11px] font-bold mb-3 flex items-center gap-1.5">
+          <span>Suministros:</span>
+          <span style="color:${semColor}">● ${semText}</span>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="window._rutaA('refugio-${r.id}')" class="flex-1 py-1.5 rounded-lg bg-primary text-white text-xs font-bold border-none cursor-pointer text-center">🚗 Ruta</button>
+          <button onclick="window._showDetails('refugio', '${r.id}')" class="flex-1 py-1.5 rounded-lg bg-canvas-soft text-ink text-xs font-bold border border-canvas-soft cursor-pointer text-center">ℹ️ Ver más</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildNecesidadPopupHtml(n: any) {
+    const gravColor = n.gravedad === "Alta" ? "text-red-600 font-bold" : n.gravedad === "Media" ? "text-amber-600" : "text-blue-600";
+    return `
+      <div class="p-3 font-uber-text min-w-[240px]">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg">📦</span>
+          <h4 class="font-bold text-sm text-ink m-0 leading-tight">Necesidad: ${n.categoria}</h4>
+        </div>
+        <p class="text-xs text-body mb-2 line-clamp-2">${n.descripcion}</p>
+        <div class="text-[11px] mb-3">Gravedad: <span class="${gravColor}">${n.gravedad}</span></div>
+        <div class="flex gap-2">
+          <button onclick="window._rutaA('necesidad-${n.id}')" class="flex-1 py-1.5 rounded-lg bg-primary text-white text-xs font-bold border-none cursor-pointer text-center">🚗 Ruta</button>
+          <button onclick="window._showDetails('necesidad', '${n.id}')" class="flex-1 py-1.5 rounded-lg bg-canvas-soft text-ink text-xs font-bold border border-canvas-soft cursor-pointer text-center">ℹ️ Ver más</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildPersonaPopupHtml(p: any) {
+    const statusColor = p.estado === "fallecido" ? "text-red-700" : p.estado === "herido" ? "text-amber-600" : p.estado === "localizado" ? "text-green-600" : "text-mute";
+    return `
+      <div class="p-3 font-uber-text min-w-[240px]">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg">👥</span>
+          <h4 class="font-bold text-sm text-ink m-0 leading-tight">${p.nombre}</h4>
+        </div>
+        <div class="text-xs mb-3">Estado: <span class="capitalize font-bold ${statusColor}">${p.estado}</span></div>
+        <div class="flex gap-2">
+          <button onclick="window._rutaA('persona-${p.id}')" class="flex-1 py-1.5 rounded-lg bg-primary text-white text-xs font-bold border-none cursor-pointer text-center">🚗 Ruta</button>
+          <button onclick="window._showDetails('persona', '${p.id}')" class="flex-1 py-1.5 rounded-lg bg-canvas-soft text-ink text-xs font-bold border border-canvas-soft cursor-pointer text-center">ℹ️ Ver más</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // --- BOTTOM SHEET INTERACTIVE ---
+  function expandSheet(state: "colapsado" | "medio" | "expandido") {
+    const sheet = document.getElementById("bottom-sheet");
+    if (!sheet) return;
+    sheetState = state;
+    const vh = window.innerHeight;
+    switch (state) {
+      case "colapsado":
+        sheet.style.transform = "translateY(-80px)";
+        break;
+      case "medio":
+        sheet.style.transform = `translateY(-${Math.round(vh * 0.45)}px)`;
+        break;
+      case "expandido":
+        sheet.style.transform = `translateY(-${Math.round(vh * 0.85)}px)`;
+        break;
+    }
+  }
+
+  function renderDefaultList() {
+    const listContainer = document.getElementById("default-list")!;
+    const detailView = document.getElementById("detail-view")!;
+    detailView.classList.add("hidden");
+    listContainer.classList.remove("hidden");
+
+    let countRefugios = dataStore.refugios.length;
+    let countNecesidades = dataStore.necesidades.length;
+    let countPersonas = dataStore.personas.length;
+
+    const sheetTitle = document.getElementById("sheet-title")!;
+    sheetTitle.textContent = `${countRefugios + countNecesidades + countPersonas} incidentes y recursos`;
+
+    let html = "";
+
+    // Agrupación Geográfica (Estado / Municipio) en el resumen
+    const geoSummary: Record<string, { refugios: number; necesidades: number; personas: number }> = {};
+    
+    // Contamos por estado/municipio según dirección de refugios o ubicaciones
+    dataStore.refugios.forEach(r => {
+      const key = r.direccion?.split(",").slice(-2)[0]?.trim() || "Venezuela";
+      if (!geoSummary[key]) geoSummary[key] = { refugios: 0, necesidades: 0, personas: 0 };
+      geoSummary[key].refugios++;
+    });
+
+    dataStore.necesidades.forEach(n => {
+      const key = "Necesidades Reportadas";
+      if (!geoSummary[key]) geoSummary[key] = { refugios: 0, necesidades: 0, personas: 0 };
+      geoSummary[key].necesidades++;
+    });
+
+    dataStore.personas.forEach(p => {
+      const key = p.refugio || "Zonas de Búsqueda";
+      if (!geoSummary[key]) geoSummary[key] = { refugios: 0, necesidades: 0, personas: 0 };
+      geoSummary[key].personas++;
+    });
+
+    html += `<div class="mb-4 text-xs font-uber-text text-mute uppercase tracking-wider font-bold">Resumen por Sectores</div>`;
+    
+    Object.entries(geoSummary).forEach(([zona, metrics]) => {
+      html += `
+        <div class="flex items-center justify-between p-3 bg-canvas-soft/40 border border-canvas-soft rounded-xl mb-2">
+          <div class="min-w-0">
+            <h4 class="font-bold text-xs text-ink truncate">${zona}</h4>
+          </div>
+          <div class="flex gap-2 text-[10px] font-uber-text">
+            ${metrics.refugios > 0 ? `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">🏠 ${metrics.refugios}</span>` : ""}
+            ${metrics.necesidades > 0 ? `<span class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">📦 ${metrics.necesidades}</span>` : ""}
+            ${metrics.personas > 0 ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">👥 ${metrics.personas}</span>` : ""}
+          </div>
+        </div>
+      `;
+    });
+
+    listContainer.innerHTML = html;
+  }
+
+  // --- DETALLES DE ENTIDAD ---
+  window.addEventListener("DOMContentLoaded", () => {
+    (window as any)._showDetails = (tipo: string, id: string) => {
+      showEntityDetail(tipo, id);
+      expandSheet("medio");
+    };
+  });
+
+  function showEntityDetail(tipo: string, id: string) {
+    const listContainer = document.getElementById("default-list")!;
+    const detailView = document.getElementById("detail-view")!;
+    const sheetTitle = document.getElementById("sheet-title")!;
+
+    listContainer.classList.add("hidden");
+    detailView.classList.remove("hidden");
+
+    selectedEntity = { id, tipo };
+
+    if (tipo === "refugio") {
+      const r = dataStore.refugios.find(x => String(x.id) === String(id));
+      if (!r) return;
+      
+      sheetTitle.textContent = r.nombre;
+
+      const pct = Math.min(Math.round((r.ocupacion / r.capacidad) * 100), 100);
+      const pctColor = pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-green-500";
+      
+      let itemsCriticosHtml = r.itemsCriticos.length > 0
+        ? r.itemsCriticos.map((i: string) => `<span class="inline-block bg-red-100 text-red-800 text-[10px] px-2 py-0.5 rounded-full font-bold">🔴 ${i}</span>`).join(" ")
+        : `<span class="text-xs text-green-600">Ninguno</span>`;
+
+      let itemsAlertaHtml = r.itemsAlerta.length > 0
+        ? r.itemsAlerta.map((i: string) => `<span class="inline-block bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold">🟡 ${i}</span>`).join(" ")
+        : `<span class="text-xs text-mute">Ninguno</span>`;
+
+      let carouselHtml = "";
+      if (r.fotos && r.fotos.length > 0) {
+        carouselHtml = `
+          <div class="flex gap-2 overflow-x-auto no-scrollbar py-2">
+            ${r.fotos.map((f: string) => `
+              <div class="w-40 h-28 shrink-0 rounded-xl overflow-hidden bg-canvas-soft border border-canvas-soft">
+                <img src="/api/upload?key=${f}" class="w-full h-full object-cover" />
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      detailView.innerHTML = `
+        <div class="space-y-4 font-uber-text">
+          <div class="flex gap-3">
+            <div class="flex-1">
+              <span class="text-xs font-bold uppercase tracking-wider text-primary">${r.tipo.replace("_", " ")}</span>
+              <p class="text-xs text-mute mt-1">📍 ${r.direccion}</p>
+            </div>
+            ${r.contacto ? `
+              <a href="tel:${r.contacto.replace(/\s/g, '')}" class="flex items-center justify-center w-10 h-10 rounded-xl bg-green-50 text-green-700 border border-green-200">📞</a>
+            ` : ""}
+          </div>
+
+          ${carouselHtml}
+
+          <div class="bg-canvas-soft p-3 rounded-xl border border-canvas-soft">
+            <h4 class="font-bold text-xs text-ink mb-2">Capacidad y Ocupación</h4>
+            <div class="flex justify-between text-xs font-bold text-ink mb-1">
+              <span>Personas albergadas</span>
+              <span>${r.ocupacion} / ${r.capacidad} (${pct}%)</span>
+            </div>
+            <div class="h-2 w-full bg-canvas rounded-full overflow-hidden border border-canvas-soft">
+              <div class="h-full ${pctColor} rounded-full" style="width: ${pct}%"></div>
+            </div>
+          </div>
+
+          <div class="space-y-2 bg-canvas-soft p-3 rounded-xl border border-canvas-soft">
+            <h4 class="font-bold text-xs text-ink mb-1">Encargado del Refugio</h4>
+            <p class="text-xs text-body font-semibold">${r.encargado || "No registrado"}</p>
+            ${r.contacto ? `<p class="text-xs text-mute">Contacto: <a href="tel:${r.contacto}" class="text-primary font-bold">${r.contacto}</a></p>` : ""}
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <h4 class="font-bold text-xs text-ink mb-1">⚠️ Suministros Críticos</h4>
+              <div class="flex flex-wrap gap-1.5">${itemsCriticosHtml}</div>
+            </div>
+            <div>
+              <h4 class="font-bold text-xs text-ink mb-1">⚠️ Alertas de Suministro</h4>
+              <div class="flex flex-wrap gap-1.5">${itemsAlertaHtml}</div>
+            </div>
+            <div>
+              <h4 class="font-bold text-xs text-ink mb-1">📝 Necesidades Generales</h4>
+              <p class="text-xs text-body">${r.necesidades || "Ninguna registrada"}</p>
+            </div>
+          </div>
+
+          <div class="flex gap-2 pt-2">
+            <button onclick="window._rutaA('refugio-${r.id}')" class="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold border-none cursor-pointer text-center hover:opacity-90">🚗 Trazar Ruta</button>
+            <button onclick="window._shareEntity('refugio', '${r.id}')" class="px-4 py-2.5 rounded-xl bg-canvas-soft text-ink text-xs font-bold border border-canvas-soft cursor-pointer text-center hover:bg-surface-pressed">📤 Compartir</button>
+          </div>
+        </div>
+      `;
+    } else if (tipo === "necesidad") {
+      const n = dataStore.necesidades.find(x => String(x.id) === String(id));
+      if (!n) return;
+
+      sheetTitle.textContent = `Necesidad: ${n.categoria}`;
+
+      const gravColor = n.gravedad === "Alta" ? "bg-red-100 text-red-800" : n.gravedad === "Media" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800";
+
+      detailView.innerHTML = `
+        <div class="space-y-4 font-uber-text">
+          <div class="flex justify-between items-start gap-2">
+            <div>
+              <span class="inline-block ${gravColor} text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider mb-2">Gravedad ${n.gravedad}</span>
+              <p class="text-xs text-mute">Categoría: <strong>${n.categoria}</strong></p>
+            </div>
+            ${n.contacto ? `
+              <a href="tel:${n.contacto.replace(/\s/g, '')}" class="flex items-center justify-center w-10 h-10 rounded-xl bg-green-50 text-green-700 border border-green-200">📞</a>
+            ` : ""}
+          </div>
+
+          <div class="bg-canvas-soft p-3 rounded-xl border border-canvas-soft">
+            <h4 class="font-bold text-xs text-ink mb-1">Descripción</h4>
+            <p class="text-xs text-body leading-relaxed">${n.descripcion}</p>
+          </div>
+
+          <div class="bg-canvas-soft p-3 rounded-xl border border-canvas-soft text-xs space-y-1">
+            <p class="text-mute">Reportado por: <strong class="text-ink font-semibold">${n.reportante}</strong></p>
+            ${n.contacto ? `<p class="text-mute">Contacto: <a href="tel:${n.contacto}" class="text-primary font-bold">${n.contacto}</a></p>` : ""}
+            <p class="text-mute">Estado del reporte: <span class="capitalize text-primary font-bold">${n.estado}</span></p>
+          </div>
+
+          <div class="flex gap-2 pt-2">
+            <button onclick="window._rutaA('necesidad-${n.id}')" class="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold border-none cursor-pointer text-center hover:opacity-90">🚗 Trazar Ruta</button>
+            <button onclick="window._shareEntity('necesidad', '${n.id}')" class="px-4 py-2.5 rounded-xl bg-canvas-soft text-ink text-xs font-bold border border-canvas-soft cursor-pointer text-center hover:bg-surface-pressed">📤 Compartir</button>
+          </div>
+        </div>
+      `;
+    } else if (tipo === "persona") {
+      const p = dataStore.personas.find(x => String(x.id) === String(id));
+      if (!p) return;
+
+      sheetTitle.textContent = p.nombre;
+
+      const statusColor = p.estado === "fallecido" ? "bg-red-100 text-red-800" : p.estado === "herido" ? "bg-amber-100 text-amber-800" : p.estado === "localizado" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800";
+
+      detailView.innerHTML = `
+        <div class="space-y-4 font-uber-text">
+          <div class="flex justify-between items-start gap-2">
+            <div>
+              <span class="inline-block ${statusColor} text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider mb-2">Estado: ${p.estado}</span>
+              ${p.refugio ? `<p class="text-xs text-mute">Refugiado en: <strong class="text-ink">${p.refugio}</strong></p>` : ""}
+            </div>
+            ${p.contacto ? `
+              <a href="tel:${p.contacto.replace(/\s/g, '')}" class="flex items-center justify-center w-10 h-10 rounded-xl bg-green-50 text-green-700 border border-green-200">📞</a>
+            ` : ""}
+          </div>
+
+          <div class="bg-canvas-soft p-3 rounded-xl border border-canvas-soft">
+            <h4 class="font-bold text-xs text-ink mb-1">Notas / Observaciones</h4>
+            <p class="text-xs text-body leading-relaxed">${p.notas || "Sin notas de avistamiento o estado de salud."}</p>
+          </div>
+
+          ${p.contacto ? `
+            <div class="bg-canvas-soft p-3 rounded-xl border border-canvas-soft text-xs">
+              <p class="text-mute">Teléfono de contacto voluntario: <a href="tel:${p.contacto}" class="text-primary font-bold">${p.contacto}</a></p>
+            </div>
+          ` : ""}
+
+          <div class="flex gap-2 pt-2">
+            <button onclick="window._rutaA('persona-${p.id}')" class="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold border-none cursor-pointer text-center hover:opacity-90">🚗 Trazar Ruta</button>
+            <button onclick="window._shareEntity('persona', '${p.id}')" class="px-4 py-2.5 rounded-xl bg-canvas-soft text-ink text-xs font-bold border border-canvas-soft cursor-pointer text-center hover:bg-surface-pressed">📤 Compartir</button>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  // --- EVENTOS DE UI ---
+  function setupUIEvents() {
+    const L = (window as any).L;
+
+    // Control del Bottom Sheet
+    const bottomSheet = document.getElementById("bottom-sheet")!;
+    const sheetHandle = document.getElementById("sheet-handle")!;
+    const btnSheetClose = document.getElementById("btn-sheet-close")!;
+
+    let sheetDragStart = 0;
+    let sheetTranslateStart = 0;
+
+    function getSheetTranslateY(): number {
+      const match = bottomSheet.style.transform.match(/translateY\((-?\d+)px\)/);
+      return match ? parseInt(match[1]) : -80;
+    }
+
+    sheetHandle.addEventListener("touchstart", (e) => {
+      sheetDragStart = e.touches[0].clientY;
+      sheetTranslateStart = getSheetTranslateY();
+      bottomSheet.style.transition = "none";
+    });
+
+    sheetHandle.addEventListener("touchmove", (e) => {
+      const diff = e.touches[0].clientY - sheetDragStart;
+      const newTranslate = Math.min(0, Math.max(-window.innerHeight * 0.85, sheetTranslateStart + diff));
+      bottomSheet.style.transform = `translateY(${newTranslate}px)`;
+    });
+
+    sheetHandle.addEventListener("touchend", () => {
+      bottomSheet.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
+      const current = Math.abs(getSheetTranslateY());
+      const vh = window.innerHeight;
+      if (current < vh * 0.25) expandSheet("colapsado");
+      else if (current < vh * 0.6) expandSheet("medio");
+      else expandSheet("expandido");
+    });
+
+    sheetHandle.addEventListener("click", () => {
+      if (sheetState === "colapsado") expandSheet("medio");
+      else if (sheetState === "medio") expandSheet("expandido");
+      else expandSheet("colapsado");
+    });
+
+    btnSheetClose.addEventListener("click", () => {
+      selectedEntity = null;
+      renderDefaultList();
+      expandSheet("colapsado");
+    });
+
+    // Píldoras de Capas (Layers)
+    document.querySelectorAll(".layer-pill").forEach(pill => {
+      pill.addEventListener("click", () => {
+        document.querySelectorAll(".layer-pill").forEach(p => p.classList.remove("active"));
+        pill.classList.add("active");
+
+        const targetLayer = (pill as HTMLElement).dataset.layer || "todos";
+        activeLayer = targetLayer;
+        applyLayerFilter();
+
+        selectedEntity = null;
+        renderDefaultList();
+      });
+    });
+
+    // FAB: Orientar Norte
+    document.getElementById("btn-north")?.addEventListener("click", () => {
+      if (map) map.setBearing ? map.setBearing(0) : map.setView(map.getCenter(), map.getZoom());
+    });
+
+    // FAB: Geolocalizar
+    document.getElementById("btn-geolocate")?.addEventListener("click", () => {
+      if (!navigator.geolocation || !map) return;
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          userLatLng = [lat, lng];
+          map.flyTo([lat, lng], 14, { duration: 1.2 });
+
+          if (userMarker) {
+            userMarker.setLatLng([lat, lng]);
+          } else {
+            const userIcon = L.divIcon({
+              html: `<div class="user-location-marker"><div class="user-location-pulse"></div></div>`,
+              className: "",
+              iconSize: [20, 20],
+              iconAnchor: [10, 10]
+            });
+            userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
+          }
+        },
+        () => {
+          alert("No se pudo obtener ubicación GPS.");
+        },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    });
+
+    // Radar Cerca
+    document.getElementById("btn-radar")?.addEventListener("click", () => {
+      const btn = document.getElementById("btn-radar")!;
+      btn.classList.add("radar-active");
+      setTimeout(() => btn.classList.remove("radar-active"), 1200);
+
+      function runRadar(lat: number, lng: number) {
+        clearRadarHighlights();
+        
+        // Agregar pulso visual
+        const radarPulse = L.divIcon({
+          html: `<div class="radar-pulse-ring"></div><div class="radar-pulse-ring" style="animation-delay:0.3s"></div>`,
+          className: "",
+          iconSize: [0, 0]
+        });
+        const pulseMarker = L.marker([lat, lng], { icon: radarPulse, interactive: false }).addTo(map);
+        setTimeout(() => map.removeLayer(pulseMarker), 2200);
+
+        // Encontrar los 5 elementos más cercanos de cualquier tipo
+        const allItems: any[] = [];
+        dataStore.refugios.forEach(r => allItems.push({ ...r, _key: `refugio-${r.id}`, _t: "refugio", _emoji: "🏠" }));
+        dataStore.necesidades.forEach(n => allItems.push({ ...n, _key: `necesidad-${n.id}`, _t: "necesidad", _emoji: "📦" }));
+        dataStore.personas.forEach(p => allItems.push({ ...p, _key: `persona-${p.id}`, _t: "persona", _emoji: "👥" }));
+
+        const sorted = allItems.map(item => ({
+          ...item,
+          dist: haversine(lat, lng, item.lat, item.lng)
+        })).sort((a, b) => a.dist - b.dist);
+
+        const top5 = sorted.slice(0, 5);
+        if (top5.length === 0) return;
+
+        // Trazar línea al más cercano
+        radarLine = L.polyline([[lat, lng], [top5[0].lat, top5[0].lng]], {
+          color: "#2563eb",
+          weight: 3,
+          className: "route-line"
+        }).addTo(map);
+
+        // Resaltar marcadores
+        top5.forEach(item => {
+          const marker = markers.get(item._key);
+          if (marker) {
+            const el = marker.getElement();
+            if (el) {
+              const markerDiv = el.querySelector(".custom-marker");
+              if (markerDiv) markerDiv.classList.add("highlighted");
+            }
+            radarHighlights.push(marker);
+          }
+        });
+
+        // Ajustar mapa
+        const bounds = L.latLngBounds([[lat, lng], ...top5.map(i => [i.lat, i.lng])]);
+        map.fitBounds(bounds.pad(0.2));
+
+        // Renderizar en el bottom sheet
+        const listContainer = document.getElementById("default-list")!;
+        const detailView = document.getElementById("detail-view")!;
+        listContainer.classList.remove("hidden");
+        detailView.classList.add("hidden");
+
+        const sheetTitle = document.getElementById("sheet-title")!;
+        sheetTitle.textContent = `🎯 Recursos cercanos (${top5.length})`;
+
+        listContainer.innerHTML = top5.map(i => `
+          <div onclick="window._showDetails('${i._t}', '${i.id}')" class="sheet-card flex items-center justify-between p-3 bg-canvas-soft/60 border border-canvas-soft rounded-xl cursor-pointer hover:bg-surface-pressed/50">
+            <div>
+              <h4 class="font-bold text-xs text-ink">${i._emoji} ${i.nombre || i.categoria}</h4>
+              <p class="text-[10px] text-mute mt-0.5">A ${i.dist < 1 ? `${Math.round(i.dist * 1000)}m` : `${i.dist.toFixed(1)}km`}</p>
+            </div>
+            <span class="text-xs">→</span>
+          </div>
+        `).join("");
+
+        expandSheet("medio");
+      }
+
+      if (userLatLng) {
+        runRadar(userLatLng[0], userLatLng[1]);
+      } else {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            userLatLng = [pos.coords.latitude, pos.coords.longitude];
+            runRadar(userLatLng[0], userLatLng[1]);
+          },
+          () => alert("Activa el GPS para usar el radar."),
+          { enableHighAccuracy: true, timeout: 6000 }
+        );
+      }
+    });
+
+    // Buscador
+    const searchInput = document.getElementById("search-input") as HTMLInputElement;
+    const searchResults = document.getElementById("search-results")!;
+    let searchTimeout: any = null;
+
+    searchInput.addEventListener("input", () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        const query = searchInput.value.trim().toLowerCase();
+        if (!query || query.length < 2) {
+          searchResults.classList.add("hidden");
+          return;
+        }
+
+        const matches: any[] = [];
+        
+        // Buscar en refugios
+        dataStore.refugios.forEach(r => {
+          if (r.nombre.toLowerCase().includes(query) || r.direccion.toLowerCase().includes(query)) {
+            matches.push({ id: r.id, name: r.nombre, label: r.direccion, tipo: "refugio", emoji: "🏠" });
+          }
+        });
+
+        // Buscar en necesidades
+        dataStore.necesidades.forEach(n => {
+          if (n.categoria.toLowerCase().includes(query) || n.descripcion.toLowerCase().includes(query)) {
+            matches.push({ id: n.id, name: n.categoria, label: n.descripcion, tipo: "necesidad", emoji: "📦" });
+          }
+        });
+
+        // Buscar en personas
+        dataStore.personas.forEach(p => {
+          if (p.nombre.toLowerCase().includes(query) || p.notas.toLowerCase().includes(query)) {
+            matches.push({ id: p.id, name: p.nombre, label: `Persona (${p.estado})`, tipo: "persona", emoji: "👥" });
+          }
+        });
+
+        const sliced = matches.slice(0, 6);
+        if (sliced.length === 0) {
+          searchResults.innerHTML = `<div class="p-3 text-xs text-mute font-uber-text">Sin coincidencias</div>`;
+        } else {
+          searchResults.innerHTML = sliced.map(m => `
+            <button onclick="window._goSearch('${m.tipo}', '${m.id}')" class="w-full text-left flex items-center gap-2.5 px-3 py-2 hover:bg-canvas-soft border-b border-canvas-soft last:border-none cursor-pointer">
+              <span class="text-base">${m.emoji}</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-xs font-bold text-ink truncate">${m.name}</div>
+                <div class="text-[10px] text-mute truncate">${m.label}</div>
+              </div>
+            </button>
+          `).join("");
+        }
+
+        searchResults.classList.remove("hidden");
+      }, 250);
+    });
+
+    (window as any)._goSearch = (tipo: string, id: string) => {
+      searchResults.classList.add("hidden");
+      searchInput.value = "";
+
+      const marker = markers.get(`${tipo}-${id}`);
+      if (marker) {
+        map.flyTo(marker.getLatLng(), 17, { duration: 1.5 });
+        setTimeout(() => marker.openPopup(), 1600);
+        showEntityDetail(tipo, id);
+        expandSheet("medio");
+      }
+    };
+  }
+
+  function clearRadarHighlights() {
+    if (radarLine && map) {
+      map.removeLayer(radarLine);
+      radarLine = null;
+    }
+    radarHighlights.forEach(m => {
+      const el = m.getElement();
+      if (el) {
+        const markerDiv = el.querySelector(".custom-marker");
+        if (markerDiv) markerDiv.classList.remove("highlighted");
+      }
+    });
+    radarHighlights = [];
+  }
+
+  // Rutas y compartición globales
+  window.addEventListener("DOMContentLoaded", () => {
+    const L = (window as any).L;
+
+    (window as any)._rutaA = (key: string) => {
+      const marker = markers.get(key);
+      if (!marker) return;
+
+      const destLatLng = marker.getLatLng();
+
+      function drawRoute(uLat: number, uLng: number) {
+        if (routeLine && map) map.removeLayer(routeLine);
+
+        routeLine = L.polyline([[uLat, uLng], [destLatLng.lat, destLatLng.lng]], {
+          color: "#2563eb",
+          weight: 4,
+          className: "route-line"
+        }).addTo(map);
+
+        const bounds = L.latLngBounds([[uLat, uLng], [destLatLng.lat, destLatLng.lng]]);
+        map.fitBounds(bounds.pad(0.15));
+
+        const dist = haversine(uLat, uLng, destLatLng.lat, destLatLng.lng);
+        const minsWalk = Math.round((dist / 5) * 60);
+
+        const routeInfo = document.getElementById("route-info")!;
+        const routeDestName = document.getElementById("route-dest-name")!;
+        const routeDistance = document.getElementById("route-distance")!;
+        const routeTime = document.getElementById("route-time")!;
+
+        routeDestName.textContent = marker.getPopup().getContent().match(/<h4[^>]*>([^<]+)<\/h4>/)?.[1] || "Destino";
+        routeDistance.textContent = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
+        routeTime.textContent = minsWalk < 60 ? `${minsWalk} min` : `${Math.floor(minsWalk / 60)}h ${minsWalk % 60}m`;
+
+        (document.getElementById("route-gmaps") as HTMLAnchorElement).href = `https://www.google.com/maps/dir/?api=1&origin=${uLat},${uLng}&destination=${destLatLng.lat}&travelmode=walking`;
+        (document.getElementById("route-waze") as HTMLAnchorElement).href = `https://waze.com/ul?ll=${destLatLng.lat},${destLatLng.lng}&navigate=yes`;
+
+        routeInfo.classList.remove("hidden");
+        map.closePopup();
+      }
+
+      if (userLatLng) {
+        drawRoute(userLatLng[0], userLatLng[1]);
+      } else {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            userLatLng = [pos.coords.latitude, pos.coords.longitude];
+            drawRoute(userLatLng[0], userLatLng[1]);
+          },
+          () => {
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${destLatLng.lat},${destLatLng.lng}`, "_blank");
+          },
+          { enableHighAccuracy: true, timeout: 6000 }
+        );
+      }
+    };
+
+    document.getElementById("btn-route-close")?.addEventListener("click", () => {
+      if (routeLine && map) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      document.getElementById("route-info")!.classList.add("hidden");
+    });
+
+    (window as any)._shareEntity = (tipo: string, id: string) => {
+      let text = "";
+      let url = `${window.location.origin}/mapa?tipo=${tipo}&id=${id}`;
+
+      if (tipo === "refugio") {
+        const r = dataStore.refugios.find(x => String(x.id) === String(id));
+        if (!r) return;
+        text = `🏠 Refugio: *${r.nombre}*\n📍 Dirección: ${r.direccion}\n👥 Ocupación: ${r.ocupacion}/${r.capacidad}\n🗺️ Ver en mapa: `;
+      } else if (tipo === "necesidad") {
+        const n = dataStore.necesidades.find(x => String(x.id) === String(id));
+        if (!n) return;
+        text = `📦 Necesidad: *${n.categoria}*\n⚠️ Gravedad: ${n.gravedad}\n📝 Descripción: ${n.descripcion}\n🗺️ Ver en mapa: `;
+      } else if (tipo === "persona") {
+        const p = dataStore.personas.find(x => String(x.id) === String(id));
+        if (!p) return;
+        text = `👥 Persona: *${p.nombre}*\n🟢 Estado: ${p.estado}\n📝 Notas: ${p.notas}\n🗺️ Ver en mapa: `;
+      }
+
+      if (navigator.share) {
+        navigator.share({ title: "dondeestan.org", text, url }).catch(() => {});
+      } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(text + " " + url)}`, "_blank");
+      }
+    };
+  });
+</script>
