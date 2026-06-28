@@ -122,8 +122,8 @@ export const PATCH: APIRoute = async (context) => {
 
       if (voluntario) {
         await DB.prepare(`
-          INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
-          VALUES (?, 'EDITAR', 'reportes', ?)
+          INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
+          VALUES (?, 'EDITAR', 'reportes', ?, datetime('now', '-4 hours'))
         `).bind(voluntario.id, Number(id)).run();
       }
 
@@ -166,8 +166,8 @@ export const PATCH: APIRoute = async (context) => {
 
       if (voluntario) {
         await DB.prepare(`
-          INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
-          VALUES (?, 'EDITAR', 'reportes', ?)
+          INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
+          VALUES (?, 'EDITAR', 'reportes', ?, datetime('now', '-4 hours'))
         `).bind(voluntario.id, Number(id)).run();
       }
 
@@ -214,8 +214,8 @@ export const PATCH: APIRoute = async (context) => {
 
       if (voluntario) {
         await DB.prepare(`
-          INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
-          VALUES (?, 'EDITAR', 'reportes', ?)
+          INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
+          VALUES (?, 'EDITAR', 'reportes', ?, datetime('now', '-4 hours'))
         `).bind(voluntario.id, Number(id)).run();
       }
 
@@ -256,8 +256,8 @@ export const PATCH: APIRoute = async (context) => {
 
     if (voluntario) {
       await DB.prepare(`
-        INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
-        VALUES (?, 'EDITAR', 'reportes', ?)
+        INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
+        VALUES (?, 'EDITAR', 'reportes', ?, datetime('now', '-4 hours'))
       `).bind(voluntario.id, Number(id)).run();
     }
 

@@ -139,8 +139,8 @@ export async function handleShelterStatusUpdate(
     `).bind(voluntario.id, refugioId).run();
 
     await db.prepare(`
-      INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
-      VALUES (?, 'EDITAR', 'refugios', ?)
+      INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
+      VALUES (?, 'EDITAR', 'refugios', ?, datetime('now', '-4 hours'))
     `).bind(voluntario.id, refugioId).run();
   }
 

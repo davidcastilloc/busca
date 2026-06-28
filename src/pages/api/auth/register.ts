@@ -42,8 +42,8 @@ export const POST: APIRoute = async (context) => {
     let voluntarioId: number;
     try {
       const res = await DB.prepare(`
-        INSERT INTO voluntarios (nombre, telefono, pin_hash, activo)
-        VALUES (?, ?, ?, 1)
+        INSERT INTO voluntarios (nombre, telefono, pin_hash, activo, created_at)
+        VALUES (?, ?, ?, 1, datetime('now', '-4 hours'))
         RETURNING id
       `).bind(
         nombre.trim(),
@@ -71,8 +71,8 @@ export const POST: APIRoute = async (context) => {
     expiresAt.setDate(expiresAt.getDate() + 30); // 30 días
 
     await DB.prepare(`
-      INSERT INTO sesiones_voluntarios (token, voluntario_id, expires_at)
-      VALUES (?, ?, ?)
+      INSERT INTO sesiones_voluntarios (token, voluntario_id, expires_at, created_at)
+      VALUES (?, ?, ?, datetime('now', '-4 hours'))
     `).bind(
       token,
       voluntarioId,

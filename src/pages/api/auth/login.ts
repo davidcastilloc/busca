@@ -55,8 +55,8 @@ export const POST: APIRoute = async (context) => {
     expiresAt.setDate(expiresAt.getDate() + 30); // 30 días
 
     await DB.prepare(`
-      INSERT INTO sesiones_voluntarios (token, voluntario_id, expires_at)
-      VALUES (?, ?, ?)
+      INSERT INTO sesiones_voluntarios (token, voluntario_id, expires_at, created_at)
+      VALUES (?, ?, ?, datetime('now', '-4 hours'))
     `).bind(
       token,
       voluntario.id,
