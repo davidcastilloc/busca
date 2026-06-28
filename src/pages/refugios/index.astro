@@ -49,9 +49,11 @@ try {
         <a href="/refugios/mapa" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong px-5 py-2.5 rounded-[36px] text-center border border-canvas-soft">
           🗺️ Mapa Completo
         </a>
-        <a href="/refugios/nuevo" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong px-5 py-2.5 rounded-[36px] text-center shadow-sm">
-          ➕ Registrar Refugio
-        </a>
+        {esVoluntario && (
+          <a href="/refugios/nuevo" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong px-5 py-2.5 rounded-[36px] text-center shadow-sm">
+            ➕ Registrar Refugio
+          </a>
+        )}
       </div>
     </div>
 
