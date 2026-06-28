@@ -15,11 +15,16 @@ export const GET: APIRoute = async () => {
       WHERE latitud IS NOT NULL AND longitud IS NOT NULL
     `).all<{ id: number; nombre: string; apellido: string; latitud: number; longitud: number; estado: string }>();
 
-    // Consultar reportes con coordenadas válidas
+    // Consultar reportes con coordenadas válidas (o heredadas del refugio asociado)
     const reportes = await DB.prepare(`
-      SELECT id, nombre_buscado, latitud, longitud, tipo, estado_reporte
-      FROM reportes 
-      WHERE latitud IS NOT NULL AND longitud IS NOT NULL
+      SELECT r.id, r.nombre_buscado, 
+             COALESCE(r.latitud, ref.latitud) as latitud, 
+             COALESCE(r.longitud, ref.longitud) as longitud, 
+             r.tipo, r.estado_reporte
+      FROM reportes r
+      LEFT JOIN refugios ref ON r.refugio_id = ref.id
+      WHERE (r.latitud IS NOT NULL AND r.longitud IS NOT NULL)
+         OR (r.refugio_id IS NOT NULL AND ref.latitud IS NOT NULL AND ref.longitud IS NOT NULL)
     `).all<{ id: number; nombre_buscado: string; latitud: number; longitud: number; tipo: string; estado_reporte: string }>();
 
     // Consultar refugios con coordenadas válidas

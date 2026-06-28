@@ -28,6 +28,7 @@ export const ReporteSchema = z.object({
   latitud: z.coerce.number().min(-90).max(90).nullable().optional(),
   longitud: z.coerce.number().min(-180).max(180).nullable().optional(),
   foto_key: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
+  refugio_id: z.coerce.number().int().nullable().optional(),
   created_by: z.number().nullable().optional()
 });
 
