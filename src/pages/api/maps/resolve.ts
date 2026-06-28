@@ -70,10 +70,46 @@ function extraerDeHtml(html: string): { lat: number; lng: number; aproximado?: b
 }
 
 /**
+ * Extraer el nombre del lugar del path /place/ de una URL de Google Maps.
+ * Ejemplo: /place/La+Pastora+-+CDI+Santa+Isabel/@10.51,-66.91,...
+ * Devuelve: "La Pastora - CDI Santa Isabel"
+ */
+function extraerNombreDePlaceUrl(urlStr: string): string | null {
+  try {
+    const decoded = decodeURIComponent(urlStr).replace(/\+/g, " ");
+    const placeMatch = decoded.match(/\/place\/([^/@]+)/);
+    if (!placeMatch) return null;
+
+    let raw = placeMatch[1].trim();
+
+    // Quitar Plus Code del inicio
+    raw = raw.replace(/^[23456789CFGHJMPQRVWX]{4,8}[+ ][23456789CFGHJMPQRVWX]{2,3}\s*/i, "").trim();
+    // Quitar si solo quedan coords
+    if (/^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(raw)) return null;
+
+    if (!raw || raw.length < 3) return null;
+
+    // El primer segmento antes de la primera coma suele ser el nombre del lugar
+    const parts = raw.split(",").map(p => p.trim()).filter(Boolean);
+    if (parts.length === 0) return null;
+
+    // Si el primer part parece nombre de lugar (no parece dirección pura)
+    const primerPart = parts[0];
+    // Si tiene guión, es probablemente un nombre compuesto como "La Pastora - CDI Santa Isabel"
+    if (primerPart.includes(" - ") || primerPart.includes(" – ")) return primerPart;
+    // Si NO empieza con patron de calle/avenida, es nombre de lugar
+    if (!/^(av[.\s]|avenida|calle|carrera|urb[.\s]|sector|barrio|parroquia|blvd|boulevard|c\/|prol|esquina|transversal)/i.test(primerPart)) {
+      return primerPart;
+    }
+
+    return null;
+  } catch { /* silenciar */ }
+  return null;
+}
+
+/**
  * Extraer la dirección del path /place/ de una URL de Google Maps.
  * Quita el Plus Code del inicio y devuelve queries para geocodificar.
- * Ejemplo: /place/G39G+7VP+Nombre+Lugar,+Calle+X,+Ciudad/data=...
- * Devuelve: ["Calle X, Ciudad, Venezuela", "Nombre Lugar, Calle X, Ciudad, Venezuela"]
  */
 function extraerDireccionDeUrl(urlStr: string): string[] {
   try {
@@ -207,49 +243,108 @@ async function geocodificarGoogle(
 }
 
 /**
- * Enriquecer coordenadas usando Reverse Geocoding y Place Details.
+ * Inferir tipo de centro a partir de types de Google Places.
+ */
+function inferirTipo(types: string[]): string {
+  const esHospital = types.some(t => ["hospital", "health", "doctor", "pharmacy", "medical_clinic", "dentist", "physiotherapist"].includes(t));
+  if (esHospital) return "hospital";
+  const esAcopio = types.some(t => ["warehouse", "storage", "supermarket", "grocery_or_supermarket"].includes(t));
+  if (esAcopio) return "centro_acopio";
+  return "refugio";
+}
+
+/**
+ * Enriquecer coordenadas usando:
+ * 1. Find Place from Text (si tenemos placeName del path de la URL)
+ * 2. Nearby Search (busca establecimientos reales, no calles)
+ * 3. Reverse Geocoding como último recurso (solo para dirección)
  */
 async function enriquecerCoordenadas(
   lat: number, 
   lng: number, 
-  apiKey: string
+  apiKey: string,
+  placeName?: string
 ): Promise<{ name?: string; phone?: string; tipo?: string; formatted_address?: string } | null> {
   try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=es`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json() as any;
-      if (data.status === "OK" && data.results && data.results.length > 0) {
-        const firstResult = data.results[0];
-        let name = "";
-        let phone = "";
-        let inferredType = "refugio";
-        
-        if (firstResult.place_id) {
-          const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${firstResult.place_id}&fields=name,formatted_phone_number,types&key=${apiKey}&language=es`;
-          const detailsResp = await fetch(detailsUrl);
-          if (detailsResp.ok) {
-            const detailsData = await detailsResp.json() as any;
-            if (detailsData.status === "OK" && detailsData.result) {
-              name = detailsData.result.name || "";
-              phone = detailsData.result.formatted_phone_number || "";
-              if (detailsData.result.types) {
-                const types = detailsData.result.types as string[];
-                const esHospital = types.some(t => ["hospital", "health", "doctor", "pharmacy", "medical_clinic"].includes(t));
-                if (esHospital) inferredType = "hospital";
-                else {
-                  const esAcopio = types.some(t => ["warehouse", "storage", "supermarket", "grocery_or_supermarket"].includes(t));
-                  if (esAcopio) inferredType = "centro_acopio";
+    // 1. Si tenemos nombre del lugar de la URL, usar Find Place from Text
+    if (placeName) {
+      const findUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(placeName)}&inputtype=textquery&locationbias=circle:500@${lat},${lng}&fields=place_id,name,formatted_address,types&key=${apiKey}&language=es`;
+      const findResp = await fetch(findUrl);
+      if (findResp.ok) {
+        const findData = await findResp.json() as any;
+        if (findData.status === "OK" && findData.candidates && findData.candidates.length > 0) {
+          const candidate = findData.candidates[0];
+          let phone = "";
+          // Obtener teléfono con Place Details
+          if (candidate.place_id) {
+            try {
+              const detUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${candidate.place_id}&fields=formatted_phone_number&key=${apiKey}&language=es`;
+              const detResp = await fetch(detUrl);
+              if (detResp.ok) {
+                const detData = await detResp.json() as any;
+                if (detData.status === "OK" && detData.result) {
+                  phone = detData.result.formatted_phone_number || "";
                 }
               }
-            }
+            } catch { /* silenciar */ }
           }
+          return {
+            name: candidate.name || placeName,
+            formatted_address: candidate.formatted_address || "",
+            phone,
+            tipo: inferirTipo(candidate.types || [])
+          };
+        }
+      }
+    }
+
+    // 2. Nearby Search — busca establecimientos reales cerca de las coordenadas
+    const nearbyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=50&key=${apiKey}&language=es`;
+    const nearbyResp = await fetch(nearbyUrl);
+    if (nearbyResp.ok) {
+      const nearbyData = await nearbyResp.json() as any;
+      if (nearbyData.status === "OK" && nearbyData.results && nearbyData.results.length > 0) {
+        // Filtrar results: preferir los que NO sean rutas/calles/localidades
+        const tiposIgnorar = ["route", "street_address", "locality", "political", "sublocality", "neighborhood", "premise"];
+        const establecimientos = nearbyData.results.filter((r: any) => {
+          const types = r.types || [];
+          return !types.every((t: string) => tiposIgnorar.includes(t));
+        });
+        
+        const mejor = establecimientos.length > 0 ? establecimientos[0] : nearbyData.results[0];
+        let phone = "";
+        if (mejor.place_id) {
+          try {
+            const detUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${mejor.place_id}&fields=formatted_phone_number&key=${apiKey}&language=es`;
+            const detResp = await fetch(detUrl);
+            if (detResp.ok) {
+              const detData = await detResp.json() as any;
+              if (detData.status === "OK" && detData.result) {
+                phone = detData.result.formatted_phone_number || "";
+              }
+            }
+          } catch { /* silenciar */ }
         }
         return {
-          name: name || firstResult.formatted_address.split(",")[0],
-          formatted_address: firstResult.formatted_address,
+          name: mejor.name || "",
+          formatted_address: mejor.vicinity || "",
           phone,
-          tipo: inferredType
+          tipo: inferirTipo(mejor.types || [])
+        };
+      }
+    }
+
+    // 3. Fallback: Reverse Geocoding solo para dirección
+    const revUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=es`;
+    const revResp = await fetch(revUrl);
+    if (revResp.ok) {
+      const revData = await revResp.json() as any;
+      if (revData.status === "OK" && revData.results && revData.results.length > 0) {
+        return {
+          name: "",
+          formatted_address: revData.results[0].formatted_address || "",
+          phone: "",
+          tipo: "refugio"
         };
       }
     }
@@ -418,12 +513,19 @@ export const POST: APIRoute = async (context) => {
       }
     }
 
+    // Extraer nombre del lugar del path de la URL expandida (si existe)
+    let placeName: string | null = null;
+    for (const u of [targetUrl, url]) {
+      placeName = extraerNombreDePlaceUrl(u);
+      if (placeName) break;
+    }
+
     // Enriquecer la respuesta si obtuvimos coordenadas pero faltan metadatos (como nombre/teléfono)
     if (lat !== null && lng !== null && apiKey && !name) {
-      const enrichment = await enriquecerCoordenadas(lat, lng, apiKey);
+      const enrichment = await enriquecerCoordenadas(lat, lng, apiKey, placeName || undefined);
       if (enrichment) {
         name = enrichment.name || "";
-        formatted_address = enrichment.formatted_address || "";
+        formatted_address = enrichment.formatted_address || formatted_address || "";
         phone = enrichment.phone || "";
         tipo = enrichment.tipo || "refugio";
       }
