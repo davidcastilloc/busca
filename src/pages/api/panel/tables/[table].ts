@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers';
 
 export const prerender = false;
 
@@ -15,15 +16,13 @@ const ALLOWED_TABLES = [
   'historial_actividad'
 ];
 
-export const GET: APIRoute = async ({ params, request, locals }) => {
+export const GET: APIRoute = async ({ params, request }) => {
   const table = params.table as string;
   if (!ALLOWED_TABLES.includes(table)) {
     return new Response(JSON.stringify({ error: 'Tabla no permitida' }), { status: 403 });
   }
 
   try {
-    // @ts-ignore
-    const { env } = locals.runtime;
     const { DB } = env;
 
     const url = new URL(request.url);
@@ -47,15 +46,13 @@ export const GET: APIRoute = async ({ params, request, locals }) => {
   }
 };
 
-export const POST: APIRoute = async ({ params, request, locals }) => {
+export const POST: APIRoute = async ({ params, request }) => {
   const table = params.table as string;
   if (!ALLOWED_TABLES.includes(table)) {
     return new Response(JSON.stringify({ error: 'Tabla no permitida' }), { status: 403 });
   }
 
   try {
-    // @ts-ignore
-    const { env } = locals.runtime;
     const { DB } = env;
     const body = (await request.json()) as Record<string, any>;
 
@@ -79,15 +76,13 @@ export const POST: APIRoute = async ({ params, request, locals }) => {
   }
 };
 
-export const PUT: APIRoute = async ({ params, request, locals }) => {
+export const PUT: APIRoute = async ({ params, request }) => {
   const table = params.table as string;
   if (!ALLOWED_TABLES.includes(table)) {
     return new Response(JSON.stringify({ error: 'Tabla no permitida' }), { status: 403 });
   }
 
   try {
-    // @ts-ignore
-    const { env } = locals.runtime;
     const { DB } = env;
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
@@ -115,15 +110,13 @@ export const PUT: APIRoute = async ({ params, request, locals }) => {
   }
 };
 
-export const DELETE: APIRoute = async ({ params, request, locals }) => {
+export const DELETE: APIRoute = async ({ params, request }) => {
   const table = params.table as string;
   if (!ALLOWED_TABLES.includes(table)) {
     return new Response(JSON.stringify({ error: 'Tabla no permitida' }), { status: 403 });
   }
 
   try {
-    // @ts-ignore
-    const { env } = locals.runtime;
     const { DB } = env;
     const url = new URL(request.url);
     
