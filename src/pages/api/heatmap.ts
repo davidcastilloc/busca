@@ -10,22 +10,28 @@ export const GET: APIRoute = async () => {
 
     // Consultar personas con coordenadas válidas
     const personas = await DB.prepare(`
-      SELECT id, nombre, apellido, latitud, longitud, estado 
-      FROM personas 
-      WHERE latitud IS NOT NULL AND longitud IS NOT NULL
+      SELECT p.id, p.nombre, p.apellido, 
+             COALESCE(p.latitud, ref.latitud) as latitud, 
+             COALESCE(p.longitud, ref.longitud) as longitud, 
+             p.estado 
+      FROM personas p
+      LEFT JOIN refugios ref ON p.refugio = ref.nombre
+      WHERE (p.latitud IS NOT NULL AND p.longitud IS NOT NULL)
+         OR (p.refugio IS NOT NULL AND ref.latitud IS NOT NULL AND ref.longitud IS NOT NULL)
     `).all<{ id: number; nombre: string; apellido: string; latitud: number; longitud: number; estado: string }>();
 
     // Consultar reportes con coordenadas válidas (o heredadas del refugio asociado)
     const reportes = await DB.prepare(`
-      SELECT r.id, r.nombre_buscado, 
+      SELECT r.id, r.nombre_buscado, r.descripcion,
              COALESCE(r.latitud, ref.latitud) as latitud, 
              COALESCE(r.longitud, ref.longitud) as longitud, 
              r.tipo, r.estado_reporte
       FROM reportes r
-      LEFT JOIN refugios ref ON r.refugio_id = ref.id
+      LEFT JOIN refugios ref ON r.refugio_id = ref.id OR r.ubicacion_nombre = ref.nombre
       WHERE (r.latitud IS NOT NULL AND r.longitud IS NOT NULL)
          OR (r.refugio_id IS NOT NULL AND ref.latitud IS NOT NULL AND ref.longitud IS NOT NULL)
-    `).all<{ id: number; nombre_buscado: string; latitud: number; longitud: number; tipo: string; estado_reporte: string }>();
+         OR (r.ubicacion_nombre IS NOT NULL AND ref.latitud IS NOT NULL AND ref.longitud IS NOT NULL)
+    `).all<{ id: number; nombre_buscado: string; descripcion: string; latitud: number; longitud: number; tipo: string; estado_reporte: string }>();
 
     // Consultar refugios con coordenadas válidas
     const refugios = await DB.prepare(`
@@ -39,7 +45,7 @@ export const GET: APIRoute = async () => {
       fallecido: 3,
       herido: 2,
       desconocido: 1.5,
-      vivo: 1,
+      localizado: 1,
       desaparecido: 2.5,
       encontrado: 1,
       refugio: 0.8,
@@ -65,12 +71,29 @@ export const GET: APIRoute = async () => {
     // Agregar reportes
     for (const r of reportes.results || []) {
       const peso = pesos[r.tipo] || 1;
+      
+      let nombreMostrar = r.nombre_buscado;
+      if (!nombreMostrar) {
+        if (r.tipo === 'necesidad') {
+          // Extraemos el tipo de necesidad de la descripción o mostramos un extracto
+          const desc = r.descripcion || "";
+          const match = desc.match(/\[TIPO NECESIDAD: (.*?)\]/);
+          if (match && match[1]) {
+            nombreMostrar = "Necesidad: " + match[1];
+          } else {
+            nombreMostrar = desc.length > 30 ? desc.substring(0, 30) + "..." : (desc || "Necesidad Reportada");
+          }
+        } else {
+          nombreMostrar = "Persona no identificada";
+        }
+      }
+
       puntos.push({
         lat: r.latitud,
         lon: r.longitud,
         peso: peso,
         id: r.id,
-        nombre: r.nombre_buscado || "Persona no identificada",
+        nombre: nombreMostrar,
         tipo: "reporte",
         estado: r.tipo,
         estado_reporte: r.estado_reporte

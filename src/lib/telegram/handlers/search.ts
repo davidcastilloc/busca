@@ -77,7 +77,7 @@ export async function handleSearch(
       responseText += `👤 <b>Censo de Personas:</b>\n`;
       personas.forEach((p: any) => {
         const estadoEmoji = {
-          vivo: "🟢 A salvo",
+          localizado: "🟢 Localizado",
           herido: "🟡 Herido",
           fallecido: "🔴 Fallecido",
           desconocido: "⚪ Desconocido",

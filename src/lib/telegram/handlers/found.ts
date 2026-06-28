@@ -145,7 +145,7 @@ export async function handleFoundState(
             tipo: "encontrado",
             nombre_buscado: data.nombre_buscado,
             cedula_buscado: data.cedula_buscado,
-            descripcion: "Reportado como a salvo por voluntario.",
+            descripcion: "Reportado como localizado por voluntario.",
             ubicacion_nombre: data.ubicacion_nombre,
             latitud: data.latitud || null,
             longitud: data.longitud || null,
@@ -157,7 +157,7 @@ export async function handleFoundState(
         });
         await client.sendMessage(
           chatId,
-          `✅ <b>Persona registrada como A SALVO</b>\n\nLa información se cruza automáticamente con la lista de desaparecidos.`
+          `✅ <b>Persona registrada como LOCALIZADO</b>\n\nLa información se cruza automáticamente con la lista de desaparecidos.`
         );
       }
     } catch (queueErr) {

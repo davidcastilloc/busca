@@ -337,7 +337,7 @@ function aplicarFiltrosYRenderizar() {
         else { if (!(item.tipo === "desaparecido" && item.estado_reporte === "abierto")) return false; }
       }
       if (currentSubTab === "localizados") {
-        if (esPersona) { if (item.estado !== "vivo" && item.estado !== "herido") return false; }
+        if (esPersona) { if (item.estado !== "localizado" && item.estado !== "herido") return false; }
         else { if (item.estado_reporte !== "resuelto") return false; }
       }
     }
@@ -404,7 +404,7 @@ function crearCardPersona(p: any): HTMLDivElement {
   const btnLocalizado = p.estado === 'desconocido'
     ? `<button class="btn-localizar-persona btn btn-sm bg-canvas-soft hover:bg-surface-pressed border border-ink/15 text-ink font-uber-text text-xs font-semibold mt-2 self-start rounded-full transition-transform active:scale-[0.98] cursor-pointer flex items-center gap-1.5 px-3 py-1">
          <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-         Marcar a salvo
+         Marcar localizado
        </button>`
     : "";
 
@@ -594,7 +594,7 @@ function abrirModalDetalle(data: any, tipo: string) {
   }
 
   if (tipo === "persona" && data.estado === "desconocido") {
-    actionsHtml += `<button id="modal-btn-marcar-vivo" class="btn bg-primary text-white flex-1 min-w-[120px] font-uber-text uber-body-md-strong rounded-full hover:bg-black-elevated transition-colors cursor-pointer">Marcar a salvo</button>`;
+    actionsHtml += `<button id="modal-btn-marcar-vivo" class="btn bg-primary text-white flex-1 min-w-[120px] font-uber-text uber-body-md-strong rounded-full hover:bg-black-elevated transition-colors cursor-pointer">Marcar localizado</button>`;
   }
 
   modalActions!.innerHTML = actionsHtml;
@@ -928,8 +928,8 @@ function abrirReporteRapido() {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            accion: "reportar_a_salvo",
-            estado: "vivo",
+            accion: "reportar_localizado",
+            estado: "localizado",
             contacto: reportante_contacto,
             refugio: refugioFinal,
             notas: descripcion,
@@ -943,7 +943,7 @@ function abrirReporteRapido() {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            accion: "reportar_a_salvo",
+            accion: "reportar_localizado",
             estado_reporte: "resuelto",
             contacto: reportante_contacto,
             refugio: refugioFinal,
@@ -1243,10 +1243,10 @@ function mostrarModalCompartirRedes(texto: string, url: string) {
 // ═══ CONFIGS DE ESTADO/TIPO ═══
 function getEstadoConfig(estado: string, verificacion = "ninguna") {
   if (verificacion === "pendiente") {
-    return { badge: "border border-yellow-500/30 text-ink bg-canvas", dot: "bg-yellow-500", text: "A salvo (Sin confirmar)" };
+    return { badge: "border border-yellow-500/30 text-ink bg-canvas", dot: "bg-yellow-500", text: "Localizado (Sin confirmar)" };
   }
   const configs: Record<string, { badge: string, dot: string, text: string }> = {
-    vivo: { badge: "border border-green-500/30 text-ink bg-canvas", dot: "bg-green-500", text: "A salvo" },
+    localizado: { badge: "border border-green-500/30 text-ink bg-canvas", dot: "bg-green-500", text: "Localizado" },
     herido: { badge: "border border-yellow-500/30 text-ink bg-canvas", dot: "bg-yellow-500", text: "Herido" },
     fallecido: { badge: "border border-red-500/30 text-ink bg-canvas", dot: "bg-red-500", text: "Fallecido" },
     desconocido: { badge: "border border-canvas-soft text-ink bg-canvas", dot: "bg-mute", text: "Desconocido" }

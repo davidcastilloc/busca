@@ -6,7 +6,7 @@ export interface PersonaData {
   apellido?: string | null;
   edad?: number | null;
   sexo?: "M" | "F" | "X";
-  estado?: "vivo" | "herido" | "fallecido" | "desconocido";
+  estado?: "localizado" | "herido" | "fallecido" | "desconocido";
   ubicacion_nombre?: string | null;
   latitud?: number | null;
   longitud?: number | null;
@@ -223,7 +223,7 @@ export async function procesarCensoBatch(
 
     return db.prepare(`
       INSERT INTO personas (nombre, apellido, estado, refugio, contacto, cedula, edad, fuente, refugio_id, updated_at, created_at)
-      VALUES (?, ?, 'vivo', ?, ?, ?, ?, 'escaner_ia', ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+      VALUES (?, ?, 'localizado', ?, ?, ?, ?, 'escaner_ia', ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
       RETURNING id
     `).bind(
       nombre,

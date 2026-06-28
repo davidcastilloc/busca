@@ -6,7 +6,7 @@ export const PersonaSchema = z.object({
   apellido: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
   edad: z.coerce.number().int().min(0).max(120).nullable().optional(),
   sexo: z.enum(["M", "F", "X"]).default("X"),
-  estado: z.enum(["vivo", "herido", "fallecido", "desconocido"]).default("desconocido"),
+  estado: z.enum(["localizado", "herido", "fallecido", "desconocido"]).default("desconocido"),
   ubicacion_nombre: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
   latitud: z.coerce.number().min(-90).max(90).nullable().optional(),
   longitud: z.coerce.number().min(-180).max(180).nullable().optional(),

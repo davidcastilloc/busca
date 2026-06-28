@@ -7,7 +7,7 @@ interface Props {
     apellido?: string | null;
     edad?: number | null;
     sexo?: string | null;
-    estado: 'vivo' | 'herido' | 'fallecido' | 'desconocido';
+    estado: 'localizado' | 'herido' | 'fallecido' | 'desconocido';
     ubicacion_nombre?: string | null;
     latitud?: number | null;
     longitud?: number | null;
@@ -26,7 +26,7 @@ const { persona } = Astro.props;
 
 // Clases de color para estados
 const estadoConfig = {
-  vivo: { badge: "badge-success text-white", border: "border-success/30", text: "Vivo / A salvo" },
+  localizado: { badge: "badge-success text-white", border: "border-success/30", text: "Localizado / Sin lesiones" },
   herido: { badge: "badge-warning text-black", border: "border-warning/30", text: "Herido" },
   fallecido: { badge: "badge-error text-white", border: "border-error/30", text: "Fallecido" },
   desconocido: { badge: "badge-neutral text-white", border: "border-neutral/30", text: "Desconocido" }
@@ -35,7 +35,7 @@ const estadoConfig = {
 let config = estadoConfig[persona.estado] || estadoConfig.desconocido;
 
 if (persona.verificacion === "pendiente") {
-  config = { badge: "badge-warning text-black", border: "border-warning/30", text: "A salvo (Sin confirmar)" };
+  config = { badge: "badge-warning text-black", border: "border-warning/30", text: "Localizado (Sin confirmar)" };
 }
 
 const formatFecha = (fechaStr: string) => {

@@ -20,8 +20,8 @@ export const PATCH: APIRoute = async (context) => {
     const body = await context.request.json();
     const accion = body.accion;
 
-    // Reportar a salvo es la única acción pública, todo lo demás requiere voluntario
-    if (accion !== "reportar_a_salvo") {
+    // Reportar localizado es la única acción pública, todo lo demás requiere voluntario
+    if (accion !== "reportar_localizado") {
       const sessionToken = context.cookies.get("session_token")?.value;
       const voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
       if (!voluntario) {
@@ -31,10 +31,10 @@ export const PATCH: APIRoute = async (context) => {
         });
       }
     }
-    const estadoValidos = ["vivo", "herido", "fallecido", "desconocido"];
+    const estadoValidos = ["localizado", "herido", "fallecido", "desconocido"];
 
     if (body.estado && !estadoValidos.includes(body.estado)) {
-      return new Response(JSON.stringify({ error: "Estado inválido. Usar: vivo, herido, fallecido, desconocido" }), {
+      return new Response(JSON.stringify({ error: "Estado inválido. Usar: localizado, herido, fallecido, desconocido" }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
       });
@@ -63,13 +63,8 @@ export const PATCH: APIRoute = async (context) => {
     let nuevasNotasEvidencia = existente.notas_evidencia || null;
 
 
-    if (accion === "reportar_a_salvo") {
-      if (!body.foto_key) {
-        return new Response(JSON.stringify({ error: "Foto de evidencia es obligatoria para auto-reporte." }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" }
-        });
-      }
+    if (accion === "reportar_localizado") {
+
       if (!body.contacto) {
         return new Response(JSON.stringify({ error: "Contacto telefónico es obligatorio para auto-reporte." }), {
           status: 400,
@@ -77,7 +72,7 @@ export const PATCH: APIRoute = async (context) => {
         });
       }
       
-      nuevoEstado = body.estado || "vivo";
+      nuevoEstado = body.estado || "localizado";
       nuevaVerificacion = "pendiente";
       nuevaFotoEvidencia = body.foto_key;
       nuevoContactoEvidencia = body.contacto;
@@ -116,7 +111,7 @@ export const PATCH: APIRoute = async (context) => {
       // Notificar administradores por Telegram
       try {
         const { notifyAdmins } = await import("../../../lib/telegram/notify");
-        const alertMsg = `⚠️ <b>Nueva Solicitud de Verificación (A Salvo)</b>\n\n` +
+        const alertMsg = `⚠️ <b>Nueva Solicitud de Verificación (Localizado)</b>\n\n` +
           `• <b>Persona:</b> ${existente.nombre} ${existente.apellido || ""}\n` +
           `• <b>Cédula:</b> ${existente.cedula || "No especificada"}\n` +
           `• <b>Contacto reportante:</b> ${body.contacto}\n` +
@@ -139,7 +134,7 @@ export const PATCH: APIRoute = async (context) => {
       });
     }
 
-    if (accion === "aprobar_a_salvo") {
+    if (accion === "aprobar_localizado") {
       nuevaVerificacion = "verificado";
       
       await DB.prepare(`
@@ -175,7 +170,7 @@ export const PATCH: APIRoute = async (context) => {
       });
     }
 
-    if (accion === "rechazar_a_salvo") {
+    if (accion === "rechazar_localizado") {
       nuevoEstado = "desconocido";
       nuevaVerificacion = "ninguna";
 
@@ -211,8 +206,8 @@ export const PATCH: APIRoute = async (context) => {
       WHERE id = ?
     `).bind(nuevoEstado, nuevoRefugio, nuevoContacto, nuevaLat, nuevaLon, nuevaUbiNombre, nuevasNotas, nuevaFotoKey, Number(id)).run();
 
-    // Actualización en cascada clásica si no es pendiente y es vivo/herido
-    if (["vivo", "herido"].includes(nuevoEstado) && nuevaVerificacion !== "pendiente") {
+    // Actualización en cascada clásica si no es pendiente y es localizado/herido
+    if (["localizado", "herido"].includes(nuevoEstado) && nuevaVerificacion !== "pendiente") {
       if (existente.cedula) {
         await DB.prepare(`
           UPDATE reportes 
