@@ -1,5 +1,6 @@
 import type { TelegramClient } from "../client";
 import { setSession, clearSession, type TelegramSession } from "../session";
+import { getShelterKeyboard, resolveLocation } from "../utils";
 
 export async function startReport(
   client: TelegramClient,
@@ -11,7 +12,7 @@ export async function startReport(
   await setSession(db, telegramId, chatId, "rep_name", {});
   await client.sendMessage(
     chatId,
-    "🚨 <b>Iniciar Reporte de Desaparición</b>\n\nEnvía el <b>Nombre y Apellido</b> de la persona que estás buscando:\n\n<i>Escribe /cancelar en cualquier momento para salir.</i>"
+    "🔍 <b>Reportar Persona Desaparecida</b>\n\nPrimero, dime el <b>Nombre y Apellido</b> de la persona:\n\n<i>/cancelar para salir.</i>"
   );
 }
 
@@ -24,7 +25,8 @@ export async function handleReportState(
   text?: string,
   photoArray?: any[],
   env?: any,
-  location?: { latitude: number; longitude: number }
+  location?: { latitude: number; longitude: number },
+  isAuthorized: boolean = false
 ): Promise<void> {
   const currentStep = session.step;
   const data = session.data || {};
@@ -65,38 +67,61 @@ export async function handleReportState(
     }
 
     await setSession(db, telegramId, chatId, "rep_ubicacion", data);
+    
+    let keyboardOptions: any = {
+      keyboard: [
+        [{ text: "📍 Compartir mi ubicación actual (GPS)", request_location: true }],
+        [{ text: "/cancelar" }]
+      ],
+      resize_keyboard: true,
+      one_time_keyboard: true
+    };
+    
+    if (isAuthorized) {
+      const shelterKeyboard = await getShelterKeyboard(db);
+      if (shelterKeyboard) keyboardOptions = shelterKeyboard;
+    }
+
     await client.sendMessage(
       chatId,
       "Cédula registrada.\n\nAhora, escribe <b>dónde estuvo últimamente</b> (última ubicación conocida) o envía tu <b>Ubicación GPS (📎)</b> si estás en el sitio:",
-      {
-        reply_markup: {
-          keyboard: [
-            [{ text: "📍 Compartir mi ubicación actual (GPS)", request_location: true }],
-            [{ text: "/cancelar" }]
-          ],
-          resize_keyboard: true,
-          one_time_keyboard: true
-        }
-      }
+      { reply_markup: keyboardOptions }
     );
     return;
   }
 
   // 2.5 Esperando Ubicación
   if (currentStep === "rep_ubicacion") {
-    if (location) {
-      data.latitud = location.latitude;
-      data.longitud = location.longitude;
-      data.ubicacion_nombre = "Ubicación GPS adjunta por Telegram";
-    } else if (text && text.trim().length >= 3) {
-      data.ubicacion_nombre = text.trim();
-    } else {
+    const resolved = await resolveLocation(db, text, location);
+    
+    if (!resolved.valid) {
+      let keyboardOptions: any = {
+        keyboard: [
+          [{ text: "📍 Compartir mi ubicación actual (GPS)", request_location: true }],
+          [{ text: "/cancelar" }]
+        ],
+        resize_keyboard: true,
+        one_time_keyboard: true
+      };
+      
+      if (isAuthorized) {
+        const shelterKeyboard = await getShelterKeyboard(db);
+        if (shelterKeyboard) keyboardOptions = shelterKeyboard;
+      }
+      
       await client.sendMessage(
         chatId,
-        "⚠️ Indica la última ubicación conocida (ej. 'Centro de Caracas') o envía tu ubicación GPS (📎):"
+        "⚠️ Indica la última ubicación conocida (ej. 'Centro de Caracas') o envía tu ubicación GPS (📎):",
+        { reply_markup: keyboardOptions }
       );
       return;
     }
+
+    data.ubicacion_nombre = resolved.ubicacion_nombre;
+    data.latitud = resolved.latitud;
+    data.longitud = resolved.longitud;
+    data.refugio_id = resolved.refugio_id;
+
     await setSession(db, telegramId, chatId, "rep_desc", data);
     await client.sendMessage(
       chatId,
@@ -183,6 +208,7 @@ export async function handleReportState(
           ubicacion_nombre: data.ubicacion_nombre,
           latitud: data.latitud || null,
           longitud: data.longitud || null,
+          refugio_id: data.refugio_id || null,
           reportante_nombre: `Bot Telegram`,
           reportante_contacto: `User ID: ${telegramId}`,
           foto_key: data.foto_key,
