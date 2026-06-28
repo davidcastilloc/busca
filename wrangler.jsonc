@@ -72,7 +72,8 @@
 		]
 	},
 	"vars": {
-		"VAPID_PUBLIC_KEY": "BEcyoYTu_KhDf-xdW_w3S9bpjzJHD_op-PcYTOTPstRoczDaGNs-VWti9rShxBU4VP8I3_C6-Oqk-25eqqPtRe4"
+		"VAPID_PUBLIC_KEY": "BEcyoYTu_KhDf-xdW_w3S9bpjzJHD_op-PcYTOTPstRoczDaGNs-VWti9rShxBU4VP8I3_C6-Oqk-25eqqPtRe4",
+		"GOOGLE_MAPS_API_KEY": "AIzaSyAkV4FTfaonCPPCs79tU8ZZg4_pVoi1EXg"
 	},
 	"vectorize": [
 		{
