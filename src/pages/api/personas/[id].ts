@@ -110,9 +110,9 @@ export const PATCH: APIRoute = async (context) => {
           `• <b>Notas:</b> <i>"${body.notes || body.notas || "Sin comentarios"}"</i>\n\n` +
           `🔗 <a href="https://dondeestan.org/admin/dashboard">Verificar en Panel de Rescatistas</a>`;
         
-        const runtime = context.locals.runtime;
-        if (runtime?.ctx?.waitUntil) {
-          runtime.ctx.waitUntil(notifyAdmins(env, alertMsg));
+        const cfContext = (context.locals as any).cfContext || (context.locals as any).runtime?.ctx;
+        if (cfContext?.waitUntil) {
+          cfContext.waitUntil(notifyAdmins(env, alertMsg));
         } else {
           await notifyAdmins(env, alertMsg);
         }

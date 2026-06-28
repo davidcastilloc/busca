@@ -14,6 +14,12 @@ import { handleLocation } from "./handlers/location";
 import { handleMediaMessage } from "./handlers/media";
 import { CATEGORIAS_INVENTARIO } from "../items";
 
+import { startFound, handleFoundState } from "./handlers/found";
+import { startCensus, handleCensusState } from "./handlers/census";
+import { startShelter, handleShelterState, handleShelterSelection, handleShelterStatusUpdate } from "./handlers/shelter";
+import { startSos, handleSosState } from "./handlers/sos";
+import { startBroadcast, handleBroadcastState } from "./handlers/broadcast";
+
 export async function processTelegramUpdate(
   update: any,
   env: {
@@ -76,6 +82,12 @@ export async function processTelegramUpdate(
         if (catIdx !== -1) {
           await sendCategoryItems(client, chatId, refugioId, catIdx, messageId, db);
         }
+      } else if (data.startsWith("shl_sel:")) {
+        const refugioId = data.split(":")[1];
+        await handleShelterSelection(client, db, chatId, refugioId, messageId);
+      } else if (data.startsWith("shl_sta:")) {
+        const [, refugioId, porcentaje] = data.split(":");
+        await handleShelterStatusUpdate(client, db, chatId, refugioId, parseInt(porcentaje), messageId);
       } else if (data === "ref_list") {
         await handleRefugioList(client, chatId, messageId, db);
       }
@@ -106,9 +118,31 @@ export async function processTelegramUpdate(
     const session = await getSession(db, telegramId);
 
     // Si tiene sesión activa en un flujo conversacional
-    if (session && session.step.startsWith("rep_")) {
-      await handleReportState(client, db, chatId, telegramId, session, text, msg.photo, env);
-      return;
+    if (session) {
+      if (session.step.startsWith("rep_")) {
+        await handleReportState(client, db, chatId, telegramId, session, text, msg.photo, env);
+        return;
+      }
+      if (session.step.startsWith("fnd_")) {
+        await handleFoundState(client, db, chatId, telegramId, session, text, msg.photo, env);
+        return;
+      }
+      if (session.step.startsWith("cen_")) {
+        await handleCensusState(client, db, chatId, telegramId, session, text, msg.photo, env);
+        return;
+      }
+      if (session.step.startsWith("shl_")) {
+        await handleShelterState(client, db, chatId, telegramId, session, text);
+        return;
+      }
+      if (session.step.startsWith("sos_")) {
+        await handleSosState(client, db, chatId, telegramId, session, text, env);
+        return;
+      }
+      if (session.step.startsWith("brd_")) {
+        await handleBroadcastState(client, db, chatId, telegramId, isAdmin, session, text);
+        return;
+      }
     }
 
     // Comandos base
@@ -133,6 +167,36 @@ export async function processTelegramUpdate(
 
       if (lowerText === "/reportar") {
         await startReport(client, db, chatId, telegramId);
+        return;
+      }
+
+      if (lowerText.startsWith("/encontrado")) {
+        const args = text.substring(11).trim();
+        await startFound(client, db, chatId, telegramId, args);
+        return;
+      }
+
+      if (lowerText.startsWith("/censo")) {
+        const args = text.substring(6).trim();
+        await startCensus(client, db, chatId, telegramId, args);
+        return;
+      }
+
+      if (lowerText.startsWith("/refugio")) {
+        const args = text.substring(8).trim();
+        await startShelter(client, db, chatId, telegramId, args);
+        return;
+      }
+
+      if (lowerText.startsWith("/urgencia") || lowerText.startsWith("/sos")) {
+        const args = text.replace(/^\/(urgencia|sos)/i, "").trim();
+        await startSos(client, db, chatId, telegramId, args);
+        return;
+      }
+
+      if (lowerText.startsWith("/alerta") || lowerText.startsWith("/broadcast")) {
+        const args = text.replace(/^\/(alerta|broadcast)/i, "").trim();
+        await startBroadcast(client, db, chatId, telegramId, isAdmin, args);
         return;
       }
     }
@@ -164,12 +228,17 @@ async function sendWelcomeMessage(
   helpText += `<b>Comandos disponibles:</b>\n`;
   helpText += `🔍 /buscar [nombre/cédula] - Buscar persona en el censo.\n`;
   helpText += `🚨 /reportar - Reportar una persona desaparecida.\n`;
-  helpText += `📍 <b>Enviar Ubicación GPS</b> - Adjunta tu ubicación al chat para ver los centros de ayuda (albergues/acopio) más cercanos.\n`;
-  helpText += `📷 <b>Enviar Foto de Flyer</b> - Envía una imagen con el código QR del cartel para decodificarlo al instante.\n\n`;
+  helpText += `✅ /encontrado [cédula] - Marcar persona como a salvo.\n`;
+  helpText += `📷 /censo - Leer lista de nombres de papel con IA.\n`;
+  helpText += `⛺ /refugio - Actualizar capacidad de un refugio.\n`;
+  helpText += `🆘 /urgencia [insumo] - Alerta crítica de necesidad en terreno.\n\n`;
+  helpText += `📍 <b>Enviar Ubicación GPS</b> - Adjunta tu ubicación para ver centros cercanos.\n`;
+  helpText += `📷 <b>Enviar Foto de Flyer</b> - Decodificar un código QR.\n\n`;
 
   if (isAdmin) {
-    helpText += `🔑 <b>Acciones de Voluntario (Autorizado):</b>\n`;
-    helpText += `📋 /inventario [centro] - Administrar stock de insumos de un centro de ayuda.`;
+    helpText += `🔑 <b>Acciones de Admin/Comando:</b>\n`;
+    helpText += `📋 /inventario [centro] - Administrar stock de insumos.\n`;
+    helpText += `📢 /alerta [mensaje] - Enviar broadcast global a voluntarios.\n`;
   }
 
   await client.sendMessage(chatId, helpText);
