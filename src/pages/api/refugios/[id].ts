@@ -188,8 +188,8 @@ export const PATCH: APIRoute = async (context) => {
 
     // Loguear actividad
     await DB.prepare(`
-      INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
-      VALUES (?, 'EDITAR', 'refugios', ?)
+      INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
+      VALUES (?, 'EDITAR', 'refugios', ?, datetime('now', '-4 hours'))
     `).bind(voluntario.id, id).run();
 
     // Enviar notificación push si hay cambio significativo

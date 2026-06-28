@@ -132,8 +132,8 @@ export const POST: APIRoute = async (context) => {
     // Loguear actividad
     if (res?.id) {
       await DB.prepare(`
-        INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
-        VALUES (?, 'CREAR', 'refugios', ?)
+        INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
+        VALUES (?, 'CREAR', 'refugios', ?, datetime('now', '-4 hours'))
       `).bind(voluntario.id, res.id).run();
     }
 

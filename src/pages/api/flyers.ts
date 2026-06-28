@@ -105,8 +105,8 @@ export const POST: APIRoute = async (context) => {
 
     // Insertar en D1
     await DB.prepare(`
-      INSERT INTO flyers (id, title, description, foto_key, phones, socials, tipo)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO flyers (id, title, description, foto_key, phones, socials, tipo, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
     `).bind(
       friendlyId,
       title,

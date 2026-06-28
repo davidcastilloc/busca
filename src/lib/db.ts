@@ -42,9 +42,9 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
       INSERT INTO personas (
         cedula, nombre, apellido, edad, sexo, estado, 
         ubicacion_nombre, latitud, longitud, refugio, 
-        contacto, notas, foto_key, fuente, refugio_id, updated_at
+        contacto, notas, foto_key, fuente, refugio_id, created_at, updated_at, updated_at, created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
       ON CONFLICT(cedula) DO UPDATE SET
         nombre = excluded.nombre,
         apellido = excluded.apellido,
@@ -83,9 +83,9 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
       INSERT INTO personas (
         nombre, apellido, edad, sexo, estado, 
         ubicacion_nombre, latitud, longitud, refugio, 
-        contacto, notas, foto_key, fuente, refugio_id
+        contacto, notas, foto_key, fuente, refugio_id, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
     `).bind(
       data.nombre,
       data.apellido || null,
@@ -113,9 +113,9 @@ export async function insertReporte(db: D1Database, data: ReporteData): Promise<
     INSERT INTO reportes (
       tipo, nombre_buscado, cedula_buscado, descripcion, 
       reportante_nombre, reportante_contacto, ubicacion_nombre, 
-      latitud, longitud, foto_key, refugio_id, created_by
+      latitud, longitud, foto_key, refugio_id, created_by, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
     RETURNING id
   `).bind(
     data.tipo,
@@ -134,8 +134,8 @@ export async function insertReporte(db: D1Database, data: ReporteData): Promise<
 
   if (result?.id && data.created_by) {
     await db.prepare(`
-      INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
-      VALUES (?, 'CREAR', 'reportes', ?)
+      INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
+      VALUES (?, 'CREAR', 'reportes', ?, datetime('now', '-4 hours'))
     `).bind(data.created_by, result.id).run();
   }
 
@@ -222,8 +222,8 @@ export async function procesarCensoBatch(
     const finalContacto = [p.telefono, contacto].filter(Boolean).join(" - ") || null;
 
     return db.prepare(`
-      INSERT INTO personas (nombre, apellido, estado, refugio, contacto, cedula, edad, fuente, refugio_id, updated_at)
-      VALUES (?, ?, 'vivo', ?, ?, ?, ?, 'escaner_ia', ?, datetime('now', '-4 hours'))
+      INSERT INTO personas (nombre, apellido, estado, refugio, contacto, cedula, edad, fuente, refugio_id, updated_at, created_at)
+      VALUES (?, ?, 'vivo', ?, ?, ?, ?, 'escaner_ia', ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
       RETURNING id
     `).bind(
       nombre,
