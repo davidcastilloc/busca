@@ -680,13 +680,13 @@ try {
 
   /* Ajustes del Popup de Leaflet */
   .leaflet-popup-content-wrapper {
-    border-radius: 12px;
-    padding: 2px;
-    border: 1px solid var(--canvas-soft);
+    border-radius: 16px !important;
+    padding: 0 !important;
+    border: 1px solid var(--canvas-soft) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
   }
-  .leaflet-popup-content {
-    margin: 8px 12px;
-  }
+  .leaflet-popup-content { margin: 0 !important; }
+  .leaflet-popup-tip { border-top-color: var(--canvas, #fff) !important; }
 </style>
 
 <script>
@@ -816,7 +816,7 @@ try {
       }
 
       const popupHTML = `
-        <div class="p-1.5 space-y-2 max-w-[240px] font-uber-text">
+        <div class="p-3 space-y-2 max-w-[240px] font-uber-text">
           ${fotos.length > 0 ? `
             <div class="w-full h-24 rounded-lg overflow-hidden border border-canvas-soft bg-surface-pressed mb-1">
               <img src="/api/upload?key=${fotos[0]}" class="w-full h-full object-cover" />
