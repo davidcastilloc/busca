@@ -1,6 +1,5 @@
 import type { TelegramClient } from "../client";
 import { setSession, clearSession, type TelegramSession } from "../session";
-import { hashPIN } from "../../auth-helpers";
 
 export async function startLogin(
   client: TelegramClient,
@@ -8,11 +7,26 @@ export async function startLogin(
   chatId: string | number,
   telegramId: string | number
 ): Promise<void> {
-  // Inicializar flujo
-  await setSession(db, telegramId, chatId, "log_telefono", {});
+  // Inicializar flujo conversacional de login
+  await setSession(db, telegramId, chatId, "log_waiting_contact", {});
+
   await client.sendMessage(
     chatId,
-    "👤 <b>Identificación de Voluntario</b>\n\nPor favor, escribe tu número de <b>Teléfono</b> registrado (ej. 04127654321):\n\n<i>Escribe /cancelar para abortar.</i>"
+    "👤 <b>Identificación de Voluntario</b>\n\nPara verificar tu identidad, por favor presiona el botón de abajo <b>\"📱 Compartir mi número de teléfono\"</b>.\n\n<i>Escribe /cancelar en cualquier momento para abortar.</i>",
+    {
+      reply_markup: {
+        keyboard: [
+          [
+            {
+              text: "📱 Compartir mi número de teléfono",
+              request_contact: true,
+            },
+          ],
+        ],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      },
+    }
   );
 }
 
@@ -22,89 +36,124 @@ export async function handleLoginState(
   chatId: string | number,
   telegramId: string | number,
   session: TelegramSession,
-  text?: string
+  text?: string,
+  contact?: any
 ): Promise<void> {
-  const currentStep = session.step;
-  const data = session.data || {};
-
   if (text === "/cancelar") {
     await clearSession(db, telegramId);
-    await client.sendMessage(chatId, "❌ Login cancelado.");
+    await client.sendMessage(chatId, "❌ Identificación cancelada.", {
+      reply_markup: { remove_keyboard: true },
+    });
     return;
   }
 
-  // 1. Esperando Teléfono
-  if (currentStep === "log_telefono") {
-    if (!text || text.trim().startsWith("/")) {
-      await client.sendMessage(chatId, "⚠️ Envía un número de teléfono válido:");
-      return;
-    }
-
-    const cleanedTelefono = text.replace(/[^0-9+]/g, "").trim();
-    if (cleanedTelefono.length < 7) {
-      await client.sendMessage(chatId, "⚠️ Número de teléfono muy corto. Envía un número válido:");
-      return;
-    }
-
-    data.telefono = cleanedTelefono;
-    await setSession(db, telegramId, chatId, "log_pin", data);
+  // Verificar si recibimos un contacto
+  if (!contact) {
     await client.sendMessage(
       chatId,
-      `Teléfono: <b>${data.telefono}</b>\n\nAhora, escribe tu <b>PIN de 4 dígitos</b>:`
+      "⚠️ Por favor, utiliza el botón de abajo para compartir tu contacto o escribe /cancelar:",
+      {
+        reply_markup: {
+          keyboard: [
+            [
+              {
+                text: "📱 Compartir mi número de teléfono",
+                request_contact: true,
+              },
+            ],
+          ],
+          resize_keyboard: true,
+          one_time_keyboard: true,
+        },
+      }
     );
     return;
   }
 
-  // 2. Esperando PIN
-  if (currentStep === "log_pin") {
-    if (!text) {
-      await client.sendMessage(chatId, "⚠️ Escribe tu PIN de 4 dígitos:");
-      return;
-    }
-
-    const cleanedPin = text.replace(/[^0-9]/g, "").trim();
-    if (cleanedPin.length !== 4) {
-      await client.sendMessage(chatId, "⚠️ El PIN debe ser exactamente de 4 dígitos numéricos:");
-      return;
-    }
-
-    try {
-      const pinHash = await hashPIN(cleanedPin);
-
-      // Buscar voluntario por teléfono
-      const voluntario = await db
-        .prepare("SELECT * FROM voluntarios WHERE telefono = ? AND activo = 1")
-        .bind(data.telefono)
-        .first<{ id: number; nombre: string; pin_hash: string }>();
-
-      if (!voluntario || voluntario.pin_hash !== pinHash) {
-        await client.sendMessage(
-          chatId,
-          "❌ <b>Credenciales incorrectas</b>\n\nEl teléfono o el PIN no coinciden. Por favor, vuelve a iniciar el proceso con /login."
-        );
-        await clearSession(db, telegramId);
-        return;
+  // VALIDACIÓN DE SEGURIDAD 1: Verificar que el contacto pertenezca al remitente real
+  // Si contact.user_id no coincide con el telegramId del remitente, significa que adjuntó el contacto de otra persona manualmente.
+  if (contact.user_id && String(contact.user_id) !== String(telegramId)) {
+    await client.sendMessage(
+      chatId,
+      "🚷 <b>Error de Seguridad</b>\n\nSolo puedes compartir tu propio número de teléfono para identificarte. Por favor, vuelve a intentarlo usando el botón oficial de compartir contacto.",
+      {
+        reply_markup: { remove_keyboard: true },
       }
+    );
+    await clearSession(db, telegramId);
+    return;
+  }
 
-      // Actualizar telegram_id del voluntario
-      // Desvincular si este telegram_id ya estaba vinculado a otra cuenta para evitar conflictos
-      await db.prepare("UPDATE voluntarios SET telegram_id = NULL WHERE telegram_id = ?").bind(String(telegramId)).run();
-      
-      // Vincular al nuevo
-      await db
-        .prepare("UPDATE voluntarios SET telegram_id = ? WHERE id = ?")
-        .bind(String(telegramId), voluntario.id)
-        .run();
+  const rawPhone = contact.phone_number;
+  if (!rawPhone) {
+    await client.sendMessage(chatId, "❌ No se pudo leer el número de teléfono desde el contacto compartido.", {
+      reply_markup: { remove_keyboard: true },
+    });
+    await clearSession(db, telegramId);
+    return;
+  }
 
+  // Limpiar y normalizar el teléfono de Telegram (ej. +584127654321 -> 584127654321)
+  const cleanedPhone = rawPhone.replace(/[^0-9]/g, "").trim();
+
+  // Obtener los últimos 10 dígitos (ej. 4127654321) para comparar independientemente del formato de país o prefijos
+  const last10Digits = cleanedPhone.substring(cleanedPhone.length - 10);
+
+  if (last10Digits.length < 10) {
+    await client.sendMessage(chatId, "❌ El número de teléfono compartido no tiene un formato válido.", {
+      reply_markup: { remove_keyboard: true },
+    });
+    await clearSession(db, telegramId);
+    return;
+  }
+
+  try {
+    // Buscar voluntario en D1 usando coincidencia exacta o sufijo LIKE
+    const queryPhonePattern = `%${last10Digits}`;
+    const voluntario = await db
+      .prepare(
+        "SELECT id, nombre, telefono FROM voluntarios WHERE (telefono = ? OR telefono LIKE ?) AND activo = 1"
+      )
+      .bind(cleanedPhone, queryPhonePattern)
+      .first<{ id: number; nombre: string; telefono: string }>();
+
+    if (!voluntario) {
       await client.sendMessage(
         chatId,
-        `✅ <b>¡Identificación Exitosa!</b>\n\nHola, <b>${voluntario.nombre}</b>. Ahora el sistema te reconoce como voluntario en Telegram. Puedes usar comandos especiales como /inventario, /censo, /refugio y /encontrado.`
+        `❌ <b>Número no registrado</b>\n\nEl número de teléfono <b>+${cleanedPhone}</b> no está registrado como voluntario activo en nuestra plataforma web.\n\nPor favor, regístrate primero en <a href="https://dondeestan.org/ayudar">dondeestan.org/ayudar</a> e intenta de nuevo.`,
+        {
+          reply_markup: { remove_keyboard: true },
+          parse_mode: "HTML",
+        }
       );
-    } catch (err) {
-      console.error("Error en login de voluntario Telegram:", err);
-      await client.sendMessage(chatId, "❌ Error de conexión al validar credenciales.");
-    } finally {
       await clearSession(db, telegramId);
+      return;
     }
+
+    // Vincular telegram_id
+    // Desvincular si este telegram_id ya estaba asociado a otra cuenta (limpieza preventiva)
+    await db.prepare("UPDATE voluntarios SET telegram_id = NULL WHERE telegram_id = ?").bind(String(telegramId)).run();
+
+    // Guardar vinculación
+    await db
+      .prepare("UPDATE voluntarios SET telegram_id = ? WHERE id = ?")
+      .bind(String(telegramId), voluntario.id)
+      .run();
+
+    await client.sendMessage(
+      chatId,
+      `✅ <b>¡Identificación Exitosa!</b>\n\nHola, <b>${voluntario.nombre}</b>. Tu cuenta web vinculada es el teléfono <code>${voluntario.telefono}</code>.\n\nYa estás registrado como voluntario activo en Telegram. Puedes usar todos los comandos del menú de rescate.`,
+      {
+        reply_markup: { remove_keyboard: true },
+        parse_mode: "HTML",
+      }
+    );
+  } catch (err) {
+    console.error("Error al procesar login de contacto:", err);
+    await client.sendMessage(chatId, "❌ Error de conexión al validar tu voluntariado en la base de datos.", {
+      reply_markup: { remove_keyboard: true },
+    });
+  } finally {
+    await clearSession(db, telegramId);
   }
 }

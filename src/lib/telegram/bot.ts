@@ -143,7 +143,7 @@ export async function processTelegramUpdate(
     // Si tiene sesión activa en un flujo conversacional
     if (session) {
       if (session.step.startsWith("log_")) {
-        await handleLoginState(client, db, chatId, telegramId, session, text);
+        await handleLoginState(client, db, chatId, telegramId, session, text, msg.contact);
         return;
       }
       if (session.step.startsWith("rep_")) {
@@ -280,6 +280,15 @@ export async function processTelegramUpdate(
     // Ubicación GPS enviada
     if (msg.location) {
       await handleLocation(client, db, chatId, msg.location.latitude, msg.location.longitude);
+      return;
+    }
+
+    // Contacto enviado sin flujo anterior
+    if (msg.contact) {
+      await client.sendMessage(
+        chatId,
+        "⚠️ Si deseas identificarte como voluntario, por favor inicia el flujo primero con el comando /login."
+      );
       return;
     }
 
