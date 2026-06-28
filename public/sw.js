@@ -4,9 +4,10 @@
 // Background Sync, Push Notifications, Update controlado
 // ═══════════════════════════════════════════════════════════
 
-const CACHE_NAME = "busca-cache-v5";
+const CACHE_NAME = "busca-cache-v6";
 const TILES_CACHE = "busca-tiles-v1";
 const API_CACHE = "busca-api-v1";
+const FOTOS_CACHE = "busca-fotos-v1";
 const STATIC_ASSETS = [
   "/",
   "/registrar",
@@ -44,7 +45,7 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
-      const keepCaches = [CACHE_NAME, TILES_CACHE, API_CACHE];
+      const keepCaches = [CACHE_NAME, TILES_CACHE, API_CACHE, FOTOS_CACHE];
       return Promise.all(
         keys.map((key) => {
           if (!keepCaches.includes(key)) {
@@ -88,6 +89,24 @@ self.addEventListener("fetch", (e) => {
           return response;
         })
         .catch(() => caches.match(e.request).then((cached) => cached || new Response(JSON.stringify({ refugios: [] }), { status: 503, headers: { "Content-Type": "application/json" } })))
+    );
+    return;
+  }
+
+  // Fotos de refugios (GET /api/upload?key=...): Stale-While-Revalidate (para offline)
+  if (url.pathname === "/api/upload" && url.searchParams.has("key")) {
+    e.respondWith(
+      caches.open("busca-fotos-v1").then((cache) => {
+        return cache.match(e.request).then((cached) => {
+          const fetchPromise = fetch(e.request).then((response) => {
+            if (response.ok) {
+              cache.put(e.request, response.clone());
+            }
+            return response;
+          }).catch(() => cached);
+          return cached || fetchPromise;
+        });
+      })
     );
     return;
   }

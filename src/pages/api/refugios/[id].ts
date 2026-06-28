@@ -94,7 +94,8 @@ export const PATCH: APIRoute = async (context) => {
       inventario,
       fecha_registro,
       latitud,
-      longitud
+      longitud,
+      fotos
     } = body;
 
     // Construir campos de actualización
@@ -160,6 +161,10 @@ export const PATCH: APIRoute = async (context) => {
     if (longitud !== undefined) {
       fields.push("longitud = ?");
       params.push(longitud !== null && longitud !== "" ? parseFloat(longitud) : null);
+    }
+    if (fotos !== undefined) {
+      fields.push("fotos = ?");
+      params.push(fotos ? (typeof fotos === 'string' ? fotos : JSON.stringify(fotos)) : null);
     }
 
     if (fields.length === 0) {

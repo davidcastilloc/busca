@@ -122,6 +122,14 @@ const refugiosConSemaforo = refugiosData.map((r: any) => {
         const emoji = r.tipo === "hospital" ? "🏥" : r.tipo === "centro_acopio" ? "📦" : "🏠";
         const semaforoBadge = r.semaforo === "rojo" ? "🔴" : r.semaforo === "amarillo" ? "🟡" : "🟢";
         const pct = Math.min(Math.round((r.ocupacion / r.capacidad) * 100), 100);
+
+        let fotosArray: string[] = [];
+        if (r.fotos) {
+          try {
+            fotosArray = typeof r.fotos === 'string' ? JSON.parse(r.fotos) : r.fotos;
+          } catch {}
+        }
+
         return (
           <div
             class="sheet-card flex items-start gap-3 p-3 rounded-xl bg-canvas-soft/50 border border-canvas-soft hover:bg-surface-pressed/50 cursor-pointer transition-all active:scale-[0.98]"
@@ -137,9 +145,14 @@ const refugiosConSemaforo = refugiosData.map((r: any) => {
             data-capacidad={r.capacidad}
             data-encargado={r.encargado || ""}
             data-necesidades={r.necesidades || ""}
+            data-fotos={typeof r.fotos === 'string' ? r.fotos : JSON.stringify(r.fotos || [])}
           >
-            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-canvas shrink-0 text-lg border border-canvas-soft">
-              {emoji}
+            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-canvas shrink-0 overflow-hidden border border-canvas-soft">
+              {fotosArray.length > 0 ? (
+                <img src={`/api/upload?key=${fotosArray[0]}`} class="w-full h-full object-cover" />
+              ) : (
+                <span class="text-lg">{emoji}</span>
+              )}
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5">
@@ -364,6 +377,7 @@ const refugiosConSemaforo = refugiosData.map((r: any) => {
     id: string; lat: number; lng: number; nombre: string; direccion: string;
     tipo: string; semaforo: string; contacto: string; ocupacion: number;
     capacidad: number; encargado: string; necesidades: string;
+    fotos: string[];
   }
   const refugios: RefugioData[] = [];
   refugiosRaw.forEach(el => {
@@ -371,6 +385,13 @@ const refugiosConSemaforo = refugiosData.map((r: any) => {
     const lat = parseFloat(card.dataset.lat || "");
     const lng = parseFloat(card.dataset.lng || "");
     if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+      let fotos: string[] = [];
+      try {
+        if (card.dataset.fotos) {
+          fotos = JSON.parse(card.dataset.fotos);
+        }
+      } catch {}
+
       refugios.push({
         id: card.dataset.id || "",
         lat, lng,
@@ -383,6 +404,7 @@ const refugiosConSemaforo = refugiosData.map((r: any) => {
         capacidad: parseInt(card.dataset.capacidad || "100"),
         encargado: card.dataset.encargado || "",
         necesidades: card.dataset.necesidades || "",
+        fotos
       });
     }
   });
@@ -486,6 +508,11 @@ const refugiosConSemaforo = refugiosData.map((r: any) => {
 
       const popupHtml = `
         <div style="padding:12px 14px;max-width:260px;font-family:var(--font-uber-text,'Inter',sans-serif);">
+          ${r.fotos && r.fotos.length > 0 ? `
+            <div style="width:100%;height:100px;border-radius:10px;overflow:hidden;border:1px solid var(--canvas-soft);background:var(--surface-pressed);margin-bottom:8px;">
+              <img src="/api/upload?key=${r.fotos[0]}" style="width:100%;height:100%;object-fit:cover;" />
+            </div>
+          ` : ''}
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
             <span style="font-size:18px;">${emoji}</span>
             <h4 style="font-weight:700;font-size:14px;color:var(--ink);text-transform:capitalize;margin:0;">${r.nombre}</h4>

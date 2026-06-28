@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════
-// LOGICA DE BUSCADOR RAPIDO (EXTRAIDA DE BUSCADORRAPIDO.ASTRO)
+// BUSCADOR INTELIGENTE UNIFICADO — dondeestan.org
 // ═══════════════════════════════════════════════════════
 
-// Función para comprimir imagen en el cliente
+// Comprimir imagen en el cliente
 async function comprimirImagen(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -47,22 +47,55 @@ async function comprimirImagen(file: File): Promise<Blob> {
   });
 }
 
-const btnTabExact = document.getElementById("btn-tab-exact");
-const btnTabSemantic = document.getElementById("btn-tab-semantic");
-const panelExact = document.getElementById("panel-exact");
-const panelSemantic = document.getElementById("panel-semantic");
+// Convertir blob a base64
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1]); // Solo la parte base64 sin el prefijo data:
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
+// ═══ DOM ELEMENTS ═══
 const formSearchExact = document.getElementById("form-search-exact") as HTMLFormElement;
-const formSearchSemantic = document.getElementById("form-search-semantic") as HTMLFormElement;
-
 const queryExact = document.getElementById("query-exact") as HTMLInputElement;
-const querySemantic = document.getElementById("query-semantic") as HTMLTextAreaElement;
-const btnSubmitSemantic = document.getElementById("btn-submit-semantic");
-
+const btnBuscar = document.getElementById("btn-buscar") as HTMLButtonElement;
+const btnBuscarIcon = document.getElementById("btn-buscar-icon");
+const btnBuscarSpinner = document.getElementById("btn-buscar-spinner");
 const loader = document.getElementById("results-loader");
 const resultsHeader = document.getElementById("results-header");
 const resultsContainer = document.getElementById("results-container");
 const scrollSentinel = document.getElementById("scroll-sentinel");
+const emptyState = document.getElementById("empty-state");
+const noResultsCta = document.getElementById("no-results-cta");
+
+// Foto search
+const btnFotoSearch = document.getElementById("btn-foto-search");
+const fotoSearchInput = document.getElementById("foto-search-input") as HTMLInputElement;
+const fotoSearchStatus = document.getElementById("foto-search-status");
+
+// Stats
+const statTotal = document.getElementById("stat-total");
+const statActivos = document.getElementById("stat-activos");
+const statLocalizados = document.getElementById("stat-localizados");
+
+// Historial
+const historialContainer = document.getElementById("historial-container");
+const historialChips = document.getElementById("historial-chips");
+
+// Filtros
+const filterStateBar = document.getElementById("filter-state-bar") as HTMLDivElement;
+const btnFilterAll = document.getElementById("btn-filter-all");
+const btnFilterNoContact = document.getElementById("btn-filter-nocontact");
+const btnFilterLocated = document.getElementById("btn-filter-located");
+const btnToggleAdvanced = document.getElementById("btn-toggle-advanced-filters");
+const advancedFilters = document.getElementById("advanced-filters");
+const filterSexo = document.getElementById("filter-sexo") as HTMLSelectElement;
+const filterEdad = document.getElementById("filter-edad") as HTMLSelectElement;
 
 // Modal elements
 const modalDetalle = document.getElementById("modal-detalle");
@@ -71,130 +104,120 @@ const modalBody = document.getElementById("modal-body");
 const modalActions = document.getElementById("modal-actions");
 const modalTipoBadge = document.getElementById("modal-tipo-badge");
 
-// Datos del resultado actualmente abierto en modal
+// Estado global
 let currentData: any = null;
 let currentTipo: string = "";
 let currentSearchResults: any[] = [];
 let currentSubTab: "todos" | "sin_contacto" | "localizados" = "todos";
-
-// Paginación
 let offset = 0;
 const limit = 20;
 let hasMore = false;
 let currentQuery = "";
 let isLoadingMore = false;
+let isSearching = false;
 
-const filterStateBar = document.getElementById("filter-state-bar") as HTMLDivElement;
-const btnFilterAll = document.getElementById("btn-filter-all");
-const btnFilterNoContact = document.getElementById("btn-filter-nocontact");
-const btnFilterLocated = document.getElementById("btn-filter-located");
-
-// Autocompletado con Debouncing para búsqueda exacta
-let debounceTimeout: any = null;
-const searchSuggestions = document.getElementById("search-suggestions");
-
-queryExact?.addEventListener("input", () => {
-  clearTimeout(debounceTimeout);
-  const val = queryExact.value.trim();
-
-  if (val.length < 2) {
-    if (searchSuggestions) {
-      searchSuggestions.innerHTML = "";
-      searchSuggestions.classList.add("hidden");
-    }
-    return;
-  }
-
-  debounceTimeout = setTimeout(async () => {
-    try {
-      const resp = await fetch(`/api/sugerencias?q=${encodeURIComponent(val)}`);
-      if (resp.ok && searchSuggestions) {
-        const { sugerencias } = await resp.json();
-        if (sugerencias.length === 0) {
-          searchSuggestions.innerHTML = "";
-          searchSuggestions.classList.add("hidden");
-          return;
-        }
-
-        searchSuggestions.innerHTML = sugerencias.map((s: any) => {
-          const esPersona = s.tipo === "persona";
-          let subtext = "";
-          if (esPersona) {
-            subtext = `Censo · ${s.estado === "vivo" ? "A salvo" : s.estado === "herido" ? "Herido" : "Sin contacto"}`;
-          } else {
-            subtext = `Reporte · ${s.estado === "desaparecido" ? "Desaparecido" : "Encontrado"}`;
-          }
-          if (s.cedula) {
-            subtext += ` · Doc: ${s.cedula}`;
-          }
-          return `
-            <div class="p-3 hover:bg-surface-pressed cursor-pointer transition-colors" data-id="${s.id}" data-tipo="${s.tipo}">
-              <div class="font-uber-text uber-body-md-strong text-ink">${s.nombre}</div>
-              <div class="text-xs text-mute font-uber-text">${subtext}</div>
-            </div>
-          `;
-        }).join("");
-
-        searchSuggestions.classList.remove("hidden");
-
-        // Event listeners para las sugerencias
-        searchSuggestions.querySelectorAll("[data-id]").forEach(item => {
-          item.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            const id = item.getAttribute("data-id");
-            const tipo = item.getAttribute("data-tipo");
-            searchSuggestions.classList.add("hidden");
-            queryExact.value = "";
-
-            // Cargar detalle completo del caso y abrir modal
-            try {
-              mostrarLoader(true);
-              let fetchUrl = tipo === "persona" ? `/api/personas/${id}` : `/api/reportes/${id}`;
-              const detailResp = await fetch(fetchUrl);
-              if (detailResp.ok) {
-                const detailData = await detailResp.json();
-                abrirModalDetalle(detailData, tipo!);
-              }
-            } catch (err) {
-              console.error("Error al obtener detalle de sugerencia:", err);
-            } finally {
-              mostrarLoader(false);
-            }
-          });
-        });
-      }
-    } catch (err) {
-      console.error("Error al buscar sugerencias:", err);
-    }
-  }, 300);
-});
-
-// Cerrar sugerencias al hacer click fuera
-document.addEventListener("click", (e) => {
-  if (searchSuggestions && !searchSuggestions.contains(e.target as Node) && e.target !== queryExact) {
-    searchSuggestions.classList.add("hidden");
-  }
-});
-
-// Escuchar evento para abrir detalle de caso externamente (ej: desde el mapa)
-window.addEventListener("abrir-detalle-caso", async (e: any) => {
-  const { id, tipo } = e.detail;
+// ═══ STATS ANIMADAS ═══
+async function cargarStats() {
   try {
-    mostrarLoader(true);
-    let fetchUrl = tipo === "persona" ? `/api/personas/${id}` : `/api/reportes/${id}`;
-    const detailResp = await fetch(fetchUrl);
-    if (detailResp.ok) {
-      const detailData = await detailResp.json();
-      abrirModalDetalle(detailData, tipo);
+    const resp = await fetch("/api/stats");
+    if (!resp.ok) return;
+    const data = await resp.json();
+    animarContador(statTotal, data.total_registrados);
+    animarContador(statActivos, data.reportes_activos);
+    animarContador(statLocalizados, data.localizados);
+  } catch { /* silencioso */ }
+}
+
+function animarContador(el: HTMLElement | null, target: number) {
+  if (!el) return;
+  const duration = 800;
+  const start = performance.now();
+  const startVal = 0;
+  
+  function tick(now: number) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    // Easing: ease-out cubic
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(startVal + (target - startVal) * eased);
+    el!.textContent = current.toLocaleString("es-VE");
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+cargarStats();
+
+// ═══ HISTORIAL (localStorage) ═══
+const HISTORIAL_KEY = "dondeestan_historial";
+const MAX_HISTORIAL = 5;
+
+function getHistorial(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORIAL_KEY) || "[]");
+  } catch { return []; }
+}
+
+function guardarEnHistorial(q: string) {
+  const historial = getHistorial().filter(h => h !== q);
+  historial.unshift(q);
+  if (historial.length > MAX_HISTORIAL) historial.pop();
+  localStorage.setItem(HISTORIAL_KEY, JSON.stringify(historial));
+}
+
+function renderHistorial() {
+  const historial = getHistorial();
+  if (historial.length === 0 || !historialContainer || !historialChips) return;
+  
+  historialContainer.classList.remove("hidden");
+  historialChips.innerHTML = historial.map(q => 
+    `<button type="button" class="historial-chip px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-query="${q.replace(/"/g, '&quot;')}">${q}</button>`
+  ).join("");
+  
+  historialChips.querySelectorAll(".historial-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const q = (chip as HTMLElement).dataset.query || "";
+      if (queryExact) queryExact.value = q;
+      realizarBusqueda(q);
+    });
+  });
+}
+
+renderHistorial();
+
+// ═══ BÚSQUEDA POR FOTO ═══
+btnFotoSearch?.addEventListener("click", () => fotoSearchInput?.click());
+
+fotoSearchInput?.addEventListener("change", async (e) => {
+  const target = e.target as HTMLInputElement;
+  if (!target.files || target.files.length === 0) return;
+  
+  try {
+    if (fotoSearchStatus) {
+      fotoSearchStatus.textContent = "Procesando imagen...";
+      fotoSearchStatus.classList.remove("hidden");
     }
+    
+    const compressed = await comprimirImagen(target.files[0]);
+    const base64 = await blobToBase64(compressed);
+    
+    if (fotoSearchStatus) fotoSearchStatus.textContent = "Buscando con IA...";
+    
+    await realizarBusqueda("", base64);
+    
+    if (fotoSearchStatus) fotoSearchStatus.classList.add("hidden");
   } catch (err) {
-    console.error("Error al abrir detalle desde evento externo:", err);
+    console.error("Error en búsqueda por foto:", err);
+    if (fotoSearchStatus) {
+      fotoSearchStatus.textContent = "❌ Error al procesar foto";
+      fotoSearchStatus.classList.remove("hidden");
+    }
   } finally {
-    mostrarLoader(false);
+    if (fotoSearchInput) fotoSearchInput.value = "";
   }
 });
 
-// Inicializar eventos de sub-tabs
+// ═══ FILTROS ═══
 btnFilterAll?.addEventListener("click", () => {
   currentSubTab = "todos";
   actualizarFiltroUI();
@@ -211,117 +234,122 @@ btnFilterLocated?.addEventListener("click", () => {
   aplicarFiltrosYRenderizar();
 });
 
+// Toggle filtros avanzados
+btnToggleAdvanced?.addEventListener("click", () => {
+  if (advancedFilters) {
+    const hidden = advancedFilters.classList.toggle("hidden");
+    if (btnToggleAdvanced) btnToggleAdvanced.textContent = hidden ? "↓ Más filtros" : "↑ Menos filtros";
+  }
+});
+
+// Filtros avanzados reactivos
+filterSexo?.addEventListener("change", () => aplicarFiltrosYRenderizar());
+filterEdad?.addEventListener("change", () => aplicarFiltrosYRenderizar());
+
 function actualizarFiltroUI() {
   if (!btnFilterAll || !btnFilterNoContact || !btnFilterLocated) return;
-  
   const activeClass = "px-4 py-1.5 rounded-full bg-primary text-white font-uber-text text-xs font-semibold transition-colors cursor-pointer";
   const inactiveClass = "px-4 py-1.5 rounded-full bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text text-xs font-semibold transition-colors cursor-pointer";
-  
   btnFilterAll.className = currentSubTab === "todos" ? activeClass : inactiveClass;
   btnFilterNoContact.className = currentSubTab === "sin_contacto" ? activeClass : inactiveClass;
   btnFilterLocated.className = currentSubTab === "localizados" ? activeClass : inactiveClass;
 }
 
-// ═══ TABS ═══
-if (btnTabExact && btnTabSemantic && panelExact && panelSemantic) {
-  btnTabExact.addEventListener("click", () => {
-    btnTabExact.className = "flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center";
-    btnTabSemantic.className = "flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center";
-    panelExact.classList.remove("hidden");
-    panelSemantic.classList.add("hidden");
-  });
-  btnTabSemantic.addEventListener("click", () => {
-    btnTabExact.className = "flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center";
-    btnTabSemantic.className = "flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center";
-    panelExact.classList.add("hidden");
-    panelSemantic.classList.remove("hidden");
-  });
-}
-
-// ═══ CHIPS DE ESCENARIO ═══
-document.querySelectorAll(".chip-scenario").forEach(chip => {
-  chip.addEventListener("click", () => {
-    const tab = (chip as HTMLElement).dataset.tab;
-    const placeholder = (chip as HTMLElement).dataset.placeholder;
-    
-    if (tab === "semantic") {
-      // Cambiar a pestaña IA
-      btnTabSemantic?.click();
-      querySemantic?.focus();
-    } else {
-      // Actualizar placeholder del input exacto
-      if (placeholder && queryExact) {
-        queryExact.placeholder = placeholder;
-        queryExact.value = "";
-        queryExact.focus();
-      }
+// ═══ EVENTO EXTERNO (abrir detalle desde mapa) ═══
+window.addEventListener("abrir-detalle-caso", async (e: any) => {
+  const { id, tipo } = e.detail;
+  try {
+    mostrarLoader(true);
+    const fetchUrl = tipo === "persona" ? `/api/personas/${id}` : `/api/reportes/${id}`;
+    const detailResp = await fetch(fetchUrl);
+    if (detailResp.ok) {
+      const detailData = await detailResp.json();
+      abrirModalDetalle(detailData, tipo);
     }
-  });
+  } catch (err) {
+    console.error("Error al abrir detalle desde evento externo:", err);
+  } finally {
+    mostrarLoader(false);
+  }
 });
 
-// Chips de plantilla IA (pre-llenan el textarea)
-document.querySelectorAll(".chip-fill").forEach(chip => {
-  chip.addEventListener("click", () => {
-    const fill = (chip as HTMLElement).dataset.fill || "";
-    if (querySemantic) {
-      querySemantic.value = fill;
-      querySemantic.focus();
-      // Posicionar cursor en el primer "_" para que el usuario lo reemplace
-      const pos = fill.indexOf("_");
-      if (pos !== -1) {
-        querySemantic.setSelectionRange(pos, pos + 1);
-      }
-    }
-  });
-});
-
-async function realizarBusquedaExacta(q: string, append = false) {
-  if (!q) return;
+// ═══ BÚSQUEDA UNIFICADA ═══
+async function realizarBusqueda(q: string, fotoBase64?: string, append = false) {
+  if (!q && !fotoBase64) return;
+  if (isSearching && !append) return;
+  
+  isSearching = true;
+  
   if (!append) {
     offset = 0;
     currentSearchResults = [];
+    if (emptyState) emptyState.classList.add("hidden");
+    if (noResultsCta) noResultsCta.classList.add("hidden");
     mostrarLoader(true);
+    mostrarBuscarLoading(true);
     if (scrollSentinel) scrollSentinel.classList.add("hidden");
   } else {
     isLoadingMore = true;
   }
+  
   currentQuery = q;
+  
   try {
-    const resp = await fetch(`/api/buscar?q=${encodeURIComponent(q)}&tipo=todos&limit=${limit}&offset=${offset}`);
-    if (resp.ok) {
-      const data = await resp.json();
-      const resultados = data.results || [];
-      hasMore = data.hasMore || false;
-      
-      if (append) {
-        currentSearchResults.push(...resultados);
-      } else {
-        currentSearchResults = resultados;
-      }
-
+    const body: any = { q, limit, offset };
+    if (fotoBase64) body.foto_base64 = fotoBase64;
+    
+    const resp = await fetch("/api/buscar-unificado", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    
+    if (!resp.ok) throw new Error("Error en búsqueda");
+    
+    const data = await resp.json();
+    const nuevosResultados = data.results || [];
+    hasMore = data.hasMore || false;
+    
+    if (append) {
+      currentSearchResults.push(...nuevosResultados);
+    } else {
+      currentSearchResults = nuevosResultados;
+      // Guardar en historial solo búsquedas de texto
+      if (q) guardarEnHistorial(q);
+    }
+    
+    if (currentSearchResults.length === 0 && !append) {
+      // Sin resultados
+      if (noResultsCta) noResultsCta.classList.remove("hidden");
+      if (filterStateBar) filterStateBar.classList.add("hidden");
+      if (resultsHeader) resultsHeader.classList.add("hidden");
+    } else {
+      if (noResultsCta) noResultsCta.classList.add("hidden");
       if (filterStateBar) filterStateBar.classList.remove("hidden");
       if (!append) {
         currentSubTab = "todos";
         actualizarFiltroUI();
       }
       aplicarFiltrosYRenderizar();
-
-      if (hasMore && scrollSentinel) {
-        scrollSentinel.classList.remove("hidden");
-        scrollSentinel.classList.add("flex");
-      } else if (scrollSentinel) {
-        scrollSentinel.classList.add("hidden");
-        scrollSentinel.classList.remove("flex");
-      }
-    } else { throw new Error("Error en respuesta"); }
+    }
+    
+    if (hasMore && scrollSentinel) {
+      scrollSentinel.classList.remove("hidden");
+      scrollSentinel.classList.add("flex");
+    } else if (scrollSentinel) {
+      scrollSentinel.classList.add("hidden");
+      scrollSentinel.classList.remove("flex");
+    }
   } catch (err) {
     console.error(err);
     if (!append) {
       mostrarMensajeHeader("❌ Error de conexión al buscar.", true);
     }
-  } finally { 
-    mostrarLoader(false); 
+  } finally {
+    mostrarLoader(false);
+    mostrarBuscarLoading(false);
     isLoadingMore = false;
+    isSearching = false;
   }
 }
 
@@ -330,60 +358,34 @@ if (scrollSentinel) {
   const observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
       offset += limit;
-      realizarBusquedaExacta(currentQuery, true);
+      realizarBusqueda(currentQuery, undefined, true);
     }
   }, { rootMargin: "150px" });
   observer.observe(scrollSentinel);
 }
 
-// ═══ BÚSQUEDA EXACTA ═══
+// Submit del formulario
 if (formSearchExact) {
   formSearchExact.addEventListener("submit", (e) => {
     e.preventDefault();
-    const q = queryExact.value.trim();
-    realizarBusquedaExacta(q);
-  });
-}
-
-// ═══ BÚSQUEDA SEMÁNTICA ═══
-if (formSearchSemantic && btnSubmitSemantic) {
-  formSearchSemantic.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const desc = querySemantic.value.trim();
-    if (desc.length < 5) return;
-    if (!navigator.onLine) {
-      mostrarMensajeHeader("❌ Búsqueda semántica requiere conexión.", true);
+    const q = queryExact?.value.trim();
+    if (!q) {
+      queryExact?.focus();
       return;
     }
-    mostrarLoader(true);
-    btnSubmitSemantic.classList.add("opacity-50");
-    try {
-      const resp = await fetch("/api/buscar-similar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ descripcion: desc })
-      });
-      if (resp.ok) {
-        const resultados = await resp.json();
-        currentSearchResults = resultados.map((r: any) => ({ ...r, _source: "reporte" }));
-        if (filterStateBar) filterStateBar.classList.remove("hidden");
-        currentSubTab = "todos";
-        actualizarFiltroUI();
-        aplicarFiltrosYRenderizar();
-      } else { throw new Error("Error en búsqueda"); }
-    } catch (err) {
-      console.error(err);
-      mostrarMensajeHeader("❌ Error al procesar búsqueda.", true);
-    } finally {
-      mostrarLoader(false);
-      btnSubmitSemantic.classList.remove("opacity-50");
-    }
+    realizarBusqueda(q);
   });
 }
 
 // ═══ UTILIDADES ═══
 function mostrarLoader(show: boolean) {
   if (loader) { show ? loader.classList.remove("hidden") : loader.classList.add("hidden"); }
+}
+
+function mostrarBuscarLoading(show: boolean) {
+  if (btnBuscarIcon) show ? btnBuscarIcon.classList.add("hidden") : btnBuscarIcon.classList.remove("hidden");
+  if (btnBuscarSpinner) show ? btnBuscarSpinner.classList.remove("hidden") : btnBuscarSpinner.classList.add("hidden");
+  if (btnBuscar) btnBuscar.disabled = show;
 }
 
 function mostrarMensajeHeader(msg: string, isError = false) {
@@ -400,29 +402,41 @@ function mostrarMensajeHeader(msg: string, isError = false) {
   }
 }
 
-// ═══ FILTRAR Y RENDERIZAR UNIFICADO ═══
+// ═══ FILTRAR Y RENDERIZAR ═══
+
 function aplicarFiltrosYRenderizar() {
   if (!resultsContainer) return;
   resultsContainer.innerHTML = "";
   
   const filtrados = currentSearchResults.filter(item => {
-    if (currentSubTab === "todos") return true;
-    
-    const esPersona = item._source === "persona";
-    
-    if (currentSubTab === "sin_contacto") {
-      if (esPersona) {
-        return item.estado === "desconocido";
-      } else {
-        return item.tipo === "desaparecido" && item.estado_reporte === "abierto";
+    // Filtro sub-tab (estado)
+    if (currentSubTab !== "todos") {
+      const esPersona = item._source === "persona";
+      if (currentSubTab === "sin_contacto") {
+        if (esPersona) { if (item.estado !== "desconocido") return false; }
+        else { if (!(item.tipo === "desaparecido" && item.estado_reporte === "abierto")) return false; }
+      }
+      if (currentSubTab === "localizados") {
+        if (esPersona) { if (item.estado !== "vivo" && item.estado !== "herido") return false; }
+        else { if (item.estado_reporte !== "resuelto") return false; }
       }
     }
     
-    if (currentSubTab === "localizados") {
-      if (esPersona) {
-        return item.estado === "vivo" || item.estado === "herido";
-      } else {
-        return item.estado_reporte === "resuelto";
+    // Filtro sexo
+    const sexoVal = filterSexo?.value;
+    if (sexoVal && item.sexo && item.sexo !== sexoVal) return false;
+    
+    // Filtro edad (rangos)
+    const edadVal = filterEdad?.value;
+    if (edadVal && item.edad) {
+      const edad = parseInt(item.edad);
+      if (!isNaN(edad)) {
+        if (edadVal === "0-12" && (edad < 0 || edad > 12)) return false;
+        if (edadVal === "13-17" && (edad < 13 || edad > 17)) return false;
+        if (edadVal === "18-30" && (edad < 18 || edad > 30)) return false;
+        if (edadVal === "31-50" && (edad < 31 || edad > 50)) return false;
+        if (edadVal === "51-70" && (edad < 51 || edad > 70)) return false;
+        if (edadVal === "71+" && edad < 71) return false;
       }
     }
     
@@ -468,7 +482,8 @@ function crearCardPersona(p: any): HTMLDivElement {
     : `<div class="w-full aspect-[4/3] sm:aspect-auto sm:w-36 sm:self-stretch shrink-0 bg-canvas-soft flex items-center justify-center text-4xl text-mute">👤</div>`;
 
   const btnLocalizado = p.estado === 'desconocido'
-    ? `<button class="btn-localizar-persona btn btn-sm bg-canvas border border-canvas-soft text-ink hover:bg-canvas-soft font-uber-text uber-body-sm-strong mt-2 self-start rounded-full transition-transform active:scale-[0.98] cursor-pointer">
+    ? `<button class="btn-localizar-persona btn btn-sm bg-canvas-soft hover:bg-surface-pressed border border-ink/15 text-ink font-uber-text text-xs font-semibold mt-2 self-start rounded-full transition-transform active:scale-[0.98] cursor-pointer flex items-center gap-1.5 px-3 py-1">
+         <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
          Marcar a salvo
        </button>`
     : "";
@@ -626,7 +641,7 @@ function abrirModalDetalle(data: any, tipo: string) {
       <div class="grid grid-cols-1 gap-0 divide-y divide-canvas-soft bg-canvas-soft rounded-xl overflow-hidden">
         ${datosHtml}
       </div>
-      ${notesHtml}
+      ${notasHtml}
       ${descripcionHtml}
       ${mapaHtml}
     </div>
@@ -797,6 +812,24 @@ async function obtenerGpsReporte(gpsStatus: HTMLElement | null, latInput: HTMLIn
   );
 }
 
+// Registar listener de refugio rápido una sola vez
+const globalRefugioSelect = document.getElementById("reporte-rapido-refugio") as HTMLSelectElement;
+const globalRefugioOtroWrap = document.getElementById("reporte-rapido-refugio-otro-wrap");
+const globalRefugioOtroInput = document.getElementById("reporte-rapido-refugio-otro") as HTMLInputElement;
+
+if (globalRefugioSelect) {
+  globalRefugioSelect.addEventListener("change", () => {
+    if (globalRefugioSelect.value === "otro") {
+      globalRefugioOtroWrap?.classList.remove("hidden");
+      globalRefugioOtroInput?.setAttribute("required", "true");
+      globalRefugioOtroInput?.focus();
+    } else {
+      globalRefugioOtroWrap?.classList.add("hidden");
+      globalRefugioOtroInput?.removeAttribute("required");
+    }
+  });
+}
+
 function abrirReporteRapido() {
   const modal = document.getElementById("modal-reporte-rapido");
   if (!modal) return;
@@ -827,6 +860,24 @@ function abrirReporteRapido() {
   if (chkConfirm) chkConfirm.checked = false;
   if (fotoFile) fotoFile.value = "";
   if (fotoKey) fotoKey.value = "";
+  
+  if (globalRefugioSelect) {
+    globalRefugioSelect.innerHTML = `<option value="">-- Seleccionar Refugio --</option><option value="otro">Otro albergue o dirección...</option>`;
+  }
+  if (globalRefugioOtroWrap) globalRefugioOtroWrap.classList.add("hidden");
+  if (globalRefugioOtroInput) globalRefugioOtroInput.value = "";
+
+  // Cargar refugios registrados
+  fetch("/api/refugios")
+    .then(r => r.json())
+    .then(data => {
+      if (data.refugios && globalRefugioSelect) {
+        const options = data.refugios.map((ref: any) => `<option value="${ref.nombre.replace(/"/g, '&quot;')}">${ref.nombre}</option>`).join("");
+        globalRefugioSelect.innerHTML = `<option value="">-- Seleccionar Refugio --</option>${options}<option value="otro">Otro albergue o dirección...</option>`;
+      }
+    })
+    .catch(err => console.error("Error al cargar refugios:", err));
+
   if (fotoStatus) {
     fotoStatus.textContent = "";
     fotoStatus.classList.add("hidden");
@@ -915,6 +966,10 @@ function abrirReporteRapido() {
     const confirmado = chkConfirm.checked;
     const keyFoto = fotoKey.value;
 
+    const refugioSelectVal = globalRefugioSelect?.value || "";
+    const refugioOtroVal = globalRefugioOtroInput?.value.trim() || "";
+    const refugioFinal = refugioSelectVal === "otro" ? refugioOtroVal : refugioSelectVal;
+
     // Validar descripcion
     if (!descripcion || descripcion.length < 10) {
       if (errorDiv) {
@@ -932,6 +987,16 @@ function abrirReporteRapido() {
         errorDiv.classList.remove("hidden");
       }
       contactoInput.focus();
+      return;
+    }
+
+    // Validar refugio
+    if (!refugioFinal) {
+      if (errorDiv) {
+        errorDiv.textContent = "La ubicación o refugio es obligatorio.";
+        errorDiv.classList.remove("hidden");
+      }
+      globalRefugioSelect?.focus();
       return;
     }
 
@@ -969,7 +1034,7 @@ function abrirReporteRapido() {
             accion: "reportar_a_salvo",
             estado: "vivo",
             contacto: reportante_contacto,
-            refugio: null,
+            refugio: refugioFinal,
             notas: descripcion,
             foto_key: keyFoto,
             latitud: lat,
@@ -984,7 +1049,7 @@ function abrirReporteRapido() {
             accion: "reportar_a_salvo",
             estado_reporte: "resuelto",
             contacto: reportante_contacto,
-            refugio: null,
+            refugio: refugioFinal,
             notas: descripcion,
             foto_key: keyFoto,
             latitud: lat,
@@ -1001,7 +1066,7 @@ function abrirReporteRapido() {
             tipo: "encontrado",
             nombre_buscado: nombreBuscado,
             descripcion,
-            ubicacion_nombre: null,
+            ubicacion_nombre: refugioFinal,
             latitud: lat,
             longitud: lon,
             reportante_nombre,
@@ -1306,10 +1371,27 @@ function getTipoConfig(tipo: string, verificacion = "ninguna") {
 }
 
 function formatFechaLocal(fechaStr: string) {
+  if (!fechaStr) return "Reciente";
   try {
-    const d = new Date(fechaStr + " UTC");
-    return d.toLocaleString("es-ES", { timeZone: "America/Caracas" });
-  } catch { return fechaStr; }
+    let d = new Date(fechaStr.includes("Z") || fechaStr.includes("+") ? fechaStr : fechaStr + " UTC");
+    if (isNaN(d.getTime())) {
+      d = new Date(fechaStr);
+    }
+    if (isNaN(d.getTime())) {
+      return "Reciente";
+    }
+    return d.toLocaleString("es-VE", { 
+      timeZone: "America/Caracas",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    });
+  } catch { 
+    return "Reciente"; 
+  }
 }
 
 // Cargar búsqueda o anuncio desde URL si existe
@@ -1320,7 +1402,7 @@ const reporteParam = urlParams.get("reporte");
 
 if (qParam && queryExact) {
   queryExact.value = qParam;
-  realizarBusquedaExacta(qParam);
+  realizarBusquedaUnificada(qParam);
 } else if (personaParam) {
   fetch(`/api/personas/${personaParam}`)
     .then(r => r.json())

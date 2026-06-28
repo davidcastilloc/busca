@@ -7,56 +7,6 @@ import { obtenerVoluntarioSesion } from "../lib/auth-helpers";
 
 export const prerender = false;
 
-let totalReportes = 0;
-let totalSinContacto = 0;
-let totalLocalizados = 0;
-
-try {
-  const { DB, CACHE_KV } = env;
-
-  if (CACHE_KV) {
-    const cachedStats = await CACHE_KV.get("index:stats");
-    if (cachedStats) {
-      const stats = JSON.parse(cachedStats);
-      totalReportes = stats.totalReportes;
-      totalSinContacto = stats.totalSinContacto;
-      totalLocalizados = stats.totalLocalizados;
-    } else if (DB) {
-      const personasCount = (await DB.prepare("SELECT COUNT(*) as count FROM personas").first<{ count: number }>())?.count || 0;
-      const reportesCount = (await DB.prepare("SELECT COUNT(*) as count FROM reportes").first<{ count: number }>())?.count || 0;
-      totalReportes = personasCount + reportesCount;
-
-      const personasDesconocido = (await DB.prepare("SELECT COUNT(*) as count FROM personas WHERE estado = 'desconocido'").first<{ count: number }>())?.count || 0;
-      const reportesAbierto = (await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE tipo = 'desaparecido' AND estado_reporte = 'abierto'").first<{ count: number }>())?.count || 0;
-      totalSinContacto = personasDesconocido + reportesAbierto;
-
-      const personasLocalizados = (await DB.prepare("SELECT COUNT(*) as count FROM personas WHERE estado IN ('vivo','herido')").first<{ count: number }>())?.count || 0;
-      const reportesResuelto = (await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE estado_reporte = 'resuelto'").first<{ count: number }>())?.count || 0;
-      totalLocalizados = personasLocalizados + reportesResuelto;
-
-      await CACHE_KV.put("index:stats", JSON.stringify({
-        totalReportes,
-        totalSinContacto,
-        totalLocalizados
-      }), { expirationTtl: 60 });
-    }
-  } else if (DB) {
-    const personasCount = (await DB.prepare("SELECT COUNT(*) as count FROM personas").first<{ count: number }>())?.count || 0;
-    const reportesCount = (await DB.prepare("SELECT COUNT(*) as count FROM reportes").first<{ count: number }>())?.count || 0;
-    totalReportes = personasCount + reportesCount;
-
-    const personasDesconocido = (await DB.prepare("SELECT COUNT(*) as count FROM personas WHERE estado = 'desconocido'").first<{ count: number }>())?.count || 0;
-    const reportesAbierto = (await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE tipo = 'desaparecido' AND estado_reporte = 'abierto'").first<{ count: number }>())?.count || 0;
-    totalSinContacto = personasDesconocido + reportesAbierto;
-
-    const personasLocalizados = (await DB.prepare("SELECT COUNT(*) as count FROM personas WHERE estado IN ('vivo','herido')").first<{ count: number }>())?.count || 0;
-    const reportesResuelto = (await DB.prepare("SELECT COUNT(*) as count FROM reportes WHERE estado_reporte = 'resuelto'").first<{ count: number }>())?.count || 0;
-    totalLocalizados = personasLocalizados + reportesResuelto;
-  }
-} catch (error) {
-  console.error("Error al obtener estadísticas del censo/reportes:", error);
-}
-
 let esVoluntario = false;
 try {
   const { DB } = env;
@@ -82,27 +32,6 @@ try {
       <p class="text-sm sm:text-base text-body font-uber-text max-w-xl mx-auto mb-6 px-2">
         Buscador ciudadano para reunir familias tras la emergencia. Consulta registros aportados por voluntarios y rescatistas.
       </p>
-      
-      <!-- Stats (tarjetas minimalistas de Uber) -->
-      <div class="grid grid-cols-3 gap-2 sm:gap-4 max-w-xl mx-auto mb-6">
-        <div class="bg-canvas border border-canvas-soft p-3 sm:p-4 rounded-xl shadow-sm text-center">
-          <div class="text-[10px] sm:text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Reportes totales</div>
-          <div class="font-uber-display text-xl sm:text-2xl text-ink mt-0.5">{totalReportes}</div>
-          <div class="text-[9px] sm:text-[10px] text-mute font-uber-text mt-0.5 hidden sm:block">Total registrados</div>
-        </div>
-        
-        <div class="bg-canvas border border-canvas-soft p-3 sm:p-4 rounded-xl shadow-sm text-center">
-          <div class="text-[10px] sm:text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Sin contacto</div>
-          <div class="font-uber-display text-xl sm:text-2xl text-ink mt-0.5">{totalSinContacto}</div>
-          <div class="text-[9px] sm:text-[10px] text-mute font-uber-text mt-0.5 hidden sm:block">Búsquedas activas</div>
-        </div>
-        
-        <div class="bg-canvas border border-canvas-soft p-3 sm:p-4 rounded-xl shadow-sm text-center">
-          <div class="text-[10px] sm:text-[11px] text-body font-uber-text font-medium uppercase tracking-wider">Localizados</div>
-          <div class="font-uber-display text-xl sm:text-2xl text-ink mt-0.5">{totalLocalizados}</div>
-          <div class="text-[9px] sm:text-[10px] text-mute font-uber-text mt-0.5 hidden sm:block">A salvo / Encontrados</div>
-        </div>
-      </div>
 
       <div class="flex flex-col sm:flex-row gap-3 justify-center mb-3 px-4 max-w-md mx-auto">
         <button id="btn-estoy-a-salvo" class="flex-1 btn bg-canvas text-ink hover:bg-canvas-soft border border-canvas-soft font-uber-text uber-body-md-strong px-6 py-3.5 rounded-full flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98] cursor-pointer">
@@ -814,7 +743,11 @@ try {
       salvoNoResults?.classList.add("hidden");
 
       try {
-        const resp = await fetch(`/api/buscar?q=${encodeURIComponent(query)}&tipo=todos`);
+        const resp = await fetch("/api/buscar-unificado", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ q: query, limit: 20, offset: 0 })
+        });
         if (resp.ok) {
           const data = await resp.json();
           const resultados = data.results || data;

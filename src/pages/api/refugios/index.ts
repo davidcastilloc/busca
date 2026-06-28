@@ -76,7 +76,8 @@ export const POST: APIRoute = async (context) => {
       personal_profesional,
       voluntarios,
       inventario,
-      fecha_registro
+      fecha_registro,
+      fotos
     } = body;
 
     // Validar requeridos
@@ -103,9 +104,9 @@ export const POST: APIRoute = async (context) => {
         nombre, direccion, latitud, longitud, capacidad_maxima, ocupacion_actual, 
         necesidades, contacto, tipo, encargado, ninos, bebes_lactantes, 
         adultos_mayores, personal_profesional, voluntarios, inventario, 
-        fecha_registro, updated_at
+        fecha_registro, updated_at, fotos
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?)
       RETURNING id
     `).bind(
       nombre.trim(),
@@ -123,7 +124,8 @@ export const POST: APIRoute = async (context) => {
       adultos_mayores ? parseInt(adultos_mayores) : 0,
       personal_profesional ? parseInt(personal_profesional) : 0,
       voluntarios ? parseInt(voluntarios) : 0,
-      inventario ? (typeof inventario === 'string' ? inventario : JSON.stringify(inventario)) : null
+      inventario ? (typeof inventario === 'string' ? inventario : JSON.stringify(inventario)) : null,
+      fotos ? (typeof fotos === 'string' ? fotos : JSON.stringify(fotos)) : null
     ).first<{ id: number }>();
 
     return new Response(JSON.stringify({ success: true, id: res?.id }), {
