@@ -35,10 +35,10 @@ export const GET: APIRoute = async () => {
 
     // Consultar refugios con coordenadas válidas
     const refugios = await DB.prepare(`
-      SELECT id, nombre, latitud, longitud, capacidad_maxima, ocupacion_actual, necesidades
+      SELECT id, nombre, latitud, longitud, capacidad_maxima, ocupacion_actual, necesidades, inventario
       FROM refugios
       WHERE latitud IS NOT NULL AND longitud IS NOT NULL
-    `).all<{ id: number; nombre: string; latitud: number; longitud: number; capacidad_maxima: number; ocupacion_actual: number; necesidades: string }>();
+    `).all<{ id: number; nombre: string; latitud: number; longitud: number; capacidad_maxima: number; ocupacion_actual: number; necesidades: string; inventario?: string }>();
 
     // Ponderación por estado/tipo (más peso = más intensidad en heatmap)
     const pesos: Record<string, number> = {
@@ -102,7 +102,20 @@ export const GET: APIRoute = async () => {
 
     // Agregar refugios
     for (const rf of refugios.results || []) {
-      const peso = pesos["refugio"] || 0.8;
+      let semaforo = "verde";
+      if (rf.inventario) {
+        try {
+          const inv = typeof rf.inventario === 'string' ? JSON.parse(rf.inventario) : rf.inventario;
+          const valores = Object.values(inv);
+          if (valores.includes("Crítico")) semaforo = "rojo";
+          else if (valores.includes("Alerta")) semaforo = "amarillo";
+        } catch {}
+      }
+      
+      let peso = pesos["refugio"] || 0.8;
+      if (semaforo === "rojo") peso = 3.5;
+      else if (semaforo === "amarillo") peso = 2.0;
+
       puntos.push({
         lat: rf.latitud,
         lon: rf.longitud,
@@ -113,7 +126,7 @@ export const GET: APIRoute = async () => {
         capacidad_maxima: rf.capacidad_maxima,
         ocupacion_actual: rf.ocupacion_actual,
         necesidades: rf.necesidades,
-        estado: "activo"
+        estado: semaforo === "rojo" ? "alerta_critica" : semaforo === "amarillo" ? "alerta_moderada" : "activo"
       });
     }
 
