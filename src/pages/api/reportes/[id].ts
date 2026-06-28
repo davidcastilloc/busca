@@ -20,10 +20,14 @@ export const PATCH: APIRoute = async (context) => {
     const body = await context.request.json();
     const accion = body.accion;
 
+    let voluntario: any = null;
+    const sessionToken = context.cookies.get("session_token")?.value;
+    if (sessionToken) {
+      voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
+    }
+
     // Reportar a salvo es la única acción pública. Todo lo demás requiere sesión de voluntario.
     if (accion !== "reportar_a_salvo") {
-      const sessionToken = context.cookies.get("session_token")?.value;
-      const voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
       if (!voluntario) {
         return new Response(JSON.stringify({ error: "No autorizado. Inicie sesión como voluntario." }), {
           status: 401,
@@ -98,7 +102,8 @@ export const PATCH: APIRoute = async (context) => {
             latitud = ?, 
             longitud = ?, 
             descripcion = ?,
-            updated_at = datetime('now') 
+            updated_at = datetime('now'),
+            updated_by = ?
         WHERE id = ?
       `).bind(
         nuevoEstado,
@@ -111,8 +116,16 @@ export const PATCH: APIRoute = async (context) => {
         nuevaLat,
         nuevaLon,
         nuevaDesc,
+        voluntario ? voluntario.id : null,
         Number(id)
       ).run();
+
+      if (voluntario) {
+        await DB.prepare(`
+          INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
+          VALUES (?, 'EDITAR', 'reportes', ?)
+        `).bind(voluntario.id, Number(id)).run();
+      }
 
       // Notificar administradores por Telegram
       try {
@@ -146,9 +159,17 @@ export const PATCH: APIRoute = async (context) => {
       await DB.prepare(`
         UPDATE reportes 
         SET verificacion = ?,
-            updated_at = datetime('now') 
+            updated_at = datetime('now'),
+            updated_by = ?
         WHERE id = ?
-      `).bind(nuevaVerificacion, Number(id)).run();
+      `).bind(nuevaVerificacion, voluntario ? voluntario.id : null, Number(id)).run();
+
+      if (voluntario) {
+        await DB.prepare(`
+          INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
+          VALUES (?, 'EDITAR', 'reportes', ?)
+        `).bind(voluntario.id, Number(id)).run();
+      }
 
       // Resolver en cascada reportes de tipo desaparecido asociados
       if (existente.cedula_buscado) {
@@ -186,9 +207,17 @@ export const PATCH: APIRoute = async (context) => {
             foto_evidencia_key = NULL,
             contacto_evidencia = NULL,
             notas_evidencia = NULL,
-            updated_at = datetime('now') 
+            updated_at = datetime('now'),
+            updated_by = ?
         WHERE id = ?
-      `).bind(nuevoEstado, nuevaVerificacion, Number(id)).run();
+      `).bind(nuevoEstado, nuevaVerificacion, voluntario ? voluntario.id : null, Number(id)).run();
+
+      if (voluntario) {
+        await DB.prepare(`
+          INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
+          VALUES (?, 'EDITAR', 'reportes', ?)
+        `).bind(voluntario.id, Number(id)).run();
+      }
 
       return new Response(JSON.stringify({ ok: true, id: Number(id), estado_reporte: nuevoEstado, verificacion: nuevaVerificacion }), {
         status: 200,
@@ -210,7 +239,8 @@ export const PATCH: APIRoute = async (context) => {
           longitud = ?, 
           foto_key = ?, 
           descripcion = ?, 
-          updated_at = datetime('now') 
+          updated_at = datetime('now'),
+          updated_by = ?
       WHERE id = ?
     `).bind(
       nuevoEstado, 
@@ -219,9 +249,17 @@ export const PATCH: APIRoute = async (context) => {
       nuevaLat, 
       nuevaLon, 
       nuevaFotoKey, 
-      nuevaDesc, 
+      nuevaDesc,
+      voluntario ? voluntario.id : null,
       Number(id)
     ).run();
+
+    if (voluntario) {
+      await DB.prepare(`
+        INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
+        VALUES (?, 'EDITAR', 'reportes', ?)
+      `).bind(voluntario.id, Number(id)).run();
+    }
 
     // Actualización en cascada clásica si es resuelto y verificado
     if (nuevoEstado === "resuelto" && nuevaVerificacion !== "pendiente") {

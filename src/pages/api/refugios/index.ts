@@ -104,9 +104,9 @@ export const POST: APIRoute = async (context) => {
         nombre, direccion, latitud, longitud, capacidad_maxima, ocupacion_actual, 
         necesidades, contacto, tipo, encargado, ninos, bebes_lactantes, 
         adultos_mayores, personal_profesional, voluntarios, inventario, 
-        fecha_registro, updated_at, fotos
+        fecha_registro, updated_at, fotos, created_by
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?, ?)
       RETURNING id
     `).bind(
       nombre.trim(),
@@ -125,8 +125,17 @@ export const POST: APIRoute = async (context) => {
       personal_profesional ? parseInt(personal_profesional) : 0,
       voluntarios ? parseInt(voluntarios) : 0,
       inventario ? (typeof inventario === 'string' ? inventario : JSON.stringify(inventario)) : null,
-      fotos ? (typeof fotos === 'string' ? fotos : JSON.stringify(fotos)) : null
+      fotos ? (typeof fotos === 'string' ? fotos : JSON.stringify(fotos)) : null,
+      voluntario.id
     ).first<{ id: number }>();
+
+    // Loguear actividad
+    if (res?.id) {
+      await DB.prepare(`
+        INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id)
+        VALUES (?, 'CREAR', 'refugios', ?)
+      `).bind(voluntario.id, res.id).run();
+    }
 
     return new Response(JSON.stringify({ success: true, id: res?.id }), {
       status: 201,
