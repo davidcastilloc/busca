@@ -758,11 +758,11 @@ try {
             ${contacto ? `<div>📞 Contacto: <strong class="text-ink">${contacto}</strong></div>` : ''}
           </div>
           <div class="flex flex-col gap-1.5 pt-1">
-            <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" rel="noopener noreferrer" class="btn btn-xs bg-primary text-white hover:bg-black-elevated text-center py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 no-underline">
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-primary text-primary-content text-center py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 no-underline">
               🚗 Cómo llegar
             </a>
             ${esVoluntario ? `
-              <button type="button" class="btn-mapa-edit btn btn-xs bg-canvas text-ink hover:bg-canvas-soft border border-canvas-soft text-center py-2 rounded-lg text-[10px] font-semibold cursor-pointer" data-id="${id}">
+              <button type="button" class="btn-mapa-edit btn btn-xs btn-outline border-canvas-soft text-center py-2 rounded-lg text-[10px] font-semibold cursor-pointer" data-id="${id}">
                 ✏️ Actualizar Estado
               </button>
             ` : ''}
