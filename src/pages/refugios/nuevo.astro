@@ -396,9 +396,20 @@ if (!voluntario) {
           gpsStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
         }
 
-        // Sugerir la dirección normalizada de Google
-        if (data.formatted_address) {
-          direccionInput.value = data.formatted_address;
+        // Autorrellenar datos enriquecidos de Google
+        if (data.formatted_address) direccionInput.value = data.formatted_address;
+        
+        if (data.name) {
+          const inputNombre = document.getElementById("ref-nombre") as HTMLInputElement;
+          if (inputNombre && !inputNombre.value) inputNombre.value = data.name;
+        }
+        if (data.phone) {
+          const inputContact = document.getElementById("ref-contacto") as HTMLInputElement;
+          if (inputContact && !inputContact.value) inputContact.value = data.phone;
+        }
+        if (data.tipo) {
+          const selectTipo = document.getElementById("ref-tipo") as HTMLSelectElement;
+          if (selectTipo && selectTipo.value === "refugio") selectTipo.value = data.tipo;
         }
 
         initMap(lat, lon, 15);
@@ -482,6 +493,24 @@ if (!voluntario) {
         const data = await resp.json();
         latInput.value = data.lat.toFixed(6);
         lonInput.value = data.lng.toFixed(6);
+
+        // Autorrellenar datos enriquecidos de Google
+        if (data.formatted_address) {
+          const inputDir = document.getElementById("ref-direccion") as HTMLInputElement;
+          if (inputDir) inputDir.value = data.formatted_address;
+        }
+        if (data.name) {
+          const inputNombre = document.getElementById("ref-nombre") as HTMLInputElement;
+          if (inputNombre && !inputNombre.value) inputNombre.value = data.name;
+        }
+        if (data.phone) {
+          const inputContact = document.getElementById("ref-contacto") as HTMLInputElement;
+          if (inputContact && !inputContact.value) inputContact.value = data.phone;
+        }
+        if (data.tipo) {
+          const selectTipo = document.getElementById("ref-tipo") as HTMLSelectElement;
+          if (selectTipo && selectTipo.value === "refugio") selectTipo.value = data.tipo;
+        }
 
         if (data.aproximado) {
           if (gpsStatus) {
