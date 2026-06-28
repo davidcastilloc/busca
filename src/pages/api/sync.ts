@@ -40,6 +40,18 @@ export const POST: APIRoute = async (context) => {
           const validated = ReporteSchema.parse(data);
           await env.CENSO_QUEUE.send({ type, data: validated });
           count++;
+        } else if (type === "necesidad") {
+          const { NecesidadSchema } = await import("../../lib/validators");
+          const validated = NecesidadSchema.parse(data);
+          // Insertamos directo a D1 o la cola? Mejor mandarlo a API de necesidades en vez de la cola porque la cola es para AI y reportes complejos
+          const req = new Request("http://localhost/api/necesidades", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(validated)
+          });
+          const { POST } = await import("./necesidades");
+          await POST({ request: req } as any);
+          count++;
         } else {
           errors.push(`Tipo de registro no soportado: ${type}`);
         }

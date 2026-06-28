@@ -1,0 +1,1117 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { env } from "cloudflare:workers";
+import { CATEGORIAS_INVENTARIO } from "../../lib/items";
+
+export const prerender = false;
+
+let necesidadesData: any[] = [];
+
+try {
+  const { DB } = env;
+  if (DB) {
+    const res = await DB.prepare(`
+      SELECT n.*, 
+             COALESCE(n.latitud, ref.latitud) as latitud_final,
+             COALESCE(n.longitud, ref.longitud) as longitud_final,
+             ref.nombre as refugio_nombre
+      FROM necesidades n
+      LEFT JOIN refugios ref ON n.refugio_id = ref.id
+      ORDER BY n.id DESC
+    `).all();
+    necesidadesData = res.results || [];
+  }
+} catch (error) {
+  console.error("Error al cargar necesidades:", error);
+}
+---
+
+<Layout title="Mapa de Necesidades - dondeestan.org" description="Visualiza y gestiona las necesidades reportadas cercanos en Venezuela.">
+
+  <!-- Leaflet CSS + JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- MarkerCluster CSS + JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script is:inline src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <!-- TOP BAR -->
+  <div id="top-bar" class="fixed top-0 left-0 right-0 z-[1000] bg-canvas/95 backdrop-blur-xl border-b border-canvas-soft">
+    <!-- Fila 1: Volver + Búsqueda -->
+    <div class="flex items-center gap-2 px-3 py-2">
+      <a href="/" class="flex items-center justify-center w-9 h-9 rounded-xl bg-canvas-soft hover:bg-surface-pressed transition-colors shrink-0" aria-label="Volver">
+        <span class="text-lg">←</span>
+      </a>
+      <div class="relative flex-1">
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Buscar necesidad, categoría, ubicación..."
+          class="w-full h-9 pl-9 pr-3 rounded-xl bg-canvas-soft border border-canvas-soft text-sm font-uber-text text-ink placeholder-mute focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+        />
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-mute text-sm">🔍</span>
+        <!-- Dropdown de resultados -->
+        <div id="search-results" class="hidden absolute top-full left-0 right-0 mt-1 bg-canvas rounded-xl border border-canvas-soft shadow-xl max-h-64 overflow-y-auto z-50">
+        </div>
+      </div>
+    </div>
+
+    <!-- Fila 2: Filtros pills -->
+    <div class="flex items-center gap-1.5 px-3 pb-2 overflow-x-auto no-scrollbar">
+      <button class="filter-pill active" data-filter="todos">Todas</button>
+      <button class="filter-pill" data-filter="gravedad-alta">🔴 Alta</button>
+      <button class="filter-pill" data-filter="gravedad-media">🟡 Media</button>
+      <button class="filter-pill" data-filter="gravedad-baja">🟢 Baja</button>
+      <span class="w-px h-5 bg-canvas-soft shrink-0"></span>
+      <button class="filter-pill" data-filter="estado-abierta">⚠️ Abierta</button>
+      <button class="filter-pill" data-filter="estado-atendida">✅ Atendida</button>
+    </div>
+  </div>
+
+  <!-- MAPA FULLSCREEN -->
+  <div id="map-fullscreen" class="fixed inset-0 z-0"></div>
+
+  <!-- BOTONES FLOTANTES -->
+  <div class="fixed z-[500] flex flex-col gap-2" style="bottom: 100px; right: 12px;">
+    <button id="btn-north" class="map-fab" aria-label="Orientar norte" title="Norte">🧭</button>
+    <button id="btn-geolocate" class="map-fab" aria-label="Mi ubicación" title="Mi ubicación">📍</button>
+  </div>
+
+  <!-- BOTÓN RADAR "REFUGIOS CERCA" -->
+  <button id="btn-radar" class="fixed z-[500] flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-white font-uber-text font-bold text-sm shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 active:scale-95 transition-all" style="bottom: 100px; left: 12px;">
+    <span class="radar-icon">🎯</span> Cerca
+  </button>
+
+  <!-- BOTTOM SHEET -->
+  <div id="bottom-sheet" class="fixed left-0 right-0 z-[900] bg-canvas rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out" style="top: 100%; transform: translateY(-80px);">
+    <!-- Handle -->
+    <div id="sheet-handle" class="flex justify-center py-2 cursor-grab active:cursor-grabbing">
+      <div class="w-10 h-1 rounded-full bg-canvas-soft"></div>
+    </div>
+
+    <!-- Header del panel -->
+    <div id="sheet-header" class="px-4 pb-2">
+      <div class="flex items-center justify-between">
+        <h2 class="font-uber-display text-base font-bold text-ink" id="sheet-title">
+          {necesidadesData.length} necesidades
+        </h2>
+        <button id="btn-sheet-close" class="text-mute hover:text-ink transition-colors text-lg">✕</button>
+      </div>
+    </div>
+
+    <!-- Lista de cards -->
+    <div id="sheet-cards" class="px-4 pb-6 space-y-2 overflow-y-auto" style="max-height: calc(80vh - 80px);">
+      {necesidadesData.map((n: any) => {
+        const cat = n.categoria || "Otros";
+        let emoji = "🆘";
+        if (cat.toLowerCase().includes("agua")) emoji = "💧";
+        else if (cat.toLowerCase().includes("comida") || cat.toLowerCase().includes("alimento")) emoji = "🥫";
+        else if (cat.toLowerCase().includes("medicina") || cat.toLowerCase().includes("salud")) emoji = "💊";
+        else if (cat.toLowerCase().includes("ropa")) emoji = "👕";
+        else if (cat.toLowerCase().includes("refugio")) emoji = "⛺";
+        else if (cat.toLowerCase().includes("rescate")) emoji = "🚁";
+
+        const gravedadBadge = n.gravedad === "Alta" ? "🔴" : n.gravedad === "Media" ? "🟡" : "🟢";
+        const ubicacionTexto = n.refugio_nombre ? `Refugio: ${n.refugio_nombre}` : n.ubicacion_nombre || "Ubicación desconocida";
+
+        return (
+          <div
+            class="sheet-card flex items-start gap-3 p-3 rounded-xl bg-canvas-soft/50 border border-canvas-soft hover:bg-surface-pressed/50 cursor-pointer transition-all active:scale-[0.98]"
+            data-id={n.id}
+            data-lat={n.latitud_final || ""}
+            data-lng={n.longitud_final || ""}
+            data-categoria={n.categoria}
+            data-descripcion={n.descripcion}
+            data-gravedad={n.gravedad}
+            data-estado={n.estado}
+            data-ubicacion={ubicacionTexto}
+            data-contacto={n.telefono || n.reportante_contacto || ""}
+            data-afectados={n.afectados || 0}
+            data-emoji={emoji}
+            data-foto={n.foto_key || ""}
+          >
+            <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-canvas shrink-0 overflow-hidden border border-canvas-soft">
+              {n.foto_key ? (
+                <img src={`/api/upload?key=${n.foto_key}`} class="w-full h-full object-cover" />
+              ) : (
+                <span class="text-lg">{emoji}</span>
+              )}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs">{gravedadBadge}</span>
+                <h3 class="font-uber-text font-bold text-ink text-sm truncate">{n.categoria}</h3>
+              </div>
+              <p class="text-[11px] text-mute font-uber-text truncate">{ubicacionTexto}</p>
+              <p class="text-[11px] text-body font-uber-text line-clamp-1 mt-0.5">{n.descripcion}</p>
+              <div class="flex items-center gap-3 mt-1">
+                {n.afectados > 0 && <span class="text-[10px] text-body font-uber-text font-semibold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">👥 ${n.afectados} afectados</span>}
+                <span class="text-[10px] text-mute font-uber-text distance-label"></span>
+              </div>
+            </div>
+            <div class="flex flex-col gap-1 shrink-0">
+              {(n.telefono || n.reportante_contacto) && (
+                <a href={`tel:${(n.telefono || n.reportante_contacto).replace(/\s/g, '')}`} class="flex items-center justify-center w-8 h-8 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors text-sm" title="Llamar" onclick="event.stopPropagation()">📞</a>
+              )}
+              <button class="btn-share-need flex items-center justify-center w-8 h-8 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors text-sm" title="Compartir" data-id={n.id} data-cat={n.categoria} data-ubicacion={ubicacionTexto} onclick="event.stopPropagation()">📤</button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+
+  <!-- RUTA OVERLAY INFO -->
+  <div id="route-info" class="hidden fixed z-[800] left-3 right-3 bg-canvas/95 backdrop-blur-xl rounded-2xl border border-canvas-soft shadow-xl p-4" style="bottom: 90px;">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="font-uber-text font-bold text-ink text-sm" id="route-dest-name"></div>
+        <div class="font-uber-text text-mute text-xs mt-0.5">
+          <span id="route-distance"></span> · <span id="route-time"></span> caminando
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <a id="route-gmaps" href="#" target="_blank" rel="noopener" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-uber-text font-bold hover:opacity-90 transition-opacity">🗺️ Google Maps</a>
+        <a id="route-waze" href="#" target="_blank" rel="noopener" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#33ccff] text-white text-xs font-uber-text font-bold hover:opacity-90 transition-opacity">🚗 Waze</a>
+        <button id="btn-route-close" class="flex items-center justify-center w-8 h-8 rounded-lg bg-canvas-soft text-mute hover:text-ink transition-colors">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OFFLINE BANNER -->
+  <div id="offline-banner" class="hidden fixed top-0 left-0 right-0 z-[2000] bg-amber-500 text-white text-center py-1.5 text-xs font-uber-text font-bold">
+    📡 Modo offline — datos pueden no estar actualizados
+  </div>
+
+</Layout>
+
+<style is:global>
+  /* Ocultar scrollbar horizontal en filtros */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Filter pills */
+  .filter-pill {
+    white-space: nowrap;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-uber-text, 'Inter', sans-serif);
+    border: 1px solid var(--canvas-soft, #e5e5e5);
+    background: var(--canvas, #fff);
+    color: var(--body, #6b7280);
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .filter-pill:hover { background: var(--surface-pressed, #f3f3f3); }
+  .filter-pill.active {
+    background: var(--ink, #1a1a1a);
+    color: white;
+    border-color: var(--ink, #1a1a1a);
+  }
+
+  /* Map FAB buttons */
+  .map-fab {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--canvas, #fff);
+    border: 1px solid var(--canvas-soft, #e5e5e5);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .map-fab:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.18); transform: scale(1.05); }
+  .map-fab:active { transform: scale(0.95); }
+
+  /* Marcadores personalizados */
+  .custom-marker {
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 9999px; border: 2.5px solid white;
+    box-shadow: 0 4px 8px -1px rgba(0,0,0,0.2), 0 2px 4px -2px rgba(0,0,0,0.15);
+    width: 36px; height: 36px; position: relative;
+    color: white; font-size: 15px;
+    transition: transform 0.2s;
+  }
+  .custom-marker:hover { transform: scale(1.15); }
+  .custom-marker.highlighted {
+    transform: scale(1.3);
+    box-shadow: 0 0 0 4px rgba(59,130,246,0.3), 0 4px 8px -1px rgba(0,0,0,0.2);
+  }
+
+  .marker-refugio { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+  .marker-acopio { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .marker-hospital { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+  .custom-marker-badge {
+    position: absolute; top: -4px; right: -4px;
+    width: 12px; height: 12px; border-radius: 9999px; border: 1.5px solid white;
+  }
+  .badge-verde { background-color: #16a34a; }
+  .badge-amarillo { background-color: #fbbf24; }
+  .badge-rojo { background-color: #dc2626; }
+
+  .custom-marker-pulse {
+    position: absolute; top: -4px; right: -4px;
+    width: 12px; height: 12px; border-radius: 9999px;
+    background-color: #dc2626;
+    animation: marker-pulse-anim 1.5s infinite;
+  }
+  @keyframes marker-pulse-anim {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220,38,38,0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(220,38,38,0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220,38,38,0); }
+  }
+
+  /* Marcador usuario */
+  .user-location-marker {
+    width: 18px; height: 18px; border-radius: 9999px;
+    background-color: #3b82f6; border: 2.5px solid white;
+    box-shadow: 0 0 10px rgba(59,130,246,0.6); position: relative;
+  }
+  .user-location-pulse {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    border-radius: 9999px; background-color: rgba(59,130,246,0.4);
+    animation: user-pulse 2s infinite;
+  }
+  @keyframes user-pulse {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(4); opacity: 0; }
+  }
+
+  /* Radar animation */
+  .radar-active .radar-icon {
+    animation: radar-spin 1s ease-in-out;
+  }
+  @keyframes radar-spin {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.2); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+
+  /* Radar pulse desde ubicación usuario */
+  .radar-pulse-ring {
+    position: absolute; top: 50%; left: 50%;
+    width: 60px; height: 60px;
+    margin: -30px 0 0 -30px;
+    border-radius: 50%;
+    border: 2px solid rgba(59,130,246,0.5);
+    animation: radar-expand 1.5s ease-out forwards;
+  }
+  @keyframes radar-expand {
+    0% { transform: scale(0); opacity: 1; }
+    100% { transform: scale(8); opacity: 0; }
+  }
+
+  /* Leaflet popup customization */
+  .leaflet-popup-content-wrapper {
+    border-radius: 16px !important;
+    padding: 0 !important;
+    border: 1px solid var(--canvas-soft, #e5e5e5) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+  }
+  .leaflet-popup-content { margin: 0 !important; }
+  .leaflet-popup-tip { border-top-color: var(--canvas, #fff) !important; }
+
+  /* Ruta punteada animada */
+  .route-line {
+    stroke-dasharray: 8, 12;
+    animation: route-dash 1s linear infinite;
+  }
+  @keyframes route-dash {
+    to { stroke-dashoffset: -20; }
+  }
+
+  /* Cluster custom */
+  .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+    background: rgba(59,130,246,0.2) !important;
+  }
+  .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+    color: white !important;
+    font-family: var(--font-uber-text, 'Inter', sans-serif) !important;
+    font-weight: 700 !important;
+  }
+  .cluster-rojo { background: rgba(220,38,38,0.2) !important; }
+  .cluster-rojo div { background: linear-gradient(135deg, #ef4444, #dc2626) !important; }
+  .cluster-amarillo { background: rgba(251,191,36,0.2) !important; }
+  .cluster-amarillo div { background: linear-gradient(135deg, #f59e0b, #d97706) !important; }
+  .cluster-verde { background: rgba(22,163,74,0.2) !important; }
+  .cluster-verde div { background: linear-gradient(135deg, #22c55e, #16a34a) !important; }
+
+  /* Ajustar mapa debajo del topbar */
+  #map-fullscreen .leaflet-control-zoom { margin-bottom: 120px !important; }
+</style>
+
+<script>
+  // Variables globales del módulo (persisten entre transiciones)
+  let map: any = null;
+  let markers: Map<string, any> = new Map();
+  let clusterGroup: any = null;
+  let userMarker: any = null;
+  let userLatLng: [number, number] | null = null;
+  let routeLine: any = null;
+  let radarHighlights: any[] = [];
+  let radarLine: any = null;
+  let activeFilters = { gravedad: "todos", estado: "todos" };
+  let sheetState: "colapsado" | "medio" | "expandido" = "colapsado";
+  let necesidadesList: any[] = [];
+
+  // Fórmula Haversine disponible a nivel de módulo
+  function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // Función de espera para Leaflet (disponible a nivel de módulo)
+  function waitForLeaflet(cb: () => void) {
+    if (typeof (window as any).L !== "undefined" && typeof (window as any).L.markerClusterGroup === "function") {
+      cb();
+    } else {
+      const iv = setInterval(() => {
+        if (typeof (window as any).L !== "undefined" && typeof (window as any).L.markerClusterGroup === "function") {
+          clearInterval(iv);
+          cb();
+        }
+      }, 100);
+    }
+  }
+
+  // Inicializar todo al cargar la página (y en cada transición de Astro)
+  document.addEventListener('astro:page-load', () => {
+    // 1. Limpieza de mapa e instancias previas
+    if (map) {
+      try {
+        map.remove();
+      } catch (e) {
+        console.error("Error al limpiar mapa previo:", e);
+      }
+      map = null;
+    }
+    markers.clear();
+    clusterGroup = null;
+    userMarker = null;
+    userLatLng = null;
+    routeLine = null;
+    radarHighlights = [];
+    radarLine = null;
+    activeFilters = { tipo: "todos", semaforo: "todos" };
+    sheetState = "colapsado";
+
+    // 2. Extraer datos de los elementos del DOM actual
+    necesidadesList = [];
+    const refugiosRaw = document.querySelectorAll(".sheet-card");
+    refugiosRaw.forEach(el => {
+      const card = el as HTMLElement;
+      const lat = parseFloat(card.dataset.lat || "");
+      const lng = parseFloat(card.dataset.lng || "");
+      if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+        let fotos: string[] = [];
+        try {
+          if (card.dataset.fotos) {
+            fotos = JSON.parse(card.dataset.fotos);
+          }
+        } catch {}
+
+        necesidadesList.push({
+          id: card.dataset.id || "",
+          lat, lng,
+          categoria: card.dataset.categoria || "",
+          descripcion: card.dataset.descripcion || "",
+          gravedad: card.dataset.gravedad || "Baja",
+          estado: card.dataset.estado || "abierta",
+          ubicacion: card.dataset.ubicacion || "",
+          contacto: card.dataset.contacto || "",
+          afectados: parseInt(card.dataset.afectados || "0"),
+          emoji: card.dataset.emoji || "🆘",
+          foto: card.dataset.foto || ""
+        });
+      }
+    });
+
+    // 3. Inicializar Leaflet
+    waitForLeaflet(() => {
+      const L = (window as any).L;
+
+      const topBar = document.getElementById("top-bar");
+      const topBarHeight = topBar?.offsetHeight || 90;
+      const mapDiv = document.getElementById("map-fullscreen")!;
+      if (mapDiv) {
+        mapDiv.style.top = topBarHeight + "px";
+      }
+
+      map = L.map("map-fullscreen", {
+        zoomControl: false,
+        attributionControl: false,
+      }).setView([8.0, -66.0], 7);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+      }).addTo(map);
+
+      L.control.zoom({ position: "bottomright" }).addTo(map);
+      L.control.attribution({ position: "bottomleft", prefix: false })
+        .addTo(map)
+        .addAttribution('© <a href="https://osm.org/copyright">OpenStreetMap</a>');
+
+      clusterGroup = L.markerClusterGroup({
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        iconCreateFunction: (cluster: any) => {
+          const children = cluster.getAllChildMarkers();
+          let hasAlta = false, hasMedia = false;
+          children.forEach((m: any) => {
+            if (m.options._gravedad === "Alta") hasAlta = true;
+            if (m.options._gravedad === "Media") hasMedia = true;
+          });
+          const clusterClass = hasAlta ? "cluster-rojo" : hasMedia ? "cluster-amarillo" : "cluster-verde";
+          const size = children.length < 10 ? "small" : children.length < 30 ? "medium" : "large";
+          return L.divIcon({
+            html: `<div><span>${children.length}</span></div>`,
+            className: `marker-cluster marker-cluster-${size} ${clusterClass}`,
+            iconSize: L.point(40, 40),
+          });
+        },
+      });
+
+      necesidadesList.forEach(n => {
+        const markerClass = n.gravedad === "Alta" ? "marker-hospital" : n.gravedad === "Media" ? "marker-acopio" : "marker-refugio";
+
+        let badgeHtml = "";
+        if (n.gravedad === "Alta") {
+          badgeHtml = `<div class="custom-marker-pulse"></div>`;
+        } else if (n.gravedad === "Media") {
+          badgeHtml = `<div class="custom-marker-badge badge-amarillo"></div>`;
+        } else {
+          badgeHtml = `<div class="custom-marker-badge badge-verde"></div>`;
+        }
+
+        const icon = L.divIcon({
+          html: `<div class="custom-marker ${markerClass}" data-id="${n.id}">${n.emoji}${badgeHtml}</div>`,
+          className: "",
+          iconSize: [36, 36],
+          iconAnchor: [18, 36],
+          popupAnchor: [0, -38],
+        });
+
+        const semaforoLabel = n.gravedad === "Alta" ? "🔴 Alta Gravedad" : n.gravedad === "Media" ? "🟡 Media" : "🟢 Baja";
+        const semaforoColor = n.gravedad === "Alta" ? "color:#dc2626" : n.gravedad === "Media" ? "color:#d97706" : "color:#16a34a";
+        const estadoBadge = n.estado === "atendida" ? `<span style="background:#dcfce7;color:#16a34a;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;text-transform:uppercase;">Atendida</span>` : `<span style="background:#fef3c7;color:#d97706;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;text-transform:uppercase;">Abierta</span>`;
+
+        const popupHtml = `
+          <div style="padding:12px 14px;max-width:260px;font-family:var(--font-uber-text,'Inter',sans-serif);">
+            ${n.foto ? `
+              <div style="width:100%;height:100px;border-radius:10px;overflow:hidden;border:1px solid var(--canvas-soft);background:var(--surface-pressed);margin-bottom:8px;">
+                <img src="/api/upload?key=${n.foto}" style="width:100%;height:100%;object-fit:cover;" />
+              </div>
+            ` : ''}
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:18px;">${n.emoji}</span>
+                <h4 style="font-weight:700;font-size:14px;color:var(--ink);text-transform:capitalize;margin:0;">${n.categoria}</h4>
+              </div>
+              ${estadoBadge}
+            </div>
+            <div style="font-size:11px;${semaforoColor};font-weight:600;margin-bottom:6px;">${semaforoLabel}</div>
+            <div style="font-size:11px;color:var(--body);margin-bottom:6px;">📍 ${n.ubicacion || "Sin ubicación"}</div>
+            <div style="margin:6px 0;background:var(--canvas-soft);padding:8px;border-radius:8px;font-size:12px;color:var(--ink);">
+              ${n.descripcion}
+            </div>
+            ${n.afectados > 0 ? `<div style="font-size:11px;color:var(--body);margin-bottom:6px;font-weight:600;">👥 ${n.afectados} afectados</div>` : ""}
+            ${n.contacto ? `<div style="font-size:11px;margin-bottom:8px;">📞 <a href="tel:${n.contacto.replace(/\s/g, '')}" style="color:#2563eb;font-weight:600;">${n.contacto}</a></div>` : ""}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button onclick="window._rutaA('${n.id}')" style="flex:1;padding:6px 10px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;font-size:11px;font-weight:700;border:none;cursor:pointer;">🚗 Ir</button>
+              <button onclick="window._compartir('${n.id}')" style="flex:1;padding:6px 10px;border-radius:8px;background:var(--canvas-soft);color:var(--ink);font-size:11px;font-weight:700;border:1px solid var(--canvas-soft);cursor:pointer;">📤 Compartir</button>
+              ${n.contacto ? `<a href="tel:${n.contacto.replace(/\s/g, '')}" style="padding:6px 10px;border-radius:8px;background:#dcfce7;color:#16a34a;font-size:11px;font-weight:700;text-decoration:none;">📞</a>` : ""}
+            </div>
+          </div>
+        `;
+
+        const marker = L.marker([n.lat, n.lng], {
+          icon,
+          _gravedad: n.gravedad,
+          _estado: n.estado,
+          _id: n.id,
+        }).bindPopup(popupHtml, { maxWidth: 280, closeButton: true });
+
+        marker.on("click", () => {
+          highlightCard(n.id);
+        });
+
+        markers.set(n.id, marker);
+        clusterGroup.addLayer(marker);
+      });
+
+      map.addLayer(clusterGroup);
+
+      if (necesidadesList.length > 0) {
+        let sumLat = 0, sumLng = 0, totalW = 0;
+        necesidadesList.forEach((n: any) => {
+          let w = n.gravedad === "Alta" ? 3 : n.gravedad === "Media" ? 2 : 1;
+          sumLat += n.lat * w;
+          sumLng += n.lng * w;
+          totalW += w;
+        });
+        if (totalW > 0) {
+          map.flyTo([sumLat / totalW, sumLng / totalW], 11, { duration: 1.5 });
+        } else {
+          const group = L.featureGroup(Array.from(markers.values()));
+          map.fitBounds(group.getBounds().pad(0.15));
+        }
+      }
+
+      // Query param deep-link ?id=X
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetId = urlParams.get("id");
+      if (targetId) {
+        setTimeout(() => {
+          const targetMarker = markers.get(targetId);
+          if (targetMarker) {
+            map.flyTo(targetMarker.getLatLng(), 17, { duration: 1.5 });
+            setTimeout(() => targetMarker.openPopup(), 1600);
+            highlightCard(targetId);
+            expandSheet("medio");
+          }
+        }, 500);
+      }
+
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 200);
+    });
+
+    // 4. Bottom Sheet y Eventos del DOM
+    const bottomSheet = document.getElementById("bottom-sheet");
+    const sheetHandle = document.getElementById("sheet-handle");
+    const searchInput = document.getElementById("search-input") as HTMLInputElement;
+    const searchResults = document.getElementById("search-results");
+    let searchTimeout: any = null;
+
+    function expandSheet(state: "colapsado" | "medio" | "expandido") {
+      const sheet = document.getElementById("bottom-sheet");
+      if (!sheet) return;
+      sheetState = state;
+      const vh = window.innerHeight;
+      switch (state) {
+        case "colapsado":
+          sheet.style.transform = "translateY(-80px)";
+          break;
+        case "medio":
+          sheet.style.transform = `translateY(-${Math.round(vh * 0.45)}px)`;
+          break;
+        case "expandido":
+          sheet.style.transform = `translateY(-${Math.round(vh * 0.85)}px)`;
+          break;
+      }
+    }
+
+    let sheetDragStart = 0;
+    let sheetTranslateStart = 0;
+
+    function getSheetTranslateY(): number {
+      const sheet = document.getElementById("bottom-sheet");
+      if (!sheet) return 0;
+      const match = sheet.style.transform.match(/translateY\((-?\d+)px\)/);
+      return match ? parseInt(match[1]) : -80;
+    }
+
+    sheetHandle?.addEventListener("touchstart", (e) => {
+      sheetDragStart = e.touches[0].clientY;
+      sheetTranslateStart = getSheetTranslateY();
+      bottomSheet!.style.transition = "none";
+    });
+
+    sheetHandle?.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+      const diff = e.touches[0].clientY - sheetDragStart;
+      const newTranslate = Math.min(0, Math.max(-window.innerHeight * 0.85, sheetTranslateStart + diff));
+      bottomSheet!.style.transform = `translateY(${newTranslate}px)`;
+    });
+
+    sheetHandle?.addEventListener("touchend", () => {
+      bottomSheet!.style.transition = "transform 0.3s ease-out";
+      const current = Math.abs(getSheetTranslateY());
+      const vh = window.innerHeight;
+      if (current < vh * 0.2) expandSheet("colapsado");
+      else if (current < vh * 0.6) expandSheet("medio");
+      else expandSheet("expandido");
+    });
+
+    sheetHandle?.addEventListener("click", () => {
+      if (sheetState === "colapsado") expandSheet("medio");
+      else if (sheetState === "medio") expandSheet("expandido");
+      else expandSheet("colapsado");
+    });
+
+    document.getElementById("btn-sheet-close")?.addEventListener("click", () => {
+      expandSheet("colapsado");
+    });
+
+    document.querySelectorAll(".sheet-card").forEach(card => {
+      card.addEventListener("click", () => {
+        const el = card as HTMLElement;
+        const lat = parseFloat(el.dataset.lat || "");
+        const lng = parseFloat(el.dataset.lng || "");
+        const id = el.dataset.id || "";
+        if (!isNaN(lat) && !isNaN(lng) && map) {
+          map.flyTo([lat, lng], 17, { duration: 1 });
+          setTimeout(() => {
+            const marker = markers.get(id);
+            if (marker) marker.openPopup();
+          }, 1100);
+        }
+      });
+    });
+
+    function highlightCard(id: string) {
+      document.querySelectorAll(".sheet-card").forEach(c => {
+        (c as HTMLElement).classList.remove("ring-2", "ring-primary");
+      });
+      const card = document.querySelector(`.sheet-card[data-id="${id}"]`) as HTMLElement;
+      if (card) {
+        card.classList.add("ring-2", "ring-primary");
+        card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+
+    // Buscador
+    searchInput?.addEventListener("input", () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        const q = searchInput.value.trim().toLowerCase();
+        if (!q || q.length < 2) {
+          searchResults!.classList.add("hidden");
+          return;
+        }
+
+        const matches = necesidadesList.filter(n =>
+          n.categoria.toLowerCase().includes(q) ||
+          n.descripcion.toLowerCase().includes(q) ||
+          n.ubicacion.toLowerCase().includes(q)
+        ).slice(0, 5);
+
+        if (matches.length === 0) {
+          searchResults!.innerHTML = `<div class="p-3 text-xs text-mute font-uber-text">Sin resultados para "${q}"</div>`;
+          searchResults!.classList.remove("hidden");
+          return;
+        }
+
+        searchResults!.innerHTML = matches.map(n => {
+          const sem = n.gravedad === "Alta" ? "🔴" : n.gravedad === "Media" ? "🟡" : "🟢";
+          return `
+            <button class="search-result w-full text-left flex items-center gap-2.5 px-3 py-2.5 hover:bg-canvas-soft transition-colors border-b border-canvas-soft last:border-0" data-id="${n.id}" data-lat="${n.lat}" data-lng="${n.lng}">
+              <span class="text-base">${n.emoji}</span>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-uber-text font-bold text-ink truncate">${sem} ${n.categoria}</div>
+                <div class="text-[10px] text-mute font-uber-text truncate">${n.ubicacion || "Sin ubicación"}</div>
+              </div>
+            </button>
+          `;
+        }).join("");
+        searchResults!.classList.remove("hidden");
+      }, 300);
+    });
+
+    searchResults?.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest(".search-result") as HTMLElement;
+      if (!btn) return;
+      const lat = parseFloat(btn.dataset.lat || "");
+      const lng = parseFloat(btn.dataset.lng || "");
+      const id = btn.dataset.id || "";
+      if (!isNaN(lat) && !isNaN(lng) && map) {
+        map.flyTo([lat, lng], 17, { duration: 1.5 });
+        setTimeout(() => {
+          const marker = markers.get(id);
+          if (marker) marker.openPopup();
+        }, 1600);
+        highlightCard(id);
+        expandSheet("medio");
+      }
+      searchResults!.classList.add("hidden");
+      searchInput.value = "";
+    });
+
+    // Filtros
+    document.querySelectorAll(".filter-pill").forEach(pill => {
+      pill.addEventListener("click", () => {
+        const filter = (pill as HTMLElement).dataset.filter || "todos";
+
+        if (filter.startsWith("gravedad-")) {
+          const grav = filter.replace("gravedad-", "");
+          const mapGrav = grav === "alta" ? "Alta" : grav === "media" ? "Media" : "Baja";
+          if (activeFilters.gravedad === mapGrav) {
+            activeFilters.gravedad = "todos";
+            pill.classList.remove("active");
+          } else {
+            document.querySelectorAll('.filter-pill[data-filter^="gravedad-"]').forEach(p => p.classList.remove("active"));
+            activeFilters.gravedad = mapGrav;
+            pill.classList.add("active");
+          }
+        } else if (filter.startsWith("estado-")) {
+          const est = filter.replace("estado-", "");
+          if (activeFilters.estado === est) {
+            activeFilters.estado = "todos";
+            pill.classList.remove("active");
+          } else {
+            document.querySelectorAll('.filter-pill[data-filter^="estado-"]').forEach(p => p.classList.remove("active"));
+            activeFilters.estado = est;
+            pill.classList.add("active");
+          }
+        } else {
+          // todos
+          document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove("active"));
+          activeFilters.gravedad = "todos";
+          activeFilters.estado = "todos";
+          pill.classList.add("active");
+        }
+
+        applyFilters();
+      });
+    });
+
+    function applyFilters() {
+      if (!clusterGroup || !map) return;
+      clusterGroup.clearLayers();
+
+      markers.forEach((marker, id) => {
+        const r = refugios.find(x => x.id === id);
+        if (!r) return;
+
+        let visible = true;
+        if (activeFilters.tipo !== "todos" && r.tipo !== activeFilters.tipo) visible = false;
+        if (activeFilters.semaforo !== "todos" && r.semaforo !== activeFilters.semaforo) visible = false;
+
+        if (visible) {
+          clusterGroup.addLayer(marker);
+        }
+
+        const card = document.querySelector(`.sheet-card[data-id="${id}"]`) as HTMLElement;
+        if (card) {
+          card.style.display = visible ? "" : "none";
+        }
+      });
+
+      const visibleCount = document.querySelectorAll('.sheet-card:not([style*="display: none"])').length;
+      const sheetTitle = document.getElementById("sheet-title");
+      if (sheetTitle) {
+        sheetTitle.textContent = `${visibleCount} centro${visibleCount !== 1 ? "s" : ""} ${activeFilters.tipo !== "todos" ? "(" + activeFilters.tipo.replace("_", " ") + ")" : ""} ${activeFilters.semaforo !== "todos" ? "· " + (activeFilters.semaforo === "rojo" ? "🔴" : activeFilters.semaforo === "amarillo" ? "🟡" : "🟢") : ""}`.trim();
+      }
+    }
+
+    // Geolocalización
+    document.getElementById("btn-geolocate")?.addEventListener("click", () => {
+      if (!navigator.geolocation || !map) return;
+      const L = (window as any).L;
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          userLatLng = [lat, lng];
+          map.flyTo([lat, lng], 14, { duration: 1 });
+
+          if (userMarker) {
+            userMarker.setLatLng([lat, lng]);
+          } else {
+            const userIcon = L.divIcon({
+              html: `<div class="user-location-marker"><div class="user-location-pulse"></div></div>`,
+              className: "",
+              iconSize: [18, 18],
+              iconAnchor: [9, 9],
+            });
+            userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
+          }
+
+          updateDistances(lat, lng);
+        },
+        (err) => {
+          alert("No se pudo obtener ubicación GPS.");
+          console.error(err);
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    });
+
+    function updateDistances(lat: number, lng: number) {
+      refugios.forEach(r => {
+        const dist = haversine(lat, lng, r.lat, r.lng);
+        const card = document.querySelector(`.sheet-card[data-id="${r.id}"] .distance-label`) as HTMLElement;
+        if (card) {
+          card.textContent = dist < 1 ? `${Math.round(dist * 1000)}m` : `${dist.toFixed(1)}km`;
+        }
+      });
+
+      const container = document.getElementById("sheet-cards");
+      if (!container) return;
+      const cards = Array.from(container.querySelectorAll(".sheet-card")) as HTMLElement[];
+      cards.sort((a, b) => {
+        const aR = necesidadesList.find(n => r.id === a.dataset.id);
+        const bR = necesidadesList.find(n => r.id === b.dataset.id);
+        if (!aR || !bR) return 0;
+        return haversine(lat, lng, aR.lat, aR.lng) - haversine(lat, lng, bR.lat, bR.lng);
+      });
+      cards.forEach(c => container.appendChild(c));
+    }
+
+    // Botón Radar
+    document.getElementById("btn-radar")?.addEventListener("click", () => {
+      if (!map) return;
+      const L = (window as any).L;
+      const btnRadar = document.getElementById("btn-radar")!;
+      btnRadar.classList.add("radar-active");
+      setTimeout(() => btnRadar.classList.remove("radar-active"), 1000);
+
+      function doRadar(lat: number, lng: number) {
+        clearRadar();
+        userLatLng = [lat, lng];
+
+        if (userMarker) {
+          userMarker.setLatLng([lat, lng]);
+        } else {
+          const userIcon = L.divIcon({
+            html: `<div class="user-location-marker"><div class="user-location-pulse"></div></div>`,
+            className: "",
+            iconSize: [18, 18],
+            iconAnchor: [9, 9],
+          });
+          userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
+        }
+
+        const radarPulse = L.divIcon({
+          html: `<div class="radar-pulse-ring"></div><div class="radar-pulse-ring" style="animation-delay:0.3s"></div><div class="radar-pulse-ring" style="animation-delay:0.6s"></div>`,
+          className: "",
+          iconSize: [0, 0],
+        });
+        const pulseMarker = L.marker([lat, lng], { icon: radarPulse, interactive: false }).addTo(map);
+        setTimeout(() => map.removeLayer(pulseMarker), 2000);
+
+        const conDistancia = refugios.map(r => ({
+          ...r,
+          dist: haversine(lat, lng, r.lat, r.lng)
+        })).sort((a, b) => a.dist - b.dist);
+
+        const top5 = conDistancia.slice(0, 5);
+        updateDistances(lat, lng);
+
+        if (top5.length > 0) {
+          radarLine = L.polyline(
+            [[lat, lng], [top5[0].lat, top5[0].lng]],
+            {
+              color: "#3b82f6",
+              weight: 3,
+              className: "route-line"
+            }
+          ).addTo(map);
+        }
+
+        top5.forEach(r => {
+          const marker = markers.get(r.id);
+          if (marker) {
+            const iconElement = marker.getElement();
+            if (iconElement) {
+              const markerDiv = iconElement.querySelector(".custom-marker");
+              if (markerDiv) markerDiv.classList.add("highlighted");
+            }
+            radarHighlights.push(marker);
+          }
+        });
+
+        const bounds = L.latLngBounds([[lat, lng], ...top5.map(r => [r.lat, r.lng])]);
+        map.fitBounds(bounds.pad(0.2));
+
+        document.querySelectorAll(".sheet-card").forEach(c => {
+          const el = c as HTMLElement;
+          const id = el.dataset.id || "";
+          const esCercano = top5.some(t => t.id === id);
+          el.style.display = esCercano ? "" : "none";
+        });
+
+        const sheetTitle = document.getElementById("sheet-title");
+        if (sheetTitle) {
+          sheetTitle.textContent = `🎯 ${top5.length} centros más cercanos`;
+        }
+
+        expandSheet("medio");
+      }
+
+      if (userLatLng) {
+        doRadar(userLatLng[0], userLatLng[1]);
+      } else {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            doRadar(lat, lng);
+          },
+          () => {
+            alert("No se pudo obtener ubicación para el radar.");
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      }
+    });
+
+    function clearRadar() {
+      const L = (window as any).L;
+      if (radarLine && map) {
+        map.removeLayer(radarLine);
+        radarLine = null;
+      }
+      radarHighlights.forEach(marker => {
+        const iconElement = marker.getElement();
+        if (iconElement) {
+          const markerDiv = iconElement.querySelector(".custom-marker");
+          if (markerDiv) markerDiv.classList.remove("highlighted");
+        }
+      });
+      radarHighlights = [];
+    }
+
+    // Ruta
+    const routeInfo = document.getElementById("route-info")!;
+    const routeDestName = document.getElementById("route-dest-name")!;
+    const routeDistance = document.getElementById("route-distance")!;
+    const routeTime = document.getElementById("route-time")!;
+
+    (window as any)._rutaA = function(id: string) {
+      const r = refugios.find(x => x.id === id);
+      if (!r) return;
+      const L = (window as any).L;
+
+      function trazarRuta(uLat: number, uLng: number) {
+        if (routeLine && map) {
+          map.removeLayer(routeLine);
+        }
+
+        routeLine = L.polyline(
+          [[uLat, uLng], [r!.lat, r!.lng]],
+          {
+            color: "#3b82f6",
+            weight: 4,
+            className: "route-line"
+          }
+        ).addTo(map);
+
+        const bounds = L.latLngBounds([[uLat, uLng], [r!.lat, r!.lng]]);
+        map.fitBounds(bounds.pad(0.15));
+
+        const dist = haversine(uLat, uLng, r!.lat, r!.lng);
+        const minsWalk = Math.round((dist / 5) * 60);
+
+        routeDestName.textContent = r!.nombre;
+        routeDistance.textContent = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
+        routeTime.textContent = minsWalk < 60 ? `${minsWalk} min` : `${Math.floor(minsWalk / 60)}h ${minsWalk % 60}m`;
+
+        (document.getElementById("route-gmaps") as HTMLAnchorElement).href = `https://www.google.com/maps/dir/?api=1&origin=${uLat},${uLng}&destination=${r!.lat},${r!.lng}&travelmode=walking`;
+        (document.getElementById("route-waze") as HTMLAnchorElement).href = `https://waze.com/ul?ll=${r!.lat},${r!.lng}&navigate=yes`;
+
+        routeInfo.classList.remove("hidden");
+        map.closePopup();
+      }
+
+      if (userLatLng) {
+        trazarRuta(userLatLng[0], userLatLng[1]);
+      } else {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            userLatLng = [pos.coords.latitude, pos.coords.longitude];
+            trazarRuta(pos.coords.latitude, pos.coords.longitude);
+          },
+          () => {
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${r!.lat},${r!.lng}`, "_blank");
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      }
+    };
+
+    document.getElementById("btn-route-close")?.addEventListener("click", () => {
+      if (routeLine && map) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+      document.getElementById("route-info")!.classList.add("hidden");
+    });
+
+    // Compartir global
+    (window as any)._compartir = function(id: string) {
+      const r = refugios.find(x => x.id === id);
+      if (!r) return;
+      shareRefugio(r);
+    };
+
+    function shareRefugio(r: any) {
+      const semaforoTxt = r.semaforo === "rojo" ? "🔴 Crítico" : r.semaforo === "amarillo" ? "🟡 Alerta" : "🟢 OK";
+      const text = `🆘 *${r.nombre}*\n📍 ${r.direccion || "Sin dirección"}\n👥 ${r.ocupacion}/${r.capacidad} personas\n📦 Inventario: ${semaforoTxt}\n${r.contacto ? "📞 " + r.contacto + "\n" : ""}🗺️ https://dondeestan.org/refugios/mapa?id=${r.id}`;
+      const url = `https://dondeestan.org/refugios/mapa?id=${r.id}`;
+
+      if (navigator.share) {
+        navigator.share({ title: r.nombre, text, url }).catch(() => {});
+      } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+      }
+    }
+
+    document.querySelectorAll(".btn-share").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const el = btn as HTMLElement;
+        const r = {
+          id: el.dataset.id || "",
+          lat: parseFloat(el.dataset.lat || "0"),
+          lng: parseFloat(el.dataset.lng || "0"),
+          nombre: el.dataset.nombre || "",
+          direccion: el.dataset.direccion || "",
+          semaforo: el.dataset.semaforo || "verde",
+          contacto: el.dataset.contacto || "",
+          ocupacion: parseInt(el.dataset.ocupacion || "0"),
+          capacidad: parseInt(el.dataset.capacidad || "100"),
+        };
+        shareRefugio(r);
+      });
+    });
+
+    // Offline banner
+    if (!navigator.onLine) {
+      document.getElementById("offline-banner")?.classList.remove("hidden");
+    }
+  });
+
+  // Eventos globales del window (estos se pueden registrar a nivel de módulo)
+  window.addEventListener("offline", () => {
+    document.getElementById("offline-banner")?.classList.remove("hidden");
+  });
+  window.addEventListener("online", () => {
+    document.getElementById("offline-banner")?.classList.add("hidden");
+  });
+
+  window.addEventListener("resize", () => {
+    const topBar = document.getElementById("top-bar");
+    const mapDiv = document.getElementById("map-fullscreen");
+    if (topBar && mapDiv) {
+      mapDiv.style.top = topBar.offsetHeight + "px";
+    }
+    if (map) map.invalidateSize();
+    // Forzar redibujo de bottom sheet
+    const sheet = document.getElementById("bottom-sheet");
+    if (sheet && sheetState) {
+      const vh = window.innerHeight;
+      if (sheetState === "colapsado") sheet.style.transform = "translateY(-80px)";
+      else if (sheetState === "medio") sheet.style.transform = `translateY(-${Math.round(vh * 0.45)}px)`;
+      else if (sheetState === "expandido") sheet.style.transform = `translateY(-${Math.round(vh * 0.85)}px)`;
+    }
+  });
+</script>
