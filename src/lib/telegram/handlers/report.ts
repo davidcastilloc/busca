@@ -23,14 +23,15 @@ export async function handleReportState(
   session: TelegramSession,
   text?: string,
   photoArray?: any[],
-  env?: any
+  env?: any,
+  location?: { latitude: number; longitude: number }
 ): Promise<void> {
   const currentStep = session.step;
   const data = session.data || {};
 
   if (text === "/cancelar") {
     await clearSession(db, telegramId);
-    await client.sendMessage(chatId, "❌ Reporte cancelado.");
+    await client.sendMessage(chatId, "❌ Reporte cancelado.", { reply_markup: { remove_keyboard: true } });
     return;
   }
 
@@ -66,25 +67,41 @@ export async function handleReportState(
     await setSession(db, telegramId, chatId, "rep_ubicacion", data);
     await client.sendMessage(
       chatId,
-      "Cédula registrada.\n\nAhora, escribe <b>dónde estuvo últimamente</b> (última ubicación conocida):"
+      "Cédula registrada.\n\nAhora, escribe <b>dónde estuvo últimamente</b> (última ubicación conocida) o envía tu <b>Ubicación GPS (📎)</b> si estás en el sitio:",
+      {
+        reply_markup: {
+          keyboard: [
+            [{ text: "📍 Compartir mi ubicación actual (GPS)", request_location: true }],
+            [{ text: "/cancelar" }]
+          ],
+          resize_keyboard: true,
+          one_time_keyboard: true
+        }
+      }
     );
     return;
   }
 
   // 2.5 Esperando Ubicación
   if (currentStep === "rep_ubicacion") {
-    if (!text || text.trim().length < 3) {
+    if (location) {
+      data.latitud = location.latitude;
+      data.longitud = location.longitude;
+      data.ubicacion_nombre = "Ubicación GPS adjunta por Telegram";
+    } else if (text && text.trim().length >= 3) {
+      data.ubicacion_nombre = text.trim();
+    } else {
       await client.sendMessage(
         chatId,
-        "⚠️ Indica la última ubicación conocida (ej. 'Centro de Caracas' o 'No se sabe'):"
+        "⚠️ Indica la última ubicación conocida (ej. 'Centro de Caracas') o envía tu ubicación GPS (📎):"
       );
       return;
     }
-    data.ubicacion_nombre = text.trim();
     await setSession(db, telegramId, chatId, "rep_desc", data);
     await client.sendMessage(
       chatId,
-      "Ubicación registrada.\n\nEscribe una <b>descripción detallada</b> (señas particulares, vestimenta, estado de salud - mínimo 10 caracteres):"
+      "Ubicación registrada.\n\nEscribe una <b>descripción detallada</b> (señas particulares, vestimenta, estado de salud - mínimo 10 caracteres):",
+      { reply_markup: { remove_keyboard: true } }
     );
     return;
   }
@@ -164,6 +181,8 @@ export async function handleReportState(
           cedula_buscado: data.cedula_buscado,
           descripcion: data.descripcion,
           ubicacion_nombre: data.ubicacion_nombre,
+          latitud: data.latitud || null,
+          longitud: data.longitud || null,
           reportante_nombre: `Bot Telegram`,
           reportante_contacto: `User ID: ${telegramId}`,
           foto_key: data.foto_key,

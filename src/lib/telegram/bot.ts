@@ -147,11 +147,11 @@ export async function processTelegramUpdate(
         return;
       }
       if (session.step.startsWith("rep_")) {
-        await handleReportState(client, db, chatId, telegramId, session, text, msg.photo, env);
+        await handleReportState(client, db, chatId, telegramId, session, text, msg.photo, env, msg.location);
         return;
       }
       if (session.step.startsWith("fnd_")) {
-        await handleFoundState(client, db, chatId, telegramId, session, text, msg.photo, env);
+        await handleFoundState(client, db, chatId, telegramId, session, text, msg.photo, env, msg.location);
         return;
       }
       if (session.step.startsWith("cen_")) {

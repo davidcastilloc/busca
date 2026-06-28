@@ -34,14 +34,15 @@ export async function handleFoundState(
   session: TelegramSession,
   text?: string,
   photoArray?: any[],
-  env?: any
+  env?: any,
+  location?: { latitude: number; longitude: number }
 ): Promise<void> {
   const currentStep = session.step;
   const data = session.data || {};
 
   if (text === "/cancelar") {
     await clearSession(db, telegramId);
-    await client.sendMessage(chatId, "❌ Reporte cancelado.");
+    await client.sendMessage(chatId, "❌ Reporte cancelado.", { reply_markup: { remove_keyboard: true } });
     return;
   }
 
@@ -74,22 +75,38 @@ export async function handleFoundState(
     await setSession(db, telegramId, chatId, "fnd_ubicacion", data);
     await client.sendMessage(
       chatId,
-      "📍 ¿En qué <b>refugio o ubicación</b> se encuentra ahora?"
+      "📍 ¿En qué <b>refugio o ubicación</b> se encuentra ahora? Puedes escribir el lugar o enviar tu <b>Ubicación GPS (📎)</b>:",
+      {
+        reply_markup: {
+          keyboard: [
+            [{ text: "📍 Compartir mi ubicación actual (GPS)", request_location: true }],
+            [{ text: "/cancelar" }]
+          ],
+          resize_keyboard: true,
+          one_time_keyboard: true
+        }
+      }
     );
     return;
   }
 
   // 3. Esperando Ubicación
   if (currentStep === "fnd_ubicacion") {
-    if (!text || text.trim().length < 3) {
-      await client.sendMessage(chatId, "⚠️ Ubicación muy corta. Envíala de nuevo:");
+    if (location) {
+      data.latitud = location.latitude;
+      data.longitud = location.longitude;
+      data.ubicacion_nombre = "Ubicación GPS adjunta por Telegram";
+    } else if (text && text.trim().length >= 3) {
+      data.ubicacion_nombre = text.trim();
+    } else {
+      await client.sendMessage(chatId, "⚠️ Ubicación muy corta. Envíala de nuevo o comparte tu GPS (📎):");
       return;
     }
-    data.ubicacion_nombre = text.trim();
     await setSession(db, telegramId, chatId, "fnd_photo", data);
     await client.sendMessage(
       chatId,
-      "Por último, puedes enviar una <b>foto de la persona</b> (opcional). Escribe /saltar o 'listo' si no tienes foto:"
+      "Por último, puedes enviar una <b>foto de la persona</b> (opcional). Escribe /saltar o 'listo' si no tienes foto:",
+      { reply_markup: { remove_keyboard: true } }
     );
     return;
   }
@@ -132,6 +149,8 @@ export async function handleFoundState(
             cedula_buscado: data.cedula_buscado,
             descripcion: "Reportado como a salvo por voluntario.",
             ubicacion_nombre: data.ubicacion_nombre,
+            latitud: data.latitud || null,
+            longitud: data.longitud || null,
             reportante_nombre: "Voluntario (Telegram)",
             reportante_contacto: `User ID: ${telegramId}`,
             foto_key: data.foto_key,
