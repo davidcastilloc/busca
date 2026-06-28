@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { obtenerVoluntarioSesion } from "../lib/auth-helpers";
 import OfflineIndicator from "./OfflineIndicator.astro";
 import PushBanner from "./PushBanner.astro";
-
+import ShareButton from "./ShareButton.astro";
 const sessionToken = Astro.cookies.get("session_token")?.value;
 let isVolunteer = false;
 
@@ -50,6 +50,8 @@ try {
         </a>
       </nav>
 
+      <ShareButton class="md:hidden mr-2" />
+      
       <!-- Menú móvil (Icon Button Circular) -->
       <div class="dropdown dropdown-end md:hidden">
         <div tabindex="0" role="button" class="w-10 h-10 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors active:bg-surface-pressed">
@@ -95,6 +97,7 @@ try {
 
       <!-- Push + Offline: solo visible en desktop -->
       <div class="hidden md:flex items-center gap-2">
+        <ShareButton />
         <div class="h-6 w-px bg-canvas-soft"></div>
         <PushBanner />
         <OfflineIndicator />

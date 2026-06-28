@@ -1,5 +1,6 @@
 import type { TelegramClient } from "../client";
 import { setSession, clearSession, type TelegramSession } from "../session";
+import { getShelterKeyboard, resolveLocation } from "../utils";
 
 export async function startFound(
   client: TelegramClient,
@@ -73,35 +74,32 @@ export async function handleFoundState(
       data.nombre_buscado = text.trim();
     }
     await setSession(db, telegramId, chatId, "fnd_ubicacion", data);
+    const keyboard = await getShelterKeyboard(db);
     await client.sendMessage(
       chatId,
-      "📍 ¿En qué <b>refugio o ubicación</b> se encuentra ahora? Puedes escribir el lugar o enviar tu <b>Ubicación GPS (📎)</b>:",
-      {
-        reply_markup: {
-          keyboard: [
-            [{ text: "📍 Compartir mi ubicación actual (GPS)", request_location: true }],
-            [{ text: "/cancelar" }]
-          ],
-          resize_keyboard: true,
-          one_time_keyboard: true
-        }
-      }
+      "📍 ¿En qué <b>refugio o ubicación</b> se encuentra ahora? Puedes elegir, escribir el lugar o enviar tu <b>Ubicación GPS (📎)</b>:",
+      keyboard ? { reply_markup: keyboard } : {}
     );
     return;
   }
 
   // 3. Esperando Ubicación
   if (currentStep === "fnd_ubicacion") {
-    if (location) {
-      data.latitud = location.latitude;
-      data.longitud = location.longitude;
-      data.ubicacion_nombre = "Ubicación GPS adjunta por Telegram";
-    } else if (text && text.trim().length >= 3) {
-      data.ubicacion_nombre = text.trim();
-    } else {
-      await client.sendMessage(chatId, "⚠️ Ubicación muy corta. Envíala de nuevo o comparte tu GPS (📎):");
+    const resolved = await resolveLocation(db, text, location);
+    
+    if (!resolved.valid) {
+      const keyboard = await getShelterKeyboard(db);
+      await client.sendMessage(chatId, "⚠️ Ubicación muy corta o inválida. Envíala de nuevo o comparte tu GPS (📎):", {
+        reply_markup: keyboard
+      });
       return;
     }
+
+    data.ubicacion_nombre = resolved.ubicacion_nombre;
+    data.latitud = resolved.latitud;
+    data.longitud = resolved.longitud;
+    data.refugio_id = resolved.refugio_id;
+
     await setSession(db, telegramId, chatId, "fnd_photo", data);
     await client.sendMessage(
       chatId,
@@ -151,6 +149,7 @@ export async function handleFoundState(
             ubicacion_nombre: data.ubicacion_nombre,
             latitud: data.latitud || null,
             longitud: data.longitud || null,
+            refugio_id: data.refugio_id || null,
             reportante_nombre: "Voluntario (Telegram)",
             reportante_contacto: `User ID: ${telegramId}`,
             foto_key: data.foto_key,
