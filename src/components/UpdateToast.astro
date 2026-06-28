@@ -2,17 +2,17 @@
 ---
 
 <!-- Toast flotante para actualizaciones del Service Worker -->
-<div id="update-toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-[999] hidden animate-slide-up">
-  <div class="bg-ink text-white rounded-2xl px-5 py-3 shadow-xl flex items-center gap-3 max-w-sm">
-    <span class="text-lg">🔄</span>
-    <div class="flex-1">
-      <p class="font-uber-text uber-body-sm-strong">Nueva versión disponible</p>
-      <p class="font-uber-text text-xs text-white/70">Toca para actualizar sin perder datos</p>
+<div id="update-toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-[999] hidden animate-slide-up w-[calc(100%-2rem)] max-w-sm">
+  <div class="bg-ink text-white rounded-2xl px-4 py-3 shadow-xl flex items-center gap-3">
+    <span class="text-lg flex-shrink-0">🔄</span>
+    <div class="flex-grow min-w-0">
+      <p class="font-uber-text uber-body-sm-strong leading-tight">Nueva versión</p>
+      <p class="font-uber-text text-[11px] text-white/70 leading-tight">Toca para actualizar</p>
     </div>
-    <button id="update-btn" class="bg-white text-ink rounded-xl px-4 py-2 font-uber-text uber-body-sm-strong hover:bg-white/90 transition-colors whitespace-nowrap cursor-pointer">
+    <button id="update-btn" class="bg-white text-ink rounded-xl px-3 py-1.5 text-xs font-uber-text uber-body-sm-strong hover:bg-white/90 transition-colors whitespace-nowrap cursor-pointer flex-shrink-0">
       Actualizar
     </button>
-    <button id="update-dismiss" class="text-white/50 hover:text-white transition-colors ml-1 cursor-pointer" aria-label="Cerrar">
+    <button id="update-dismiss" class="text-white/50 hover:text-white transition-colors ml-1 cursor-pointer flex-shrink-0" aria-label="Cerrar">
       ✕
     </button>
   </div>
