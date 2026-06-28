@@ -40,6 +40,18 @@ export const GET: APIRoute = async () => {
       WHERE latitud IS NOT NULL AND longitud IS NOT NULL
     `).all<{ id: number; nombre: string; latitud: number; longitud: number; capacidad_maxima: number; ocupacion_actual: number; necesidades: string; inventario?: string }>();
 
+    // Consultar necesidades con coordenadas
+    const necesidades = await DB.prepare(`
+      SELECT n.id, n.categoria, n.gravedad, n.descripcion,
+             COALESCE(n.latitud, ref.latitud) as latitud,
+             COALESCE(n.longitud, ref.longitud) as longitud,
+             n.estado
+      FROM necesidades n
+      LEFT JOIN refugios ref ON n.refugio_id = ref.id
+      WHERE (n.latitud IS NOT NULL AND n.longitud IS NOT NULL)
+         OR (n.refugio_id IS NOT NULL AND ref.latitud IS NOT NULL AND ref.longitud IS NOT NULL)
+    `).all<{ id: number; categoria: string; gravedad: string; descripcion: string; latitud: number; longitud: number; estado: string }>();
+
     // Ponderación por estado/tipo (más peso = más intensidad en heatmap)
     const pesos: Record<string, number> = {
       fallecido: 3,
@@ -50,6 +62,9 @@ export const GET: APIRoute = async () => {
       encontrado: 1,
       refugio: 0.8,
       necesidad: 2,
+      Alta: 3,
+      Media: 2,
+      Baja: 1,
     };
 
     const puntos: any[] = [];
@@ -74,18 +89,7 @@ export const GET: APIRoute = async () => {
       
       let nombreMostrar = r.nombre_buscado;
       if (!nombreMostrar) {
-        if (r.tipo === 'necesidad') {
-          // Extraemos el tipo de necesidad de la descripción o mostramos un extracto
-          const desc = r.descripcion || "";
-          const match = desc.match(/\[TIPO NECESIDAD: (.*?)\]/);
-          if (match && match[1]) {
-            nombreMostrar = "Necesidad: " + match[1];
-          } else {
-            nombreMostrar = desc.length > 30 ? desc.substring(0, 30) + "..." : (desc || "Necesidad Reportada");
-          }
-        } else {
-          nombreMostrar = "Persona no identificada";
-        }
+        nombreMostrar = "Persona no identificada";
       }
 
       puntos.push({
@@ -127,6 +131,24 @@ export const GET: APIRoute = async () => {
         ocupacion_actual: rf.ocupacion_actual,
         necesidades: rf.necesidades,
         estado: semaforo === "rojo" ? "alerta_critica" : semaforo === "amarillo" ? "alerta_moderada" : "activo"
+      });
+    }
+
+    // Agregar necesidades
+    for (const n of necesidades.results || []) {
+      let peso = pesos[n.gravedad] || 2;
+      
+      let nombreMostrar = "Necesidad: " + n.categoria;
+
+      puntos.push({
+        lat: n.latitud,
+        lon: n.longitud,
+        peso: peso,
+        id: n.id,
+        nombre: nombreMostrar,
+        tipo: "necesidad",
+        estado: n.estado,
+        estado_reporte: n.estado // reutilizando field para UI
       });
     }
 

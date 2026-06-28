@@ -689,8 +689,8 @@ try {
       const data = Object.fromEntries(formData.entries());
 
       let descConcatenada = String(data.descripcion).trim();
-      let nombreBuscadoVal = null;
-      let cedulaBuscadoVal = null;
+      let payload: any = {};
+      let endpointUrl = "/api/reportes";
       
       if (data.tipo === "desaparecido") {
         const fechaContacto = String(data.extra_ultimo_contacto).replace("T", " ");
@@ -698,45 +698,75 @@ try {
         const senas = String(data.extra_senas).trim();
         
         descConcatenada = `[FECHA ÚLTIMO CONTACTO: ${fechaContacto}]\n[UBICACIÓN: ${ubicacion}]\n[SEÑAS: ${senas}]\n\n${descConcatenada}`;
-        nombreBuscadoVal = data.nombre_buscado ? String(data.nombre_buscado).trim() : null;
-        cedulaBuscadoVal = data.cedula_buscado ? String(data.cedula_buscado).trim() : null;
+        payload = {
+          tipo: "desaparecido",
+          nombre_buscado: data.nombre_buscado ? String(data.nombre_buscado).trim() : null,
+          cedula_buscado: data.cedula_buscado ? String(data.cedula_buscado).trim() : null,
+          descripcion: descConcatenada,
+          reportante_nombre: data.reportante_nombre ? String(data.reportante_nombre).trim() : null,
+          reportante_contacto: data.reportante_contacto ? String(data.reportante_contacto).trim() : null,
+          ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
+          latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
+          longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
+          foto_key: data.foto_key ? String(data.foto_key).trim() : null,
+          refugio_id: data.refugio_id ? parseInt(String(data.refugio_id), 10) : null
+        };
       } else if (data.tipo === "encontrado") {
-        nombreBuscadoVal = data.nombre_buscado ? String(data.nombre_buscado).trim() : null;
-        cedulaBuscadoVal = data.cedula_buscado ? String(data.cedula_buscado).trim() : null;
+        payload = {
+          tipo: "encontrado",
+          nombre_buscado: data.nombre_buscado ? String(data.nombre_buscado).trim() : null,
+          cedula_buscado: data.cedula_buscado ? String(data.cedula_buscado).trim() : null,
+          descripcion: descConcatenada,
+          reportante_nombre: data.reportante_nombre ? String(data.reportante_nombre).trim() : null,
+          reportante_contacto: data.reportante_contacto ? String(data.reportante_contacto).trim() : null,
+          ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
+          latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
+          longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
+          foto_key: data.foto_key ? String(data.foto_key).trim() : null,
+          refugio_id: data.refugio_id ? parseInt(String(data.refugio_id), 10) : null
+        };
       } else if (data.tipo === "necesidad") {
-        const categoria = String(data.necesidad_categoria);
-        const gravedad = String(data.necesidad_gravedad);
-        const afectados = data.necesidad_afectados ? `${data.necesidad_afectados} personas` : "No especificado";
-        
-        descConcatenada = `[TIPO NECESIDAD: ${categoria}]\n[URGENCIA: ${gravedad}]\n[AFECTADOS: ${afectados}]\n\n${descConcatenada}`;
+        endpointUrl = "/api/necesidades";
+        payload = {
+          categoria: String(data.necesidad_categoria),
+          gravedad: String(data.necesidad_gravedad),
+          afectados: data.necesidad_afectados ? parseInt(String(data.necesidad_afectados), 10) : null,
+          descripcion: descConcatenada,
+          ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
+          latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
+          longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
+          telefono: data.necesidad_telefono ? String(data.necesidad_telefono).trim() : null,
+          foto_key: data.foto_key ? String(data.foto_key).trim() : null,
+          refugio_id: data.refugio_id ? parseInt(String(data.refugio_id), 10) : null,
+          reportante_nombre: data.reportante_nombre ? String(data.reportante_nombre).trim() : null,
+          reportante_contacto: data.reportante_contacto ? String(data.reportante_contacto).trim() : null
+        };
       } else if (data.tipo === "refugio") {
         const centroTipo = String(data.refugio_tipo);
         const ocupacion = data.refugio_ocupacion ? `${data.refugio_ocupacion} pers.` : "0 pers.";
         const capacidad = data.refugio_capacidad ? `${data.refugio_capacidad} pers.` : "100 pers.";
         
         descConcatenada = `[TIPO CENTRO: ${centroTipo}]\n[OCUPACIÓN: ${ocupacion} / ${capacidad}]\n\n${descConcatenada}`;
-        nombreBuscadoVal = data.refugio_nombre ? String(data.refugio_nombre).trim() : "Refugio sin nombre";
+        payload = {
+          tipo: "refugio",
+          nombre_buscado: data.refugio_nombre ? String(data.refugio_nombre).trim() : "Refugio sin nombre",
+          cedula_buscado: null,
+          descripcion: descConcatenada,
+          reportante_nombre: data.reportante_nombre ? String(data.reportante_nombre).trim() : null,
+          reportante_contacto: data.reportante_contacto ? String(data.reportante_contacto).trim() : null,
+          ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
+          latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
+          longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
+          foto_key: data.foto_key ? String(data.foto_key).trim() : null,
+          refugio_id: data.refugio_id ? parseInt(String(data.refugio_id), 10) : null
+        };
       }
-
-      const payload = {
-        tipo: data.tipo || "desaparecido",
-        nombre_buscado: nombreBuscadoVal,
-        cedula_buscado: cedulaBuscadoVal,
-        descripcion: descConcatenada,
-        reportante_nombre: data.reportante_nombre ? String(data.reportante_nombre).trim() : null,
-        reportante_contacto: data.reportante_contacto ? String(data.reportante_contacto).trim() : null,
-        ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
-        latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
-        longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
-        foto_key: data.foto_key ? String(data.foto_key).trim() : null,
-        refugio_id: data.refugio_id ? parseInt(String(data.refugio_id), 10) : null
-      };
 
       mostrarToast("Procesando reporte...", "border-blue-500/30");
 
       if (navigator.onLine) {
         try {
-          const response = await fetch("/api/reportes", {
+          const response = await fetch(endpointUrl, {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
@@ -877,7 +907,8 @@ try {
 
     async function guardarOffline(payload: any) {
       try {
-        await encolarRegistro("reporte", payload);
+        const queueType = data.tipo === "necesidad" ? "necesidad" : "reporte";
+        await encolarRegistro(queueType, payload);
         mostrarToast("⚠️ Guardado localmente sin red. Se sincronizará automáticamente.", "border-yellow-500/30");
         form.reset();
         document.getElementById("btn-quitar-foto")?.click();
