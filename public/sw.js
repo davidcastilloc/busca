@@ -4,11 +4,14 @@
 // Background Sync, Push Notifications, Update controlado
 // ═══════════════════════════════════════════════════════════
 
-const CACHE_NAME = "busca-cache-v4";
+const CACHE_NAME = "busca-cache-v5";
+const TILES_CACHE = "busca-tiles-v1";
+const API_CACHE = "busca-api-v1";
 const STATIC_ASSETS = [
   "/",
   "/registrar",
   "/reportar",
+  "/refugios/mapa",
   "/manifest.json",
   "/favicon.svg",
   "/icons/icon-192.png",
@@ -41,9 +44,10 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
+      const keepCaches = [CACHE_NAME, TILES_CACHE, API_CACHE];
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          if (!keepCaches.includes(key)) {
             return caches.delete(key);
           }
         })
@@ -72,8 +76,40 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // API calls: siempre a red (no cachear datos dinámicos)
+  // API refugios: Network First con cache fallback (para offline)
+  if (url.pathname === "/api/refugios") {
+    e.respondWith(
+      fetch(e.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(API_CACHE).then((cache) => cache.put(e.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(e.request).then((cached) => cached || new Response(JSON.stringify({ refugios: [] }), { status: 503, headers: { "Content-Type": "application/json" } })))
+    );
+    return;
+  }
+
+  // Otras API calls: siempre a red (no cachear)
   if (url.pathname.startsWith("/api/")) {
+    return;
+  }
+
+  // Tiles OpenStreetMap: Stale While Revalidate
+  if (url.hostname.includes("tile.openstreetmap.org")) {
+    e.respondWith(
+      caches.open(TILES_CACHE).then((cache) => {
+        return cache.match(e.request).then((cached) => {
+          const fetchPromise = fetch(e.request).then((response) => {
+            if (response.ok) cache.put(e.request, response.clone());
+            return response;
+          }).catch(() => cached);
+          return cached || fetchPromise;
+        });
+      })
+    );
     return;
   }
 
