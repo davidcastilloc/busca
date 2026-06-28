@@ -577,8 +577,19 @@ const refugiosConSemaforo = refugiosData.map((r: any) => {
       map.addLayer(clusterGroup);
 
       if (refugios.length > 0) {
-        const group = L.featureGroup(Array.from(markers.values()));
-        map.fitBounds(group.getBounds().pad(0.15));
+        let sumLat = 0, sumLng = 0, totalW = 0;
+        refugios.forEach((r: any) => {
+          let w = r.semaforo === "rojo" ? 3 : r.semaforo === "amarillo" ? 2 : 1;
+          sumLat += r.lat * w;
+          sumLng += r.lng * w;
+          totalW += w;
+        });
+        if (totalW > 0) {
+          map.flyTo([sumLat / totalW, sumLng / totalW], 11, { duration: 1.5 });
+        } else {
+          const group = L.featureGroup(Array.from(markers.values()));
+          map.fitBounds(group.getBounds().pad(0.15));
+        }
       }
 
       // Query param deep-link ?id=X
