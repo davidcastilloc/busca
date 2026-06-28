@@ -175,8 +175,8 @@ export const PATCH: APIRoute = async (context) => {
     }
 
     // Agregar fecha de censo y de actualización automáticas
-    fields.push("fecha_registro = datetime('now')");
-    fields.push("updated_at = datetime('now')");
+    fields.push("fecha_registro = datetime('now', '-4 hours')");
+    fields.push("updated_at = datetime('now', '-4 hours')");
     fields.push("updated_by = ?");
     params.push(voluntario.id);
 

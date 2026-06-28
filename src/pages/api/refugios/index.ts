@@ -106,7 +106,7 @@ export const POST: APIRoute = async (context) => {
         adultos_mayores, personal_profesional, voluntarios, inventario, 
         fecha_registro, updated_at, fotos, created_by
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'), ?, ?)
       RETURNING id
     `).bind(
       nombre.trim(),

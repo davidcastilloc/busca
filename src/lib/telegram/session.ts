@@ -47,11 +47,11 @@ export async function setSession(
     await db
       .prepare(
         `INSERT INTO telegram_sessions (telegram_id, chat_id, step, data, updated_at)
-         VALUES (?1, ?2, ?3, ?4, datetime('now'))
+         VALUES (?1, ?2, ?3, ?4, datetime('now', '-4 hours'))
          ON CONFLICT(telegram_id) DO UPDATE SET
            step = ?3,
            data = ?4,
-           updated_at = datetime('now')`
+           updated_at = datetime('now', '-4 hours')`
       )
       .bind(String(telegramId), String(chatId), step, dataStr)
       .run();

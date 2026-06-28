@@ -128,7 +128,7 @@ export async function handleShelterStatusUpdate(
   const nuevaOcupacion = Math.round((r.capacidad_maxima * porcentaje) / 100);
 
   await db
-    .prepare("UPDATE refugios SET ocupacion_actual = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .prepare("UPDATE refugios SET ocupacion_actual = ?, updated_at = datetime('now', '-4 hours') WHERE id = ?")
     .bind(nuevaOcupacion, refugioId)
     .run();
 

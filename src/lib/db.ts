@@ -44,7 +44,7 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
         ubicacion_nombre, latitud, longitud, refugio, 
         contacto, notas, foto_key, fuente, refugio_id, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'))
       ON CONFLICT(cedula) DO UPDATE SET
         nombre = excluded.nombre,
         apellido = excluded.apellido,
@@ -60,7 +60,7 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
         foto_key = excluded.foto_key,
         fuente = excluded.fuente,
         refugio_id = excluded.refugio_id,
-        updated_at = datetime('now')
+        updated_at = datetime('now', '-4 hours')
     `).bind(
       data.cedula,
       data.nombre,
@@ -153,7 +153,7 @@ export async function resolverReportesRelacionados(db: D1Database, cedula?: stri
       db.prepare(`
         UPDATE reportes 
         SET estado_reporte = 'resuelto', 
-            updated_at = datetime('now') 
+            updated_at = datetime('now', '-4 hours') 
         WHERE cedula_buscado = ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
       `).bind(cedula)
     );
@@ -164,7 +164,7 @@ export async function resolverReportesRelacionados(db: D1Database, cedula?: stri
       db.prepare(`
         UPDATE reportes 
         SET estado_reporte = 'resuelto', 
-            updated_at = datetime('now') 
+            updated_at = datetime('now', '-4 hours') 
         WHERE nombre_buscado LIKE ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
       `).bind(`%${nombre}%`)
     );
@@ -223,7 +223,7 @@ export async function procesarCensoBatch(
 
     return db.prepare(`
       INSERT INTO personas (nombre, apellido, estado, refugio, contacto, cedula, edad, fuente, refugio_id, updated_at)
-      VALUES (?, ?, 'vivo', ?, ?, ?, ?, 'escaner_ia', ?, datetime('now'))
+      VALUES (?, ?, 'vivo', ?, ?, ?, ?, 'escaner_ia', ?, datetime('now', '-4 hours'))
       RETURNING id
     `).bind(
       nombre,
@@ -262,7 +262,7 @@ export async function procesarCensoBatch(
             UPDATE reportes 
             SET estado_reporte = 'resuelto', 
                 persona_id = ?,
-                updated_at = datetime('now') 
+                updated_at = datetime('now', '-4 hours') 
             WHERE id = ?
           `).bind(res.personaId, match.id)
         );

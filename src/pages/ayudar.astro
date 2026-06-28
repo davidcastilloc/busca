@@ -33,7 +33,7 @@ try {
         } else {
           await DB.prepare(`
             UPDATE refugios 
-            SET ocupacion_actual = ?, updated_at = CURRENT_TIMESTAMP 
+            SET ocupacion_actual = ?, updated_at = datetime('now', '-4 hours') 
             WHERE id = ?
           `).bind(ocupacion, refugioId).run();
           successMsg = "Ocupación del refugio actualizada con éxito.";
@@ -332,111 +332,116 @@ const formatFecha = (fechaStr: string) => {
 </Layout>
 
 <script>
-  // Manejo de Logout
-  const btnLogout = document.getElementById("btn-logout");
-  btnLogout?.addEventListener("click", async () => {
-    try {
-      const resp = await fetch("/api/auth/logout", { method: "POST" });
-      if (resp.ok) {
-        window.location.reload();
+  function initAyudar() {
+    // Manejo de Logout
+    const btnLogout = document.getElementById("btn-logout");
+    btnLogout?.addEventListener("click", async () => {
+      try {
+        const resp = await fetch("/api/auth/logout", { method: "POST" });
+        if (resp.ok) {
+          window.location.reload();
+        }
+      } catch (err) {
+        console.error("Error al cerrar sesión:", err);
       }
-    } catch (err) {
-      console.error("Error al cerrar sesión:", err);
-    }
-  });
+    });
 
-  // Manejo de Pestañas (Ingreso / Registro)
-  const tabLogin = document.getElementById("tab-login");
-  const tabRegister = document.getElementById("tab-register");
-  const formLogin = document.getElementById("form-login");
-  const formRegister = document.getElementById("form-register");
+    // Manejo de Pestañas (Ingreso / Registro)
+    const tabLogin = document.getElementById("tab-login");
+    const tabRegister = document.getElementById("tab-register");
+    const formLogin = document.getElementById("form-login");
+    const formRegister = document.getElementById("form-register");
 
-  tabLogin?.addEventListener("click", () => {
-    tabLogin.className = "flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-primary text-white border-none cursor-pointer";
-    tabRegister!.className = "flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-transparent text-ink border-none cursor-pointer";
-    formLogin?.classList.remove("hidden");
-    formRegister?.classList.add("hidden");
-  });
+    tabLogin?.addEventListener("click", () => {
+      tabLogin.className = "flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-primary text-white border-none cursor-pointer";
+      if (tabRegister) tabRegister.className = "flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-transparent text-ink border-none cursor-pointer";
+      formLogin?.classList.remove("hidden");
+      formRegister?.classList.add("hidden");
+    });
 
-  tabRegister?.addEventListener("click", () => {
-    tabRegister.className = "flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-primary text-white border-none cursor-pointer";
-    tabLogin!.className = "flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-transparent text-ink border-none cursor-pointer";
-    formRegister?.classList.remove("hidden");
-    formLogin?.classList.add("hidden");
-  });
+    tabRegister?.addEventListener("click", () => {
+      tabRegister.className = "flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-primary text-white border-none cursor-pointer";
+      if (tabLogin) tabLogin.className = "flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-transparent text-ink border-none cursor-pointer";
+      formRegister?.classList.remove("hidden");
+      formLogin?.classList.add("hidden");
+    });
 
-  // Envío Formulario Login
-  formLogin?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const telefono = (document.getElementById("login-telefono") as HTMLInputElement).value;
-    const pin = (document.getElementById("login-pin") as HTMLInputElement).value;
-    const errorDiv = document.getElementById("login-error");
-    const btnSubmit = document.getElementById("btn-submit-login") as HTMLButtonElement;
+    // Envío Formulario Login
+    formLogin?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const telefono = (document.getElementById("login-telefono") as HTMLInputElement).value;
+      const pin = (document.getElementById("login-pin") as HTMLInputElement).value;
+      const errorDiv = document.getElementById("login-error");
+      const btnSubmit = document.getElementById("btn-submit-login") as HTMLButtonElement;
 
-    if (errorDiv) errorDiv.classList.add("hidden");
-    if (btnSubmit) btnSubmit.disabled = true;
+      if (errorDiv) errorDiv.classList.add("hidden");
+      if (btnSubmit) btnSubmit.disabled = true;
 
-    try {
-      const resp = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ telefono, pin })
-      });
+      try {
+        const resp = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ telefono, pin })
+        });
 
-      if (resp.ok) {
-        window.location.reload();
-      } else {
-        const err = await resp.json();
+        if (resp.ok) {
+          window.location.reload();
+        } else {
+          const err = await resp.json();
+          if (errorDiv) {
+            errorDiv.textContent = `Error: ${err.error || "no se pudo ingresar."}`;
+            errorDiv.classList.remove("hidden");
+          }
+          if (btnSubmit) btnSubmit.disabled = false;
+        }
+      } catch {
         if (errorDiv) {
-          errorDiv.textContent = `Error: ${err.error || "no se pudo ingresar."}`;
+          errorDiv.textContent = "Error de conexión con el servidor.";
           errorDiv.classList.remove("hidden");
         }
         if (btnSubmit) btnSubmit.disabled = false;
       }
-    } catch {
-      if (errorDiv) {
-        errorDiv.textContent = "Error de conexión con el servidor.";
-        errorDiv.classList.remove("hidden");
-      }
-      if (btnSubmit) btnSubmit.disabled = false;
-    }
-  });
+    });
 
-  // Envío Formulario Registro
-  formRegister?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const nombre = (document.getElementById("reg-nombre") as HTMLInputElement).value.trim();
-    const telefono = (document.getElementById("reg-telefono") as HTMLInputElement).value;
-    const pin = (document.getElementById("reg-pin") as HTMLInputElement).value;
-    const errorDiv = document.getElementById("reg-error");
-    const btnSubmit = document.getElementById("btn-submit-reg") as HTMLButtonElement;
+    // Envío Formulario Registro
+    formRegister?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nombre = (document.getElementById("reg-nombre") as HTMLInputElement).value.trim();
+      const telefono = (document.getElementById("reg-telefono") as HTMLInputElement).value;
+      const pin = (document.getElementById("reg-pin") as HTMLInputElement).value;
+      const errorDiv = document.getElementById("reg-error");
+      const btnSubmit = document.getElementById("btn-submit-reg") as HTMLButtonElement;
 
-    if (errorDiv) errorDiv.classList.add("hidden");
-    if (btnSubmit) btnSubmit.disabled = true;
+      if (errorDiv) errorDiv.classList.add("hidden");
+      if (btnSubmit) btnSubmit.disabled = true;
 
-    try {
-      const resp = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, telefono, pin })
-      });
+      try {
+        const resp = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nombre, telefono, pin })
+        });
 
-      if (resp.ok) {
-        window.location.reload();
-      } else {
-        const err = await resp.json();
+        if (resp.ok) {
+          window.location.reload();
+        } else {
+          const err = await resp.json();
+          if (errorDiv) {
+            errorDiv.textContent = `Error: ${err.error || "no se pudo registrar."}`;
+            errorDiv.classList.remove("hidden");
+          }
+          if (btnSubmit) btnSubmit.disabled = false;
+        }
+      } catch {
         if (errorDiv) {
-          errorDiv.textContent = `Error: ${err.error || "no se pudo registrar."}`;
+          errorDiv.textContent = "Error de conexión con el servidor.";
           errorDiv.classList.remove("hidden");
         }
         if (btnSubmit) btnSubmit.disabled = false;
       }
-    } catch {
-      if (errorDiv) {
-        errorDiv.textContent = "Error de conexión con el servidor.";
-        errorDiv.classList.remove("hidden");
-      }
-      if (btnSubmit) btnSubmit.disabled = false;
-    }
-  });
+    });
+  }
+
+  // Re-ejecutar en cada navegación de ClientRouter
+  document.addEventListener("astro:page-load", initAyudar);
 </script>

@@ -13,7 +13,7 @@ export async function obtenerVoluntarioSesion(DB: any, token: string | undefined
     const sesion = await DB.prepare(`
       SELECT v.* FROM sesiones_voluntarios s
       JOIN voluntarios v ON s.voluntario_id = v.id
-      WHERE s.token = ? AND v.activo = 1 AND s.expires_at > datetime('now')
+      WHERE s.token = ? AND v.activo = 1 AND s.expires_at > datetime('now', '-4 hours')
     `).bind(token).first();
     return sesion || null;
   } catch (error) {

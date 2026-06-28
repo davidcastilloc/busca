@@ -29,7 +29,7 @@ export const POST: APIRoute = async (context) => {
         p256dh = excluded.p256dh,
         auth = excluded.auth,
         rol = excluded.rol,
-        created_at = datetime('now')
+        created_at = datetime('now', '-4 hours')
     `).bind(
       validated.endpoint,
       validated.keys.p256dh,
