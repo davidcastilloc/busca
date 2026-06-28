@@ -545,6 +545,11 @@ const refugiosConSemaforo = refugiosData.map((r: any) => {
         }
       }, 500);
     }
+
+    // Invalidate size preventivo tras montarse en el DOM
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 200);
   });
 
   // ===================================================================

@@ -408,6 +408,10 @@ if (!voluntario) {
       marker = L.marker([lat, lon]).addTo(map);
     }
     map.setView([lat, lon], zoom);
+
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 200);
   }
 
   // Centrar inicialmente en Caracas
@@ -536,6 +540,7 @@ if (!voluntario) {
     tabGps.classList.add("bg-primary", "text-white");
     tabGps.classList.remove("bg-transparent", "text-ink");
     panelGps?.classList.remove("hidden");
+    setTimeout(() => { if (map) map.invalidateSize(); }, 150);
   });
 
   tabGmaps?.addEventListener("click", () => {
@@ -543,6 +548,7 @@ if (!voluntario) {
     tabGmaps.classList.add("bg-primary", "text-white");
     tabGmaps.classList.remove("bg-transparent", "text-ink");
     panelGmaps?.classList.remove("hidden");
+    setTimeout(() => { if (map) map.invalidateSize(); }, 150);
   });
 
   tabMap?.addEventListener("click", () => {
@@ -550,6 +556,7 @@ if (!voluntario) {
     tabMap.classList.add("bg-primary", "text-white");
     tabMap.classList.remove("bg-transparent", "text-ink");
     panelMap?.classList.remove("hidden");
+    setTimeout(() => { if (map) map.invalidateSize(); }, 150);
   });
 
   // Resolver link de Google Maps

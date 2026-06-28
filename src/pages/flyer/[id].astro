@@ -41,9 +41,49 @@ const formatFecha = (fechaStr: string) => {
     return fechaStr;
   }
 };
+
+// Datos para compartir en redes sociales
+const siteUrl = "https://dondeestan.org";
+const flyerUrl = `${siteUrl}/flyer/${id}`;
+const ogImage = flyer?.foto_key
+  ? `${siteUrl}/api/upload?key=${encodeURIComponent(flyer.foto_key)}`
+  : `${siteUrl}/icons/icon-512.png`;
+
+// Descripción corta para compartir
+const rawDesc = flyer?.description || "";
+const ubicacion = flyer?.location_name || "";
+const phones0 = phones[0] || "";
+
+let shareText = "";
+if (flyer?.tipo === "necesidad") {
+  const catMatch = rawDesc.match(/\[TIPO NECESIDAD: (.*?)\]/);
+  const gravedadMatch = rawDesc.match(/\[URGENCIA: (.*?)\]/);
+  const cat = catMatch ? catMatch[1] : "Necesidad Urgente";
+  const grav = gravedadMatch ? gravedadMatch[1] : "Alta urgencia";
+  shareText = `🇧 NECESIDAD CRÍTICA: ${cat} (${grav})${ubicacion ? ` en ${ubicacion}` : ""}${phones0 ? `. Contactar: ${phones0}` : ""}. ¡Comparte y ayuda! ${flyerUrl}`;
+} else if (flyer?.tipo === "refugio") {
+  const nombre = flyer?.nombre_buscado || "Refugio activo";
+  shareText = `🏠 REFUGIO ACTIVO: ${nombre}${ubicacion ? ` - ${ubicacion}` : ""}${phones0 ? `. Encargado: ${phones0}` : ""}. ${flyerUrl}`;
+} else if (flyer?.tipo === "desaparecido") {
+  const nombre = flyer?.nombre_buscado || "Persona desaparecida";
+  shareText = `🔴 SE BUSCA: ${nombre}${ubicacion ? ` - Último avistamiento: ${ubicacion}` : ""}. ¡Comparte! ${flyerUrl}`;
+} else if (flyer?.tipo === "encontrado") {
+  const nombre = flyer?.nombre_buscado || "Persona encontrada";
+  shareText = `✅ PERSONA ENCONTRADA/A SALVO: ${nombre}. Informar a familiares. ${flyerUrl}`;
+} else {
+  shareText = `🚨 Reporte de emergencia en dondeestan.org: ${flyerUrl}`;
+}
+
+const ogTitle = flyer?.title || "Reporte de Emergencia";
+const ogDesc = shareText.replace(flyerUrl, "").trim();
 ---
 
-<Layout title={flyer ? `${flyer.title} - Cartel de Emergencia` : "Cartel no encontrado - dondeestan.org"}>
+<Layout
+  title={flyer ? `${flyer.title} - Cartel de Emergencia | dondeestan.org` : "Cartel no encontrado - dondeestan.org"}
+  description={ogDesc || "Reporte de emergencia en dondeestan.org"}
+  ogImage={ogImage}
+  ogUrl={flyerUrl}
+>
   <Navbar />
   
   <main class="flex-grow py-8 px-4 max-w-xl mx-auto w-full">
@@ -64,13 +104,50 @@ const formatFecha = (fechaStr: string) => {
         </div>
 
         <!-- Botones de Acción Superiores (estilo Uber) -->
-        <div class="flex gap-3 justify-center">
-          <button id="btn-download" class="btn bg-primary text-white hover:bg-black-elevated flex-1 font-uber-text uber-body-md-strong">
-            Descargar Imagen
+        <div class="flex gap-2 justify-center flex-wrap">
+          <button id="btn-download" class="btn bg-primary text-white hover:bg-black-elevated flex-1 min-w-[130px] font-uber-text uber-body-md-strong">
+            ⬇️ Descargar
           </button>
-          <button id="btn-copy" class="btn bg-canvas text-ink border border-canvas-soft shadow-lg hover:bg-canvas-soft flex-1 font-uber-text uber-body-md-strong">
-            Copiar Enlace
+          <button id="btn-copy" class="btn bg-canvas text-ink border border-canvas-soft shadow-lg hover:bg-canvas-soft flex-1 min-w-[130px] font-uber-text uber-body-md-strong">
+            🔗 Copiar enlace
           </button>
+        </div>
+
+        <!-- Botones de compartir en redes sociales -->
+        <div class="space-y-2">
+          <p class="text-xs text-mute font-uber-text text-center uppercase tracking-wider">Compartir en redes</p>
+          <div class="grid grid-cols-3 gap-2">
+            <a
+              id="btn-whatsapp"
+              href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border border-canvas-soft bg-[#25D366]/10 hover:bg-[#25D366]/20 transition-colors text-center font-uber-text uber-body-sm-strong text-ink"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#25D366" class="w-6 h-6"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+              <span class="text-xs">WhatsApp</span>
+            </a>
+            <a
+              id="btn-telegram"
+              href={`https://t.me/share/url?url=${encodeURIComponent(flyerUrl)}&text=${encodeURIComponent(shareText.replace(flyerUrl, "").trim())}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border border-canvas-soft bg-[#229ED9]/10 hover:bg-[#229ED9]/20 transition-colors text-center font-uber-text uber-body-sm-strong text-ink"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#229ED9" class="w-6 h-6"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+              <span class="text-xs">Telegram</span>
+            </a>
+            <a
+              id="btn-twitter"
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border border-canvas-soft bg-[#000]/5 hover:bg-[#000]/10 transition-colors text-center font-uber-text uber-body-sm-strong text-ink"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.259 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+              <span class="text-xs">Twitter/X</span>
+            </a>
+          </div>
         </div>
 
         <!-- Contenedor del Cartel Imprimible (html2canvas, diseño premium blanco y negro) -->
@@ -88,14 +165,23 @@ const formatFecha = (fechaStr: string) => {
 
             <!-- Foto -->
             <div class="w-full aspect-[4/3] bg-canvas-soft border border-canvas-soft rounded-lg overflow-hidden flex items-center justify-center mb-4 relative">
-              <img 
-                src={`/api/upload?key=${encodeURIComponent(flyer.foto_key)}`} 
-                alt={flyer.title}
-                class="w-full h-full object-contain"
-                crossorigin="anonymous"
-                fetchpriority="high"
-                decoding="sync"
-              />
+              {flyer.foto_key ? (
+                <img 
+                  src={`/api/upload?key=${encodeURIComponent(flyer.foto_key)}`} 
+                  alt={flyer.title}
+                  class="w-full h-full object-contain"
+                  crossorigin="anonymous"
+                  fetchpriority="high"
+                  decoding="sync"
+                />
+              ) : (
+                <div class="flex flex-col items-center justify-center p-6 text-center text-mute">
+                  <span class="text-6xl mb-2">
+                    {flyer.title.includes("REFUGIO") ? "🏠" : flyer.title.includes("EMERGENCIA") ? "⚠️" : "📢"}
+                  </span>
+                  <span class="text-[10px] font-bold uppercase tracking-widest text-mute">Difusión de Emergencia</span>
+                </div>
+              )}
             </div>
 
             <!-- Descripción (estilo blockquote minimalista) -->
@@ -307,7 +393,14 @@ const formatFecha = (fechaStr: string) => {
             }
           } else if (cartelFotoWrap) {
             cartelFotoWrap.style.flexDirection = "column";
-            cartelFotoWrap.innerHTML = `<div style="font-size:72px;color:#afafaf;">👤</div><div style="font-size:16px;color:#5e5e5e;font-weight:bold;margin-top:8px;">SIN FOTO DISPONIBLE</div>`;
+            cartelFotoWrap.style.alignItems = "center";
+            cartelFotoWrap.style.justifyContent = "center";
+            cartelFotoWrap.style.background = "#f3f4f6";
+            
+            const emoji = nombre.includes("REFUGIO") ? "🏠" : nombre.includes("EMERGENCIA") ? "⚠️" : "📢";
+            const subtitulo = nombre.includes("REFUGIO") ? "REFUGIO ACTIVO" : nombre.includes("EMERGENCIA") ? "NECESIDAD CRÍTICA" : "DIFUSIÓN DE EMERGENCIA";
+            
+            cartelFotoWrap.innerHTML = `<div style="font-size:80px;margin-bottom:8px;">${emoji}</div><div style="font-size:16px;color:#374151;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">${subtitulo}</div>`;
           }
 
           // Import dinámico html2canvas
