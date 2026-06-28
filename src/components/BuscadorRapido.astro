@@ -2,117 +2,92 @@
 ---
 
 <div class="w-full max-w-3xl mx-auto px-2 py-2 sm:py-4">
-  <div class="hidden flex gap-2 sm:gap-3 justify-center mb-4 sm:mb-6">
-    <button id="btn-tab-exact" class="flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-primary text-white font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center">
-      🔍 Por Nombre / Cédula
-    </button>
-    <button id="btn-tab-semantic" class="hidden flex-1 sm:flex-none px-4 sm:px-5 py-3 rounded-[36px] bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong transition-colors cursor-pointer text-center">
-      🧠 Descripción / IA
-    </button>
+
+  <!-- Stats en vivo -->
+  <div id="stats-bar" class="flex justify-center gap-4 sm:gap-8 mb-4">
+    <div class="text-center flex flex-col items-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-mute mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+      <div id="stat-total" class="font-uber-display text-2xl sm:text-3xl text-ink tabular-nums leading-none mt-1">—</div>
+      <div class="text-[10px] text-mute font-uber-text font-medium uppercase tracking-wider mt-1">Registrados</div>
+    </div>
+    <div class="w-px bg-canvas-soft"></div>
+    <div class="text-center flex flex-col items-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-600 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+      <div id="stat-activos" class="font-uber-display text-2xl sm:text-3xl text-red-600 tabular-nums leading-none mt-1">—</div>
+      <div class="text-[10px] text-mute font-uber-text font-medium uppercase tracking-wider mt-1">Sin contacto</div>
+    </div>
+    <div class="w-px bg-canvas-soft"></div>
+    <div class="text-center flex flex-col items-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-600 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div id="stat-localizados" class="font-uber-display text-2xl sm:text-3xl text-green-600 tabular-nums leading-none mt-1">—</div>
+      <div class="text-[10px] text-mute font-uber-text font-medium uppercase tracking-wider mt-1">Localizados</div>
+    </div>
   </div>
 
-  <!-- Formulario 1: Búsqueda Exacta -->
-  <div id="panel-exact" class="bg-canvas border border-canvas-soft p-4 sm:p-8 rounded-xl shadow-sm">
-    <form id="form-search-exact" class="space-y-4" onsubmit="event.preventDefault();">
-      <div class="flex flex-col sm:flex-row items-stretch gap-2.5 relative bg-canvas">
-        <div class="relative flex-grow">
+  <!-- Buscador principal -->
+  <div id="panel-exact" class="bg-canvas border border-canvas-soft p-4 sm:p-6 rounded-xl shadow-sm">
+    <form id="form-search-exact" class="space-y-3">
+      <div class="flex flex-row items-center gap-2 relative">
+        <div class="relative flex-grow min-w-0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-mute pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
           <input 
             type="text" 
-            id="query-exact" 
-            required
+            id="query-exact"
             autocomplete="off"
-            class="w-full font-uber-text uber-body-md bg-canvas-soft border border-transparent text-ink placeholder:text-mute focus:border-ink focus:bg-canvas transition-all duration-200 py-3.5 px-4 outline-none rounded-none" 
-            placeholder="Nombre, Cédula, Ubicación o Refugio..." 
+            autofocus
+            class="w-full h-11 font-uber-text text-sm bg-canvas-soft border border-transparent text-ink placeholder:text-mute focus:border-ink focus:bg-canvas focus:shadow-sm transition-all duration-200 pl-9 pr-3 outline-none rounded-full" 
+            placeholder="Nombre, Cédula o Describe..." 
           />
-          <div id="search-suggestions" class="hidden absolute top-full left-0 right-0 z-50 mt-1 bg-canvas border border-canvas-soft rounded-none shadow-lg max-h-60 overflow-y-auto divide-y divide-canvas-soft"></div>
         </div>
-        <button type="submit" class="bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong px-8 py-3.5 rounded-full transition-transform active:scale-[0.98] flex items-center justify-center shrink-0 cursor-pointer">
-          Buscar
+        <button id="btn-buscar" type="submit" class="bg-primary text-white hover:bg-black-elevated w-11 h-11 rounded-full transition-transform active:scale-[0.98] flex items-center justify-center shrink-0 cursor-pointer p-0" aria-label="Buscar">
+          <svg id="btn-buscar-icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span id="btn-buscar-spinner" class="loading loading-spinner loading-xs hidden"></span>
         </button>
       </div>
 
-      <!-- Escenarios rápidos -->
-      <div class="hidden space-y-2">
-        <p class="text-[11px] text-mute font-uber-text font-medium uppercase tracking-wider">¿Qué dato tienes?</p>
-        <div class="flex flex-wrap gap-2">
-          <button type="button" class="chip-scenario px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-placeholder="Ej: María García" data-tab="exact">
-            👤 Sé el nombre
-          </button>
-          <button type="button" class="chip-scenario px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-placeholder="Ej: 12345678" data-tab="exact">
-            🪪 Tengo la cédula
-          </button>
-          <button type="button" class="chip-scenario px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-placeholder="Ej: Albergue Polideportivo" data-tab="exact">
-            📍 Sé dónde estaba
-          </button>
-          <button type="button" class="hidden chip-scenario px-3 py-1.5 rounded-full bg-yellow-500/10 text-yellow-800 text-xs font-uber-text font-medium border border-yellow-500/30 hover:bg-yellow-500/20 transition-colors cursor-pointer" data-tab="semantic">
-            ❓ No sé el nombre
-          </button>
-        </div>
+      <!-- Botón buscar por foto -->
+      <div class="flex items-center gap-2">
+        <button type="button" id="btn-foto-search" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-body" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span>Buscar con foto</span>
+        </button>
+        <input type="file" id="foto-search-input" accept="image/*" capture="environment" class="hidden" />
+        <span id="foto-search-status" class="text-[10px] text-mute font-uber-text italic hidden"></span>
       </div>
-
-      <p class="text-xs text-body font-uber-text">
-        Búsqueda en el registro colaborativo aportado por voluntarios y rescatistas.
-      </p>
     </form>
   </div>
 
-  <!-- Formulario 2: Búsqueda Semántica (IA) -->
-  <div id="panel-semantic" class="bg-canvas border border-canvas-soft p-4 sm:p-8 rounded-xl shadow-sm hidden">
-    <form id="form-search-semantic" class="space-y-4" onsubmit="event.preventDefault();">
-      <!-- Banner informativo -->
-      <div class="flex items-start gap-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl">
-        <span class="text-lg mt-0.5">🧠</span>
-        <div class="text-xs text-body font-uber-text space-y-1">
-          <p class="font-semibold text-ink">¿No sabes el nombre? Describe lo que recuerdas.</p>
-          <p>La IA busca reportes con características similares: ropa, edad, zona, rasgos físicos.</p>
-        </div>
-      </div>
-
-      <div class="space-y-2">
-        <label class="block font-uber-text uber-body-md-strong text-ink">Describe a la persona o situación</label>
-        <textarea 
-          id="query-semantic" 
-          required
-          minlength="5"
-          rows="4"
-          class="textarea w-full font-uber-text uber-body-md" 
-          placeholder="Ej: Señora mayor, cabello blanco, vestido floreado, zona de Petare..."
-        ></textarea>
-      </div>
-
-      <!-- Escenarios rápidos para IA -->
-      <div class="space-y-2">
-        <p class="text-[11px] text-mute font-uber-text font-medium uppercase tracking-wider">Escenarios comunes — toca para usar de plantilla</p>
-        <div class="flex flex-wrap gap-2">
-          <button type="button" class="chip-fill px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-fill="Niño/niña de aproximadamente _ años, visto con _, visto/a por última vez en _">
-            👶 Niño/a perdido
-          </button>
-          <button type="button" class="chip-fill px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-fill="Persona mayor de edad avanzada, cabello _, complexión _, vista por última vez en la zona de _">
-            👴 Adulto mayor
-          </button>
-          <button type="button" class="chip-fill px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-fill="Persona herida encontrada en _, con características: _, necesita atención médica">
-            🏥 Vi a alguien herido
-          </button>
-          <button type="button" class="chip-fill px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-fill="Persona atrapada o en situación de riesgo en _, descripción: _, zona afectada por _">
-            🆘 Alguien atrapado
-          </button>
-          <button type="button" class="chip-fill px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" data-fill="Grupo de personas desplazadas en la zona de _, aproximadamente _ personas, incluyen niños/adultos mayores, necesitan _">
-            👥 Grupo desplazado
-          </button>
-        </div>
-      </div>
-
-      <button type="submit" id="btn-submit-semantic" class="bg-primary text-white hover:bg-black-elevated w-full font-uber-text uber-body-md-strong py-3.5 rounded-full transition-transform active:scale-[0.98] flex items-center justify-center cursor-pointer">
-        Buscar por similitud IA
-      </button>
-      <p class="text-xs text-body font-uber-text">
-        Procesa la descripción y busca reportes con características similares. Requiere conexión.
+  <!-- Estado vacío: historial -->
+  <div id="empty-state" class="mt-6 space-y-4">
+    <!-- Búsquedas recientes -->
+    <div id="historial-container" class="hidden">
+      <p class="text-[10px] text-mute font-uber-text font-medium uppercase tracking-wider mb-2 flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-mute" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Búsquedas recientes
       </p>
-    </form>
+      <div id="historial-chips" class="flex flex-wrap gap-2">
+        <!-- Chips inyectados por JS -->
+      </div>
+    </div>
   </div>
 
-  <!-- Filtros de estado sub-tabs (inicialmente oculto) -->
-  <div id="filter-state-bar" class="hidden flex gap-2 justify-start mt-6 mb-2 border-b border-canvas-soft pb-3">
+  <!-- Filtros de estado (aparecen post-búsqueda) -->
+  <div id="filter-state-bar" class="hidden flex flex-wrap gap-2 justify-start mt-6 mb-2 border-b border-canvas-soft pb-3">
     <button id="btn-filter-all" class="px-4 py-1.5 rounded-full bg-primary text-white font-uber-text text-xs font-semibold transition-colors cursor-pointer">
       Todos
     </button>
@@ -122,6 +97,31 @@
     <button id="btn-filter-located" class="px-4 py-1.5 rounded-full bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text text-xs font-semibold transition-colors cursor-pointer">
       Localizados
     </button>
+    <span class="w-px bg-canvas-soft mx-1 self-stretch"></span>
+    <button id="btn-toggle-advanced-filters" class="px-3 py-1.5 rounded-full bg-canvas-soft text-mute hover:bg-surface-pressed font-uber-text text-xs font-medium transition-colors cursor-pointer flex items-center gap-1">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-mute" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+      </svg>
+      <span>Más filtros</span>
+    </button>
+  </div>
+
+  <!-- Filtros avanzados expandibles -->
+  <div id="advanced-filters" class="hidden flex flex-wrap gap-2 mb-4">
+    <select id="filter-sexo" class="select select-xs bg-canvas-soft border-canvas-soft text-ink font-uber-text rounded-full px-3">
+      <option value="">Sexo</option>
+      <option value="M">Masculino</option>
+      <option value="F">Femenino</option>
+    </select>
+    <select id="filter-edad" class="select select-xs bg-canvas-soft border-canvas-soft text-ink font-uber-text rounded-full px-3">
+      <option value="">Edad</option>
+      <option value="0-12">0-12 años</option>
+      <option value="13-17">13-17 años</option>
+      <option value="18-30">18-30 años</option>
+      <option value="31-50">31-50 años</option>
+      <option value="51-70">51-70 años</option>
+      <option value="71+">71+ años</option>
+    </select>
   </div>
 
   <!-- Resultados de búsqueda -->
@@ -132,6 +132,16 @@
   <div id="results-header" class="hidden font-uber-text uber-body-md-strong text-body mt-8 mb-4"></div>
   <div id="results-container" class="space-y-4"></div>
   
+  <!-- Sin resultados CTA -->
+  <div id="no-results-cta" class="hidden text-center py-8 space-y-3">
+    <div class="text-4xl">🔍</div>
+    <p class="font-uber-text uber-body-md-strong text-ink">No se encontraron coincidencias</p>
+    <p class="text-sm text-body font-uber-text">Intenta con menos palabras o datos diferentes</p>
+    <a href="/reportar" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-white font-uber-text uber-body-md-strong hover:bg-black-elevated transition-colors mt-2">
+      📢 Reportar como desaparecido
+    </a>
+  </div>
+
   <!-- Sentinel para scroll infinito -->
   <div id="scroll-sentinel" class="hidden justify-center py-6">
     <span class="loading loading-spinner text-primary"></span>
@@ -223,6 +233,24 @@
           class="input w-full font-uber-text uber-body-md" 
           placeholder="Obligatorio (ej: 0412-1234567, email)"
         />
+      </div>
+      <div>
+        <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reporte-rapido-refugio">Ubicación / Refugio *</label>
+        <select 
+          id="reporte-rapido-refugio" 
+          required 
+          class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent text-ink rounded-xl"
+        >
+          <option value="">Cargando refugios registrados...</option>
+        </select>
+        <div id="reporte-rapido-refugio-otro-wrap" class="hidden mt-2">
+          <input 
+            type="text" 
+            id="reporte-rapido-refugio-otro" 
+            class="input w-full font-uber-text uber-body-md" 
+            placeholder="Escribe el nombre del refugio o ubicación exacta"
+          />
+        </div>
       </div>
       <div>
         <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reporte-rapido-desc">¿Dónde y cuándo la viste? Detalles *</label>

@@ -130,7 +130,17 @@ export async function extraerNombresDeImagen(env: Env, imageBuffer: ArrayBuffer)
 
     console.log("Transcripción de imagen obtenida con éxito:\n", transcripcionRaw);
 
-    // Paso 2: Extraer nombres estructurados de la transcripción usando Llama Instruct
+    // Paso 2: Extraer nombres estructurados usando la función reutilizable
+    return await extraerNombresDeTexto(env, transcripcionRaw);
+  } catch (error) {
+    console.error("Error en el pipeline de transcripción/extracción con IA:", error);
+    return [];
+  }
+}
+
+export async function extraerNombresDeTexto(env: Env, texto: string): Promise<{ nombre: string, cedula: number|null, telefono: string|null, edad: number|null, raw_context: string }[]> {
+  const instructModel = "@cf/meta/llama-3.1-8b-instruct-fast";
+  try {
     const parsePrompt = `Actúa como un motor de ETL (Extract, Transform, Load) especializado en datos demográficos venezolanos. Tu tarea es procesar listas de texto no estructuradas y convertirlas a un formato JSON limpio y estandarizado.
 
 ### Reglas de Procesamiento:
@@ -171,7 +181,7 @@ Output: {"personas": [{"nombre": "Miguel Gutierrez", "cedula": 15370185, "telefo
         instructResponse = await env.AI.run(instructModel, {
           messages: [
             { role: "system", content: parsePrompt },
-            { role: "user", content: transcripcionRaw }
+            { role: "user", content: texto }
           ],
           response_format: { type: "json_object" },
           max_tokens: 4096
@@ -237,9 +247,9 @@ Output: {"personas": [{"nombre": "Miguel Gutierrez", "cedula": 15370185, "telefo
       }
     }
 
-    return personasLimpia as any;
+    return personasLimpia;
   } catch (error) {
-    console.error("Error en el pipeline de transcripción/extracción con IA:", error);
+    console.error("Error al extraer nombres del texto con IA:", error);
     return [];
   }
 }

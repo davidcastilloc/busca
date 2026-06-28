@@ -152,6 +152,16 @@ try {
             }
           }
 
+          // Parsear fotos
+          let fotosArray: string[] = [];
+          if (r.fotos) {
+            try {
+              fotosArray = typeof r.fotos === 'string' ? JSON.parse(r.fotos) : r.fotos;
+            } catch (e) {
+              console.error("Error al parsear fotos:", e);
+            }
+          }
+
           return (
             <div 
               class="refugio-card bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm space-y-4 transition-all hover:shadow-md"
@@ -167,7 +177,18 @@ try {
               data-contacto={r.contacto || ""}
               data-encargado={r.encargado || ""}
               data-semaforo={itemsCriticos.length > 0 ? "rojo" : itemsAlerta.length > 0 ? "amarillo" : "verde"}
+              data-fotos={typeof r.fotos === 'string' ? r.fotos : JSON.stringify(r.fotos || [])}
             >
+              {fotosArray && fotosArray.length > 0 && (
+                <div class="w-full h-40 sm:h-48 rounded-xl overflow-hidden border border-canvas-soft bg-surface-pressed mb-2">
+                  <img 
+                    src={`/api/upload?key=${fotosArray[0]}`} 
+                    alt={`Foto de ${r.nombre}`} 
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              )}
               <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                 <div>
                   <div class="flex flex-wrap items-center gap-2">
@@ -267,6 +288,9 @@ try {
                     data-vols={r.voluntarios || 0}
                     data-inventario={typeof r.inventario === 'string' ? r.inventario : JSON.stringify(r.inventario || {})}
                     data-fecha={r.fecha_registro || ""}
+                    data-lat={r.latitud || ""}
+                    data-lng={r.longitud || ""}
+                    data-fotos={typeof r.fotos === 'string' ? r.fotos : JSON.stringify(r.fotos || [])}
                   >
                     ✏️ Actualizar Estado
                   </button>
@@ -511,6 +535,30 @@ try {
           />
         </div>
 
+        <div class="bg-canvas border border-canvas-soft p-3 rounded-xl space-y-3">
+          <span class="text-xs font-semibold text-ink font-uber-text block">📸 Fotos del Centro</span>
+          
+          <!-- Fotos Existentes -->
+          <div id="edit-preview-existentes" class="grid grid-cols-3 gap-2 empty:hidden">
+            <!-- Cargadas por JS -->
+          </div>
+          
+          <!-- Subir nuevas -->
+          <div class="flex flex-col gap-2 border-t border-canvas-soft pt-2">
+            <span class="text-[10px] font-bold text-mute uppercase font-uber-text">Subir nuevas fotos (Máx 3 en total)</span>
+            <input 
+              type="file" 
+              id="edit-fotos-nuevas" 
+              multiple 
+              accept="image/*" 
+              class="block w-full text-xs text-mute font-uber-text file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover cursor-pointer"
+            />
+            <div id="edit-preview-nuevas" class="grid grid-cols-3 gap-2 mt-2">
+              <!-- Nuevas previsualizaciones -->
+            </div>
+          </div>
+        </div>
+
         <div id="edit-refugio-error" class="hidden text-xs text-red-500 font-uber-text bg-red-500/5 border border-red-500/20 p-3 rounded-lg"></div>
 
         <button type="submit" class="btn bg-primary text-white w-full font-uber-text font-semibold py-2.5 rounded-xl">
@@ -695,6 +743,16 @@ try {
       const capacidad = el.dataset.capacidad || "100";
       const contacto = el.dataset.contacto || "";
       const semaforo = el.dataset.semaforo || "verde";
+      const fotosRaw = el.dataset.fotos;
+      
+      let fotos: string[] = [];
+      try {
+        if (fotosRaw) {
+          fotos = JSON.parse(fotosRaw);
+        }
+      } catch (err) {
+        console.error("Error al parsear fotos en marcador:", err);
+      }
 
       if (!latRaw || !lngRaw) return;
 
@@ -747,6 +805,11 @@ try {
 
       const popupHTML = `
         <div class="p-1.5 space-y-2 max-w-[240px] font-uber-text">
+          ${fotos.length > 0 ? `
+            <div class="w-full h-24 rounded-lg overflow-hidden border border-canvas-soft bg-surface-pressed mb-1">
+              <img src="/api/upload?key=${fotos[0]}" class="w-full h-full object-cover" />
+            </div>
+          ` : ''}
           <div class="flex items-center gap-1.5">
             <span class="text-base">${emoji}</span>
             <h4 class="font-bold text-ink text-sm leading-tight capitalize">${nombre}</h4>
@@ -942,6 +1005,82 @@ try {
   const lonEditInput = document.getElementById("edit-longitud") as HTMLInputElement;
   const gpsEditStatus = document.getElementById("edit-gps-status");
   const btnEditGps = document.getElementById("btn-edit-ref-gps");
+
+  // Fotos en edición
+  const previewExistentes = document.getElementById("edit-preview-existentes");
+  const inputFotosNuevas = document.getElementById("edit-fotos-nuevas") as HTMLInputElement;
+  const previewNuevas = document.getElementById("edit-preview-nuevas");
+  
+  let existingFotos: string[] = [];
+  let newFilesToUpload: File[] = [];
+
+  function renderEditPreviews() {
+    // 1. Fotos existentes
+    if (previewExistentes) {
+      previewExistentes.innerHTML = "";
+      existingFotos.forEach((fotoKey, index) => {
+        const div = document.createElement("div");
+        div.className = "relative aspect-square rounded-lg overflow-hidden border border-canvas-soft bg-surface-pressed";
+        
+        const img = document.createElement("img");
+        img.src = `/api/upload?key=${fotoKey}`;
+        img.className = "w-full h-full object-cover";
+        
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.innerHTML = "✕";
+        removeBtn.className = "absolute top-1 right-1 bg-black/60 hover:bg-black text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-none cursor-pointer";
+        removeBtn.addEventListener("click", () => {
+          existingFotos.splice(index, 1);
+          renderEditPreviews();
+        });
+        
+        div.appendChild(img);
+        div.appendChild(removeBtn);
+        previewExistentes.appendChild(div);
+      });
+    }
+    
+    // 2. Fotos nuevas
+    if (previewNuevas) {
+      previewNuevas.innerHTML = "";
+      newFilesToUpload.forEach((file, index) => {
+        const url = URL.createObjectURL(file);
+        const div = document.createElement("div");
+        div.className = "relative aspect-square rounded-lg overflow-hidden border border-canvas-soft bg-surface-pressed";
+        
+        const img = document.createElement("img");
+        img.src = url;
+        img.className = "w-full h-full object-cover";
+        
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.innerHTML = "✕";
+        removeBtn.className = "absolute top-1 right-1 bg-black/60 hover:bg-black text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-none cursor-pointer";
+        removeBtn.addEventListener("click", () => {
+          newFilesToUpload.splice(index, 1);
+          URL.revokeObjectURL(url);
+          renderEditPreviews();
+        });
+        
+        div.appendChild(img);
+        div.appendChild(removeBtn);
+        previewNuevas.appendChild(div);
+      });
+    }
+  }
+
+  inputFotosNuevas?.addEventListener("change", () => {
+    if (!inputFotosNuevas.files) return;
+    const newFiles = Array.from(inputFotosNuevas.files);
+    for (const file of newFiles) {
+      if (existingFotos.length + newFilesToUpload.length < 3) {
+        newFilesToUpload.push(file);
+      }
+    }
+    inputFotosNuevas.value = "";
+    renderEditPreviews();
+  });
 
   let editMap: any = null;
   let editMarker: any = null;
@@ -1279,6 +1418,19 @@ try {
       if (inputDireccion) inputDireccion.value = el.dataset.direccion || "";
       if (inputOcupacion) inputOcupacion.value = el.dataset.ocupacion || "0";
       if (inputCapacidad) inputCapacidad.value = el.dataset.capacidad || "100";
+
+      // Cargar fotos existentes
+      existingFotos = [];
+      try {
+        if (el.dataset.fotos) {
+          existingFotos = JSON.parse(el.dataset.fotos);
+        }
+      } catch (err) {
+        console.error("Error al parsear fotos:", err);
+      }
+      newFilesToUpload = [];
+      if (inputFotosNuevas) inputFotosNuevas.value = "";
+      renderEditPreviews();
       if (inputNecesidades) inputNecesidades.value = el.dataset.necesidades || "";
       if (inputContacto) inputContacto.value = el.dataset.contacto || "";
       if (editTitulo) editTitulo.textContent = `Actualizar: ${el.dataset.nombre}`;
@@ -1408,6 +1560,40 @@ try {
 
     if (errorDiv) errorDiv.classList.add("hidden");
 
+    // Seleccionar botón y poner estado de carga
+    const btnSubmit = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = "Subiendo imágenes...";
+    }
+
+    // Subir nuevas imágenes
+    const fotosKeys = [...existingFotos];
+    if (newFilesToUpload.length > 0) {
+      for (const file of newFilesToUpload) {
+        const formData = new FormData();
+        formData.append("foto", file);
+        try {
+          const uploadResp = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+          if (uploadResp.ok) {
+            const data = await uploadResp.json();
+            if (data.key) {
+              fotosKeys.push(data.key);
+            }
+          }
+        } catch (uploadErr) {
+          console.error("Error al subir imagen nueva:", uploadErr);
+        }
+      }
+    }
+
+    if (btnSubmit) {
+      btnSubmit.textContent = "Guardando cambios...";
+    }
+
     // Recopilar inventario
     const inventario: Record<string, string> = {};
     const radios = form.querySelectorAll('input[type="radio"]:checked');
@@ -1437,7 +1623,8 @@ try {
           adultos_mayores: mayores,
           personal_profesional: prof,
           voluntarios: vols,
-          inventario
+          inventario,
+          fotos: fotosKeys
         })
       });
 
