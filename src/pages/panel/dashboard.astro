@@ -1,0 +1,422 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Navbar from "../../components/Navbar.astro";
+
+export const prerender = false;
+
+// Tablas disponibles en el modo Dios
+const tables = [
+  { id: 'observabilidad', name: 'Observabilidad (Stats & Logs)', table: 'historial_actividad', readonly: true },
+  { id: 'personas', name: 'Personas (Censo)', table: 'personas' },
+  { id: 'reportes', name: 'Reportes de Búsqueda', table: 'reportes' },
+  { id: 'voluntarios', name: 'Voluntarios (Acceso & Ban)', table: 'voluntarios' },
+  { id: 'refugios', name: 'Albergues / Refugios', table: 'refugios' },
+  { id: 'flyers', name: 'Flyers Autogenerados', table: 'flyers' },
+  { id: 'push_subscriptions', name: 'Suscripciones Push', table: 'push_subscriptions' },
+  { id: 'telegram_sessions', name: 'Sesiones de Telegram', table: 'telegram_sessions' },
+  { id: 'sesiones_voluntarios', name: 'Sesiones Web Voluntarios', table: 'sesiones_voluntarios' }
+];
+---
+
+<Layout title="SUPER ADMIN DIOS - dondeestan.org">
+  <Navbar />
+  
+  <main class="flex h-[calc(100vh-64px)] overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-canvas-soft border-r border-canvas flex flex-col overflow-y-auto">
+      <div class="p-4 border-b border-canvas">
+        <h1 class="font-uber-display text-xl text-red-600 font-bold uppercase flex items-center gap-2">
+          ⚡ MODO DIOS
+        </h1>
+        <p class="text-xs font-uber-text text-body mt-1">
+          Poder absoluto. Cuidado con lo que rompes.
+        </p>
+      </div>
+      <nav class="flex-1 py-4 space-y-1 px-2" id="sidebar-nav">
+        {tables.map(t => (
+          <button 
+            data-table={t.table} 
+            data-id={t.id}
+            data-readonly={t.readonly ? 'true' : 'false'}
+            class="tab-btn w-full text-left px-3 py-2 rounded-lg text-sm font-uber-text font-medium text-body hover:bg-surface-pressed hover:text-ink transition-colors flex items-center gap-2"
+          >
+            {t.name}
+          </button>
+        ))}
+      </nav>
+    </aside>
+
+    <!-- Contenido Principal -->
+    <section class="flex-1 bg-canvas overflow-y-auto flex flex-col relative">
+      <!-- Header de la tabla -->
+      <header class="p-6 border-b border-canvas-soft bg-canvas sticky top-0 z-10 flex justify-between items-center">
+        <div>
+          <h2 id="current-table-title" class="font-uber-display text-2xl text-ink">Selecciona una tabla</h2>
+          <p id="current-table-subtitle" class="text-sm font-uber-text text-body mt-1">Cargando...</p>
+        </div>
+        <div class="flex gap-2">
+          <button id="btn-refresh" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-sm-strong hidden">
+            🔄 Refrescar
+          </button>
+          <button id="btn-new" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-sm-strong hidden">
+            + Nuevo Registro
+          </button>
+        </div>
+      </header>
+
+      <!-- Contenedor de la Tabla -->
+      <div class="p-6 flex-1">
+        <div id="table-loading" class="text-center py-12 text-body font-uber-text hidden">
+          <div class="animate-spin inline-block w-8 h-8 border-4 border-current border-t-transparent text-primary rounded-full" role="status" aria-label="loading"></div>
+          <p class="mt-4">Cargando datos de la base de datos...</p>
+        </div>
+
+        <div id="table-empty" class="text-center py-12 text-body font-uber-text hidden">
+          <p class="text-4xl mb-4">📭</p>
+          <p>La tabla está vacía.</p>
+        </div>
+        
+        <div id="table-error" class="text-center py-12 text-red-600 font-uber-text bg-red-50 rounded-xl hidden">
+          <p class="font-bold mb-2">Error al cargar</p>
+          <p id="table-error-msg" class="text-sm"></p>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-canvas-soft hidden" id="table-container">
+          <table class="table w-full text-left text-sm font-uber-text" id="data-table">
+            <thead class="bg-canvas-soft text-xs uppercase text-body border-b border-canvas-soft">
+              <tr id="table-head"></tr>
+            </thead>
+            <tbody id="table-body" class="divide-y divide-canvas-soft">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal Genérico para CRUD -->
+  <div id="crud-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex justify-center items-center backdrop-blur-sm p-4">
+    <div class="bg-canvas rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div class="p-6 border-b border-canvas-soft flex justify-between items-center">
+        <h3 id="modal-title" class="font-uber-display text-xl text-ink">Editar Registro</h3>
+        <button id="btn-close-modal" class="text-body hover:text-ink text-2xl leading-none">&times;</button>
+      </div>
+      <div class="p-6 overflow-y-auto flex-1">
+        <form id="crud-form" class="space-y-4">
+          <div id="form-fields" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Los campos se generan dinámicamente -->
+          </div>
+        </form>
+      </div>
+      <div class="p-6 border-t border-canvas-soft bg-canvas flex justify-end gap-3">
+        <button id="btn-cancel-modal" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text">Cancelar</button>
+        <button id="btn-save-modal" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  let currentTable = '';
+  let currentColumns: any[] = [];
+  let currentData: any[] = [];
+  let isEditing = false;
+  let editingId: string | null = null;
+  let isReadonly = false;
+
+  const UI = {
+    tabs: document.querySelectorAll('.tab-btn'),
+    title: document.getElementById('current-table-title') as HTMLElement,
+    subtitle: document.getElementById('current-table-subtitle') as HTMLElement,
+    btnRefresh: document.getElementById('btn-refresh') as HTMLButtonElement,
+    btnNew: document.getElementById('btn-new') as HTMLButtonElement,
+    loading: document.getElementById('table-loading') as HTMLElement,
+    empty: document.getElementById('table-empty') as HTMLElement,
+    error: document.getElementById('table-error') as HTMLElement,
+    errorMsg: document.getElementById('table-error-msg') as HTMLElement,
+    container: document.getElementById('table-container') as HTMLElement,
+    thead: document.getElementById('table-head') as HTMLElement,
+    tbody: document.getElementById('table-body') as HTMLElement,
+    
+    // Modal
+    modal: document.getElementById('crud-modal') as HTMLElement,
+    modalTitle: document.getElementById('modal-title') as HTMLElement,
+    btnClose: document.getElementById('btn-close-modal') as HTMLButtonElement,
+    btnCancel: document.getElementById('btn-cancel-modal') as HTMLButtonElement,
+    btnSave: document.getElementById('btn-save-modal') as HTMLButtonElement,
+    form: document.getElementById('crud-form') as HTMLFormElement,
+    formFields: document.getElementById('form-fields') as HTMLElement,
+  };
+
+  // Event Listeners
+  UI.tabs.forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      
+      // Update Active State
+      UI.tabs.forEach(t => {
+        t.classList.remove('bg-surface-pressed', 'text-ink');
+        t.classList.add('text-body');
+      });
+      target.classList.add('bg-surface-pressed', 'text-ink');
+      target.classList.remove('text-body');
+
+      currentTable = target.getAttribute('data-table') || '';
+      isReadonly = target.getAttribute('data-readonly') === 'true';
+      UI.title.textContent = target.textContent?.trim() || currentTable;
+      
+      loadTableData();
+    });
+  });
+
+  UI.btnRefresh.addEventListener('click', loadTableData);
+  UI.btnNew.addEventListener('click', openNewModal);
+  UI.btnClose.addEventListener('click', closeModal);
+  UI.btnCancel.addEventListener('click', closeModal);
+  UI.btnSave.addEventListener('click', saveRecord);
+
+  // Inicializar seleccionando la primera tab
+  if (UI.tabs.length > 0) {
+    (UI.tabs[0] as HTMLButtonElement).click();
+  }
+
+  // --- Funciones Principales ---
+
+  async function loadTableData() {
+    if (!currentTable) return;
+
+    // Reset UI
+    UI.container.classList.add('hidden');
+    UI.empty.classList.add('hidden');
+    UI.error.classList.add('hidden');
+    UI.loading.classList.remove('hidden');
+    UI.btnNew.classList.add('hidden');
+    UI.btnRefresh.classList.add('hidden');
+    
+    try {
+      const res = await fetch(`/api/panel/tables/${currentTable}?limit=200`);
+      if (!res.ok) throw new Error(await res.text());
+      const json = await res.json();
+      
+      currentColumns = json.columns;
+      currentData = json.data;
+
+      UI.subtitle.textContent = `${currentData.length} registros cargados`;
+      
+      if (!isReadonly) {
+        UI.btnNew.classList.remove('hidden');
+      }
+      UI.btnRefresh.classList.remove('hidden');
+
+      renderTable();
+    } catch (err: any) {
+      UI.errorMsg.textContent = err.message;
+      UI.error.classList.remove('hidden');
+    } finally {
+      UI.loading.classList.add('hidden');
+    }
+  }
+
+  function renderTable() {
+    if (currentData.length === 0) {
+      UI.empty.classList.remove('hidden');
+      return;
+    }
+
+    UI.container.classList.remove('hidden');
+
+    // Headers
+    let theadHTML = '';
+    currentColumns.forEach(col => {
+      theadHTML += `<th class="px-4 py-3 truncate max-w-[150px]">${col.name}</th>`;
+    });
+    theadHTML += `<th class="px-4 py-3 text-right">Acciones</th>`;
+    UI.thead.innerHTML = theadHTML;
+
+    // Body
+    let tbodyHTML = '';
+    currentData.forEach((row, rowIndex) => {
+      let tr = '<tr class="hover:bg-canvas-soft/50 transition-colors group">';
+      currentColumns.forEach(col => {
+        let val = row[col.name];
+        if (val === null || val === undefined) val = '-';
+        // Truncar textos largos
+        if (typeof val === 'string' && val.length > 50) val = val.substring(0, 50) + '...';
+        
+        tr += `<td class="px-4 py-3 truncate max-w-[150px]" title="${row[col.name]}">${val}</td>`;
+      });
+
+      // Acciones
+      const idVal = row.id || row.token || row.telegram_id; // Posibles llaves primarias
+      
+      let accionesHTML = `<div class="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">`;
+      
+      if (currentTable === 'voluntarios') {
+        const isBanned = row.activo === 0;
+        const banAction = isBanned ? 'unban' : 'ban';
+        const banLabel = isBanned ? 'Desbanear' : 'Banear';
+        const banColor = isBanned ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
+        
+        accionesHTML += `
+          <button onclick="banVoluntario(${row.id}, '${banAction}')" class="px-2 py-1 text-xs font-bold text-white rounded ${banColor}">
+            ${banLabel}
+          </button>
+        `;
+      }
+
+      if (!isReadonly) {
+        accionesHTML += `
+          <button onclick="openEditModal(${rowIndex})" class="px-2 py-1 text-xs font-bold text-blue-600 bg-blue-100 rounded hover:bg-blue-200">Editar</button>
+          <button onclick="deleteRecord('${idVal}')" class="px-2 py-1 text-xs font-bold text-red-600 bg-red-100 rounded hover:bg-red-200">Eliminar</button>
+        `;
+      } else {
+         accionesHTML += `<span class="text-xs text-mute">Read-only</span>`;
+      }
+      
+      accionesHTML += `</div>`;
+      tr += `<td class="px-4 py-3 text-right">${accionesHTML}</td>`;
+      tr += '</tr>';
+      tbodyHTML += tr;
+    });
+
+    UI.tbody.innerHTML = tbodyHTML;
+  }
+
+  // --- CRUD Modal ---
+
+  function openNewModal() {
+    isEditing = false;
+    editingId = null;
+    UI.modalTitle.textContent = `Nuevo Registro en ${currentTable}`;
+    generateFormFields();
+    UI.modal.classList.remove('hidden');
+  }
+
+  // @ts-ignore (Called from HTML string)
+  window.openEditModal = function(rowIndex: number) {
+    isEditing = true;
+    const row = currentData[rowIndex];
+    editingId = row.id || row.token; // fallback a primary keys conocidas
+    
+    UI.modalTitle.textContent = `Editar Registro #${editingId}`;
+    generateFormFields(row);
+    UI.modal.classList.remove('hidden');
+  };
+
+  function closeModal() {
+    UI.modal.classList.add('hidden');
+  }
+
+  function generateFormFields(data: any = null) {
+    let html = '';
+    currentColumns.forEach(col => {
+      // Omitir auto-increment id si es nuevo
+      if (col.name === 'id' && !isEditing) return;
+      if (col.name === 'created_at' || col.name === 'updated_at') return;
+
+      const value = data ? (data[col.name] !== null ? data[col.name] : '') : '';
+      const type = col.type.toUpperCase();
+      
+      let inputHtml = '';
+      if (type.includes('INT') || type.includes('REAL')) {
+        inputHtml = `<input type="number" step="any" name="${col.name}" id="field_${col.name}" class="input w-full font-uber-text text-sm" value="${value}" ${col.name === 'id' ? 'readonly' : ''} />`;
+      } else if (type.includes('TEXT') && col.name.includes('notas')) {
+        inputHtml = `<textarea name="${col.name}" id="field_${col.name}" class="textarea w-full h-24 font-uber-text text-sm">${value}</textarea>`;
+      } else {
+        inputHtml = `<input type="text" name="${col.name}" id="field_${col.name}" class="input w-full font-uber-text text-sm" value="${value}" />`;
+      }
+
+      html += `
+        <div>
+          <label class="block text-xs font-bold text-body uppercase mb-1">${col.name} <span class="text-mute font-normal lowercase">(${col.type})</span></label>
+          ${inputHtml}
+        </div>
+      `;
+    });
+    UI.formFields.innerHTML = html;
+  }
+
+  async function saveRecord() {
+    const formData = new FormData(UI.form);
+    const bodyObj: any = {};
+    
+    formData.forEach((value, key) => {
+      if (value !== '') { // Ignorar campos vacíos para permitir defaults/nulls
+        bodyObj[key] = value;
+      }
+    });
+
+    UI.btnSave.disabled = true;
+    UI.btnSave.textContent = 'Guardando...';
+
+    try {
+      const url = isEditing ? `/api/panel/tables/${currentTable}?id=${editingId}` : `/api/panel/tables/${currentTable}`;
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyObj)
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      
+      closeModal();
+      loadTableData(); // Recargar datos
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      UI.btnSave.disabled = false;
+      UI.btnSave.textContent = 'Guardar Cambios';
+    }
+  }
+
+  // @ts-ignore
+  window.deleteRecord = async function(id: string) {
+    if (!confirm(`¿Estás seguro de eliminar el registro ID ${id} de la tabla ${currentTable}? Esta acción es irreversible y requiere modo DIOS.`)) return;
+
+    // Detectar id column. Asume id, excepto para sesiones
+    const idCol = currentTable.includes('session') ? 'token' : 'id';
+
+    try {
+      const res = await fetch(`/api/panel/tables/${currentTable}?id=${encodeURIComponent(id)}&id_col=${idCol}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error(await res.text());
+      
+      loadTableData();
+    } catch (err: any) {
+      alert(`Error al eliminar: ${err.message}`);
+    }
+  };
+
+  // --- Ban Voluntarios ---
+
+  // @ts-ignore
+  window.banVoluntario = async function(id: number, action: 'ban' | 'unban') {
+    const msg = action === 'ban' 
+      ? `¿Estás seguro de BANEAR al voluntario ID ${id}? Esto destruirá todas sus sesiones activas instantáneamente.`
+      : `¿Restaurar acceso al voluntario ID ${id}?`;
+
+    if (!confirm(msg)) return;
+
+    let motivo = '';
+    if (action === 'ban') {
+      motivo = prompt('Motivo del ban (Opcional):') || 'Decisión administrativa';
+    }
+
+    try {
+      const res = await fetch(`/api/panel/voluntarios/${id}/ban`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accion: action, motivo })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      
+      alert(`Voluntario ${action === 'ban' ? 'baneado' : 'desbaneado'} exitosamente.`);
+      loadTableData();
+    } catch (err: any) {
+      alert(`Error al banear: ${err.message}`);
+    }
+  };
+</script>
