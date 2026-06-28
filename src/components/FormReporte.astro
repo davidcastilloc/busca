@@ -9,6 +9,17 @@ interface Props {
 }
 
 const { isVolunteer = false, volunteerName = "", volunteerPhone = "" } = Astro.props;
+
+import { env } from "cloudflare:workers";
+let refugios: any[] = [];
+try {
+  const { DB } = env;
+  if (DB) {
+    refugios = await DB.prepare(`SELECT id, nombre, latitud, longitud FROM refugios ORDER BY nombre ASC`).all().then(r => r.results || []);
+  }
+} catch (e) {
+  console.error("Error al cargar refugios en FormReporte:", e);
+}
 ---
 
 <div class="max-w-2xl mx-auto px-4 py-4 sm:py-6">
@@ -167,6 +178,18 @@ const { isVolunteer = false, volunteerName = "", volunteerPhone = "" } = Astro.p
               <span class="text-xs text-mute mt-1 block font-uber-text">Quién puede recibir la ayuda o coordinar el suministro.</span>
             </div>
           </div>
+          {isVolunteer && (
+            <div>
+              <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Asociar a Refugio (Opcional - Solo Voluntarios)</label>
+              <select name="refugio_id" id="select_refugio_id" class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent">
+                <option value="">Ninguno / Ubicación Manual en Mapa</option>
+                {refugios.map((r: any) => (
+                  <option value={r.id} data-lat={r.latitud} data-lng={r.longitud} data-nombre={r.nombre}>{r.nombre}</option>
+                ))}
+              </select>
+              <span class="text-xs text-mute mt-1 block font-uber-text">Selecciona un refugio si los insumos son para uno de ellos.</span>
+            </div>
+          )}
         </div>
 
         <!-- BLOQUE REPORTAR REFUGIO -->
@@ -614,6 +637,39 @@ const { isVolunteer = false, volunteerName = "", volunteerPhone = "" } = Astro.p
     btnBack2.addEventListener("click", () => goToStep(1));
     btnBack3.addEventListener("click", () => goToStep(2));
 
+    const selectRefugio = document.getElementById("select_refugio_id") as HTMLSelectElement;
+    if (selectRefugio) {
+      selectRefugio.addEventListener("change", function() {
+        const option = this.options[this.selectedIndex];
+        const latStr = option.getAttribute("data-lat");
+        const lngStr = option.getAttribute("data-lng");
+        const nombre = option.getAttribute("data-nombre");
+
+        if (latStr && lngStr && latStr !== "null" && lngStr !== "null") {
+          const lat = parseFloat(latStr);
+          const lng = parseFloat(lngStr);
+          
+          if (!isNaN(lat) && !isNaN(lng)) {
+            const latInput = document.getElementById("latitud") as HTMLInputElement;
+            const lonInput = document.getElementById("longitud") as HTMLInputElement;
+            const mapSearchInput = document.getElementById("map-search-input") as HTMLInputElement;
+            const addressInput = document.querySelector('input[name="ubicacion_nombre"]') as HTMLInputElement;
+            
+            if (latInput && lonInput) {
+              latInput.value = lat.toString();
+              lonInput.value = lng.toString();
+              latInput.dispatchEvent(new Event("change"));
+              
+              if (mapSearchInput) mapSearchInput.value = nombre || "";
+              if (addressInput) addressInput.value = "Refugio: " + (nombre || "");
+              
+              mostrarToast("📍 Ubicación actualizada al refugio", "border-blue-500/30");
+            }
+          }
+        }
+      });
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
@@ -672,7 +728,8 @@ const { isVolunteer = false, volunteerName = "", volunteerPhone = "" } = Astro.p
         ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
         latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
         longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
-        foto_key: data.foto_key ? String(data.foto_key).trim() : null
+        foto_key: data.foto_key ? String(data.foto_key).trim() : null,
+        refugio_id: data.refugio_id ? parseInt(String(data.refugio_id), 10) : null
       };
 
       mostrarToast("Procesando reporte...", "border-blue-500/30");
