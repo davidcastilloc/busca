@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
+import { obtenerVoluntarioSesion } from "../../../lib/auth-helpers";
 
 export const prerender = false;
 
@@ -17,6 +18,19 @@ export const PATCH: APIRoute = async (context) => {
     }
 
     const body = await context.request.json();
+    const accion = body.accion;
+
+    // Reportar a salvo es la única acción pública. Todo lo demás requiere sesión de voluntario.
+    if (accion !== "reportar_a_salvo") {
+      const sessionToken = context.cookies.get("session_token")?.value;
+      const voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
+      if (!voluntario) {
+        return new Response(JSON.stringify({ error: "No autorizado. Inicie sesión como voluntario." }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    }
     const estadoValidos = ["abierto", "resuelto", "archivado"];
 
     if (body.estado_reporte && !estadoValidos.includes(body.estado_reporte)) {
@@ -47,7 +61,6 @@ export const PATCH: APIRoute = async (context) => {
     let nuevoContactoEvidencia = existente.contacto_evidencia || null;
     let nuevasNotasEvidencia = existente.notas_evidencia || null;
 
-    const accion = body.accion;
 
     if (accion === "reportar_a_salvo") {
       if (!body.foto_key) {

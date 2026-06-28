@@ -1,6 +1,21 @@
 ---
+import { env } from "cloudflare:workers";
+import { obtenerVoluntarioSesion } from "../lib/auth-helpers";
 import OfflineIndicator from "./OfflineIndicator.astro";
 import PushBanner from "./PushBanner.astro";
+
+const sessionToken = Astro.cookies.get("session_token")?.value;
+let isVolunteer = false;
+
+try {
+  const { DB } = env;
+  if (DB && sessionToken) {
+    const vol = await obtenerVoluntarioSesion(DB, sessionToken);
+    isVolunteer = !!vol;
+  }
+} catch (e) {
+  console.error("Error al obtener sesión en Navbar:", e);
+}
 ---
 
 <div class="w-full bg-canvas border-b border-canvas-soft sticky top-0 z-50 py-4 px-4 sm:px-8">
@@ -19,9 +34,11 @@ import PushBanner from "./PushBanner.astro";
         <a href="/" class="px-4 py-2 rounded-full hover:bg-canvas-soft text-ink font-uber-text uber-body-md-strong transition-colors">
           Buscar
         </a>
-        <a href="/registrar" class="px-4 py-2 rounded-full hover:bg-canvas-soft text-ink font-uber-text uber-body-md-strong transition-colors">
-          Censo
-        </a>
+        {isVolunteer && (
+          <a href="/registrar" class="px-4 py-2 rounded-full hover:bg-canvas-soft text-ink font-uber-text uber-body-md-strong transition-colors">
+            Censo
+          </a>
+        )}
         <a href="/reportar" class="px-4 py-2 rounded-full hover:bg-canvas-soft text-ink font-uber-text uber-body-md-strong transition-colors">
           Reportar
         </a>
@@ -49,11 +66,13 @@ import PushBanner from "./PushBanner.astro";
               Buscar
             </a>
           </li>
-          <li>
-            <a href="/registrar" class="block px-4 py-3 text-ink font-uber-text uber-body-md-strong hover:bg-canvas-soft transition-colors">
-              Censo
-            </a>
-          </li>
+          {isVolunteer && (
+            <li>
+              <a href="/registrar" class="block px-4 py-3 text-ink font-uber-text uber-body-md-strong hover:bg-canvas-soft transition-colors">
+                Censo
+              </a>
+            </li>
+          )}
           <li>
             <a href="/reportar" class="block px-4 py-3 text-ink font-uber-text uber-body-md-strong hover:bg-canvas-soft transition-colors">
               Reportar

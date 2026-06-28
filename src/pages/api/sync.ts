@@ -1,11 +1,18 @@
 import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
 import { PersonaSchema, ReporteSchema } from "../../lib/validators";
+import { obtenerVoluntarioSesion } from "../../lib/auth-helpers";
 
 export const prerender = false;
 
 export const POST: APIRoute = async (context) => {
   try {
+    const { DB } = env;
+    const sessionToken = context.cookies.get("session_token")?.value;
+    
+    // Obtener voluntario de la sesión si existe (los reportes son públicos, pero registrar personas requiere voluntario)
+    const voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
+
     const body = await context.request.json();
 
     if (!Array.isArray(body)) {
@@ -22,6 +29,10 @@ export const POST: APIRoute = async (context) => {
       try {
         const { type, data } = item;
         if (type === "persona") {
+          if (!voluntario) {
+            errors.push("No autorizado para registrar personas en el censo offline.");
+            continue;
+          }
           const validated = PersonaSchema.parse(data);
           await env.CENSO_QUEUE.send({ type, data: validated });
           count++;
