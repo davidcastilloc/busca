@@ -374,7 +374,12 @@ export const prerender = false;
       // Calcular offsets de TopBar
       const topBar = document.getElementById("map-top-bar");
       const topBarHeight = topBar?.offsetHeight || 90;
-      mapDiv.style.top = topBarHeight + "px";
+      const currentMapDiv = document.getElementById("map-fullscreen");
+      if (!currentMapDiv) return;
+      if ((currentMapDiv as any)._leaflet_id) {
+        return; // Ya inicializado
+      }
+      currentMapDiv.style.top = topBarHeight + "px";
 
       map = L.map("map-fullscreen", {
         zoomControl: false,
@@ -594,10 +599,39 @@ export const prerender = false;
     // Renderizar capas iniciales
     applyLayerFilter();
 
-    // Centrar mapa dinámicamente si hay puntos
-    if (dataStore.refugios.length > 0) {
-      const bounds = L.latLngBounds(dataStore.refugios.map(r => [r.lat, r.lng]));
-      map.fitBounds(bounds.pad(0.1));
+    // Centrar mapa en la zona más densa
+    const allPoints = [
+      ...dataStore.refugios,
+      ...dataStore.necesidades,
+      ...dataStore.personas
+    ];
+    
+    if (allPoints.length > 0) {
+      let maxCount = -1;
+      let bestCenter = allPoints[0];
+
+      // Buscar el punto con más vecinos en un radio de 50km
+      for (let i = 0; i < allPoints.length; i++) {
+        const p1 = allPoints[i];
+        let count = 0;
+        for (let j = 0; j < allPoints.length; j++) {
+          const p2 = allPoints[j];
+          if (haversine(p1.lat, p1.lng, p2.lat, p2.lng) < 50) {
+            count++;
+          }
+        }
+        if (count > maxCount) {
+          maxCount = count;
+          bestCenter = p1;
+        }
+      }
+
+      // Obtener todos los puntos dentro de ese radio para hacer bounds
+      const clusterPoints = allPoints.filter(p => haversine(bestCenter.lat, bestCenter.lng, p.lat, p.lng) < 50);
+      const bounds = L.latLngBounds(clusterPoints.map(p => [p.lat, p.lng]));
+      
+      // Ajustar la vista. maxZoom evita que se acerque excesivamente si hay 1 solo punto
+      map.fitBounds(bounds.pad(0.15), { maxZoom: 14 });
     }
   }
 
@@ -745,8 +779,10 @@ export const prerender = false;
   }
 
   function renderDefaultList() {
-    const listContainer = document.getElementById("default-list")!;
-    const detailView = document.getElementById("detail-view")!;
+    const listContainer = document.getElementById("default-list");
+    const detailView = document.getElementById("detail-view");
+    if (!listContainer || !detailView) return;
+    
     detailView.classList.add("hidden");
     listContainer.classList.remove("hidden");
 
@@ -808,9 +844,10 @@ export const prerender = false;
   };
 
   function showEntityDetail(tipo: string, id: string) {
-    const listContainer = document.getElementById("default-list")!;
-    const detailView = document.getElementById("detail-view")!;
-    const sheetTitle = document.getElementById("sheet-title")!;
+    const listContainer = document.getElementById("default-list");
+    const detailView = document.getElementById("detail-view");
+    const sheetTitle = document.getElementById("sheet-title");
+    if (!listContainer || !detailView || !sheetTitle) return;
 
     listContainer.classList.add("hidden");
     detailView.classList.remove("hidden");
@@ -981,9 +1018,11 @@ export const prerender = false;
     const L = (window as any).L;
 
     // Control del Bottom Sheet
-    const bottomSheet = document.getElementById("bottom-sheet")!;
-    const sheetHandle = document.getElementById("sheet-handle")!;
-    const btnSheetClose = document.getElementById("btn-sheet-close")!;
+    const bottomSheet = document.getElementById("bottom-sheet");
+    const sheetHandle = document.getElementById("sheet-handle");
+    const btnSheetClose = document.getElementById("btn-sheet-close");
+    
+    if (!bottomSheet || !sheetHandle || !btnSheetClose) return;
 
     let sheetDragStart = 0;
     let sheetTranslateStart = 0;
@@ -1133,12 +1172,14 @@ export const prerender = false;
         map.fitBounds(bounds.pad(0.2));
 
         // Renderizar en el bottom sheet
-        const listContainer = document.getElementById("default-list")!;
-        const detailView = document.getElementById("detail-view")!;
+        const listContainer = document.getElementById("default-list");
+        const detailView = document.getElementById("detail-view");
+        const sheetTitle = document.getElementById("sheet-title");
+        if (!listContainer || !detailView || !sheetTitle) return;
+        
         listContainer.classList.remove("hidden");
         detailView.classList.add("hidden");
 
-        const sheetTitle = document.getElementById("sheet-title")!;
         sheetTitle.textContent = `🎯 Recursos cercanos (${top5.length})`;
 
         listContainer.innerHTML = top5.map(i => `
@@ -1170,11 +1211,12 @@ export const prerender = false;
 
     // Buscador
     const searchInput = document.getElementById("search-input") as HTMLInputElement;
-    const searchResults = document.getElementById("search-results")!;
+    const searchResults = document.getElementById("search-results");
     let searchTimeout: any = null;
 
-    searchInput.addEventListener("input", () => {
+    searchInput?.addEventListener("input", () => {
       clearTimeout(searchTimeout);
+      if (!searchResults) return;
       searchTimeout = setTimeout(() => {
         const query = searchInput.value.trim().toLowerCase();
         if (!query || query.length < 2) {
