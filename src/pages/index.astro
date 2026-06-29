@@ -25,7 +25,7 @@ try {
   
   <main class="flex-grow py-4 sm:py-12 px-4 bg-canvas">
     <!-- Hero Section (estilo hero-band-light de Uber) -->
-    <div class="text-center max-w-2xl mx-auto mb-6 sm:mb-10">
+    <div class="text-center max-w-2xl mx-auto mb-6 sm:mb-10 pt-4">
       <h1 class="font-uber-display text-3xl sm:text-4xl md:text-5xl text-ink tracking-tight mb-2">
         Te ayudamos a encontrarlos
       </h1>
@@ -115,8 +115,10 @@ try {
       <div id="home-map" class="w-full h-80 sm:h-96 rounded-xl border border-canvas-soft bg-canvas shadow-sm overflow-hidden z-10"></div>
     </div>
 
-    <!-- Sección informativa en Home (Acordeón de 4 bloques) -->
-    <div class="cv-auto join join-vertical w-full bg-canvas border border-canvas-soft rounded-xl max-w-3xl mx-auto mt-12">
+    <!-- Sección informativa en Home (Acordeón) y Colaboradores -->
+    <div class="max-w-5xl mx-auto mt-12 mb-10 px-2 grid grid-cols-1 md:grid-cols-[1fr_300px] gap-6 items-start">
+      <!-- Acordeón -->
+      <div class="cv-auto join join-vertical w-full bg-canvas border border-canvas-soft rounded-xl shadow-sm">
       <div class="collapse collapse-arrow join-item border-b border-canvas-soft">
         <input type="radio" name="info-accordion" checked="checked" /> 
         <div class="collapse-title font-uber-display text-base text-ink font-semibold">
@@ -208,6 +210,25 @@ try {
               info@pc911itglobal.com
             </a>
           </p>
+        </div>
+      </div>
+    </div>
+      
+      <!-- Colaboradores / Voluntarios Especiales -->
+      <div class="flex flex-col items-center justify-center p-6 bg-canvas border border-canvas-soft rounded-xl shadow-sm">
+        <h3 class="font-uber-display text-xs text-mute font-semibold mb-6 text-center uppercase tracking-wider">Con el apoyo voluntario de</h3>
+        <div class="flex flex-col items-center gap-3">
+          <div class="relative group cursor-pointer" title="Honrando a los Scouts voluntarios">
+            <div class="absolute -inset-1 bg-gradient-to-r from-purple-600 to-blue-500 rounded-full blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
+            <img 
+              src="/SCOUTS.webp" 
+              alt="Scouts Voluntarios" 
+              class="relative w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-full drop-shadow-lg transition-transform duration-300 hover:scale-105"
+            />
+          </div>
+          <span class="text-[10px] font-uber-text text-mute uppercase tracking-wider font-semibold bg-canvas-soft px-3 py-1 rounded-full shadow-sm text-center">
+            Grupo Scout Madre Rafols
+          </span>
         </div>
       </div>
     </div>
