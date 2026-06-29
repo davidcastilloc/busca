@@ -130,314 +130,393 @@ export const prerender = false;
   </main>
 
   <script>
-    const formUpload = document.getElementById("form-upload") as HTMLFormElement;
-    const formEdit = document.getElementById("form-edit") as HTMLFormElement;
-    
-    const dropzone = document.getElementById("dropzone");
-    const fileInput = document.getElementById("file-input") as HTMLInputElement;
-    const previewContainer = document.getElementById("preview-container");
-    const imagePreview = document.getElementById("image-preview") as HTMLImageElement;
-    const btnRemovePhoto = document.getElementById("btn-remove-photo");
-    const btnAnalizar = document.getElementById("btn-analizar") as HTMLButtonElement;
-    
-    const namesContainer = document.getElementById("names-container") as HTMLDivElement;
-    const btnAddName = document.getElementById("btn-add-name");
-    const btnConfirmar = document.getElementById("btn-confirmar") as HTMLButtonElement;
-    const btnCancel = document.getElementById("btn-cancel");
-    
-    const statusPanel = document.getElementById("status-panel");
-    const statusSpinner = document.getElementById("status-spinner");
-    const statusIcon = document.getElementById("status-icon");
-    const statusText = document.getElementById("status-text");
-    const statusDesc = document.getElementById("status-desc");
+    document.addEventListener("astro:page-load", () => {
+      const formUpload = document.getElementById("form-upload") as HTMLFormElement;
+      const formEdit = document.getElementById("form-edit") as HTMLFormElement;
+      
+      const dropzone = document.getElementById("dropzone");
+      const fileInput = document.getElementById("file-input") as HTMLInputElement;
+      const previewContainer = document.getElementById("preview-container");
+      const imagePreview = document.getElementById("image-preview") as HTMLImageElement;
+      const btnRemovePhoto = document.getElementById("btn-remove-photo");
+      const btnAnalizar = document.getElementById("btn-analizar") as HTMLButtonElement;
+      
+      const namesContainer = document.getElementById("names-container") as HTMLDivElement;
+      const btnAddName = document.getElementById("btn-add-name");
+      const btnConfirmar = document.getElementById("btn-confirmar") as HTMLButtonElement;
+      const btnCancel = document.getElementById("btn-cancel");
+      
+      const statusPanel = document.getElementById("status-panel");
+      const statusSpinner = document.getElementById("status-spinner");
+      const statusIcon = document.getElementById("status-icon");
+      const statusText = document.getElementById("status-text");
+      const statusDesc = document.getElementById("status-desc");
 
-    let compressedBlob: Blob | null = null;
-    let nameCount = 0;
+      let compressedBlob: Blob | null = null;
+      let nameCount = 0;
 
-    // --- MANEJO DE FOTO ---
-    dropzone?.addEventListener("click", () => fileInput.click());
-
-    fileInput.addEventListener("change", async (e) => {
-      const target = e.target as HTMLInputElement;
-      if (target.files && target.files.length > 0) {
-        await procesarFoto(target.files[0]);
+      // --- MANEJO DE FOTO ---
+      if (dropzone) {
+        const newDropzone = dropzone.cloneNode(true);
+        dropzone.parentNode?.replaceChild(newDropzone, dropzone);
+        newDropzone.addEventListener("click", () => document.getElementById("file-input")?.click());
       }
-    });
-
-    async function comprimirImagen(file: File): Promise<Blob> {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-          const img = new Image();
-          img.src = event.target?.result as string;
-          img.onload = () => {
-            const canvas = document.createElement("canvas");
-            const maxDim = 1200;
-            let width = img.width;
-            let height = img.height;
-            
-            if (width > height) {
-              if (width > maxDim) {
-                height = Math.round((height * maxDim) / width);
-                width = maxDim;
-              }
-            } else {
-              if (height > maxDim) {
-                width = Math.round((width * maxDim) / height);
-                height = maxDim;
-              }
-            }
-            
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext("2d");
-            ctx?.drawImage(img, 0, 0, width, height);
-            canvas.toBlob(
-              (blob) => {
-                if (blob) resolve(blob);
-                else reject(new Error("Error al comprimir blob"));
-              },
-              "image/jpeg",
-              0.80
-            );
-          };
-          img.onerror = (err) => reject(err);
-        };
-        reader.onerror = (err) => reject(err);
-      });
-    }
-
-    async function procesarFoto(file: File) {
-      try {
-        mostrarStatus("info", "Comprimiendo...", "Preparando imagen...");
-        compressedBlob = await comprimirImagen(file);
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (imagePreview && e.target?.result) {
-            imagePreview.src = e.target.result as string;
-            previewContainer?.classList.remove("hidden");
-            dropzone?.classList.add("hidden");
+      
+      const currentFileInput = document.getElementById("file-input") as HTMLInputElement;
+      if (currentFileInput) {
+        const newFileInput = currentFileInput.cloneNode(true) as HTMLInputElement;
+        currentFileInput.parentNode?.replaceChild(newFileInput, currentFileInput);
+        newFileInput.addEventListener("change", async (e) => {
+          const target = e.target as HTMLInputElement;
+          if (target.files && target.files.length > 0) {
+            await procesarFoto(target.files[0]);
           }
-        };
-        reader.readAsDataURL(compressedBlob);
+        });
+      }
+
+      async function comprimirImagen(file: File): Promise<Blob> {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+              const canvas = document.createElement("canvas");
+              const maxDim = 1200;
+              let width = img.width;
+              let height = img.height;
+              
+              if (width > height) {
+                if (width > maxDim) {
+                  height = Math.round((height * maxDim) / width);
+                  width = maxDim;
+                }
+              } else {
+                if (height > maxDim) {
+                  width = Math.round((width * maxDim) / height);
+                  height = maxDim;
+                }
+              }
+              
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext("2d");
+              ctx?.drawImage(img, 0, 0, width, height);
+              canvas.toBlob(
+                (blob) => {
+                  if (blob) resolve(blob);
+                  else reject(new Error("Error al comprimir blob"));
+                },
+                "image/jpeg",
+                0.80
+              );
+            };
+            img.onerror = (err) => reject(err);
+          };
+          reader.onerror = (err) => reject(err);
+        });
+      }
+
+      async function procesarFoto(file: File) {
+        try {
+          mostrarStatus("info", "Comprimiendo...", "Preparando imagen...");
+          compressedBlob = await comprimirImagen(file);
+          
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const imgEl = document.getElementById("image-preview") as HTMLImageElement;
+            const previewEl = document.getElementById("preview-container");
+            const dropEl = document.getElementById("dropzone");
+            if (imgEl && e.target?.result) {
+              imgEl.src = e.target.result as string;
+              previewEl?.classList.remove("hidden");
+              dropEl?.classList.add("hidden");
+            }
+          };
+          reader.readAsDataURL(compressedBlob);
+          
+          ocultarStatus();
+        } catch (err) {
+          mostrarStatus("error", "Error", "Intente con otra imagen.");
+          clearPhoto();
+        }
+      }
+
+      function clearPhoto() {
+        const fi = document.getElementById("file-input") as HTMLInputElement;
+        if (fi) fi.value = "";
+        compressedBlob = null;
+        document.getElementById("preview-container")?.classList.add("hidden");
+        document.getElementById("dropzone")?.classList.remove("hidden");
+      }
+
+      const currentBtnRemovePhoto = document.getElementById("btn-remove-photo");
+      if (currentBtnRemovePhoto) {
+        const newBtnRemovePhoto = currentBtnRemovePhoto.cloneNode(true);
+        currentBtnRemovePhoto.parentNode?.replaceChild(newBtnRemovePhoto, currentBtnRemovePhoto);
+        newBtnRemovePhoto.addEventListener("click", (e) => {
+          e.stopPropagation();
+          clearPhoto();
+        });
+      }
+
+      // --- UTILIDADES STATUS ---
+      function mostrarStatus(tipo: "info" | "success" | "error", titulo: string, descripcion: string) {
+        const sp = document.getElementById("status-panel");
+        const sspinner = document.getElementById("status-spinner");
+        const sicon = document.getElementById("status-icon");
+        const stext = document.getElementById("status-text");
+        const sdesc = document.getElementById("status-desc");
         
-        ocultarStatus();
-      } catch (err) {
-        mostrarStatus("error", "Error", "Intente con otra imagen.");
-        clearPhoto();
-      }
-    }
-
-    function clearPhoto() {
-      fileInput.value = "";
-      compressedBlob = null;
-      previewContainer?.classList.add("hidden");
-      dropzone?.classList.remove("hidden");
-    }
-
-    btnRemovePhoto?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      clearPhoto();
-    });
-
-    // --- UTILIDADES STATUS ---
-    function mostrarStatus(tipo: "info" | "success" | "error", titulo: string, descripcion: string) {
-      if (!statusPanel || !statusSpinner || !statusIcon || !statusText || !statusDesc) return;
-      statusPanel.classList.remove("hidden");
-      
-      statusPanel.className = "p-4 rounded-xl border space-y-2 " + 
-        (tipo === "success" ? "bg-green-50 border-green-200 text-green-800" :
-         tipo === "error" ? "bg-red-50 border-red-200 text-red-800" :
-         "bg-blue-50 border-blue-200 text-blue-800");
-
-      if (tipo === "info") {
-        statusSpinner.classList.remove("hidden");
-        statusIcon.classList.add("hidden");
-      } else {
-        statusSpinner.classList.add("hidden");
-        statusIcon.classList.remove("hidden");
-        statusIcon.textContent = tipo === "success" ? "✓" : "✕";
-      }
-
-      statusText.textContent = titulo;
-      statusDesc.textContent = descripcion;
-    }
-
-    function ocultarStatus() {
-      statusPanel?.classList.add("hidden");
-    }
-
-    // --- FORMULARIO EDICIÓN ---
-    function renderNames(personas: any[]) {
-      namesContainer.innerHTML = "";
-      nameCount = 0;
-      personas.forEach(p => addNameRow(p.nombre, p.cedula, p.telefono, p.edad, p.raw_context));
-      if (personas.length === 0) {
-        addNameRow("");
-      }
-    }
-
-    function addNameRow(nameValue: string = "", cedula: number|string|null = "", telefono: string|null = "", edad: number|string|null = "", raw_context: string = "") {
-      const id = `name-row-${nameCount++}`;
-      const row = document.createElement("div");
-      row.id = id;
-      row.className = "flex flex-col items-start gap-3 mb-4 bg-canvas p-4 rounded-xl border border-canvas-soft shadow-sm w-full";
-      
-      const cedulaStr = cedula !== null ? cedula : "";
-      const telStr = telefono !== null ? telefono : "";
-      const edadStr = edad !== null ? edad : "";
-
-      row.innerHTML = `
-        <div class="flex justify-between items-center w-full pb-2 border-b border-canvas-soft">
-          <span class="text-xs font-bold text-body-soft uppercase tracking-wider">Registro</span>
-          <button type="button" class="btn btn-ghost btn-xs text-error hover:bg-error/10 px-2" onclick="document.getElementById('${id}').remove()" title="Eliminar registro">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            <span class="hidden sm:inline ml-1 text-xs">Eliminar</span>
-          </button>
-        </div>
+        if (!sp || !sspinner || !sicon || !stext || !sdesc) return;
+        sp.classList.remove("hidden");
         
-        <div class="w-full flex flex-col gap-3">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-            <div class="w-full">
-              <label class="text-xs text-body-soft mb-1 block font-medium">Nombre Completo</label>
-              <input type="text" class="input input-bordered w-full font-uber-text extracted-name text-sm" value="${nameValue}" placeholder="Nombre completo" required />
-            </div>
-            <div class="w-full">
-              <label class="text-xs text-body-soft mb-1 block font-medium">Cédula</label>
-              <input type="number" class="input input-bordered w-full font-uber-text extracted-cedula text-sm" value="${cedulaStr}" placeholder="Ej: 15370185" />
-            </div>
+        sp.className = "p-4 rounded-xl border space-y-2 " + 
+          (tipo === "success" ? "bg-green-50 border-green-200 text-green-800" :
+           tipo === "error" ? "bg-red-50 border-red-200 text-red-800" :
+           "bg-blue-50 border-blue-200 text-blue-800");
+
+        if (tipo === "info") {
+          sspinner.classList.remove("hidden");
+          sicon.classList.add("hidden");
+        } else {
+          sspinner.classList.add("hidden");
+          sicon.classList.remove("hidden");
+          sicon.textContent = tipo === "success" ? "✓" : "✕";
+        }
+
+        stext.textContent = titulo;
+        sdesc.textContent = descripcion;
+      }
+
+      function ocultarStatus() {
+        document.getElementById("status-panel")?.classList.add("hidden");
+      }
+
+      // --- FORMULARIO EDICIÓN ---
+      function renderNames(personas: any[]) {
+        const nc = document.getElementById("names-container") as HTMLDivElement;
+        if (nc) {
+          nc.innerHTML = "";
+          nameCount = 0;
+          personas.forEach(p => addNameRow(p.nombre, p.cedula, p.telefono, p.edad, p.raw_context));
+          if (personas.length === 0) {
+            addNameRow("");
+          }
+        }
+      }
+
+      // Exponer al scope global para que el botón "Eliminar" inline funcione
+      (window as any).eliminarFila = (id: string) => {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+      };
+
+      function addNameRow(nameValue: string = "", cedula: number|string|null = "", telefono: string|null = "", edad: number|string|null = "", raw_context: string = "") {
+        const nc = document.getElementById("names-container") as HTMLDivElement;
+        if (!nc) return;
+        
+        const id = `name-row-${nameCount++}`;
+        const row = document.createElement("div");
+        row.id = id;
+        row.className = "flex flex-col items-start gap-3 mb-4 bg-canvas p-4 rounded-xl border border-canvas-soft shadow-sm w-full";
+        
+        const cedulaStr = cedula !== null ? cedula : "";
+        const telStr = telefono !== null ? telefono : "";
+        const edadStr = edad !== null ? edad : "";
+
+        row.innerHTML = `
+          <div class="flex justify-between items-center w-full pb-2 border-b border-canvas-soft">
+            <span class="text-xs font-bold text-body-soft uppercase tracking-wider">Registro</span>
+            <button type="button" class="btn btn-ghost btn-xs text-error hover:bg-error/10 px-2" onclick="window.eliminarFila('${id}')" title="Eliminar registro">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              <span class="hidden sm:inline ml-1 text-xs">Eliminar</span>
+            </button>
           </div>
           
-          <div class="grid grid-cols-2 gap-3 w-full">
-            <div class="w-full">
-              <label class="text-xs text-body-soft mb-1 block font-medium">Teléfono</label>
-              <input type="text" class="input input-bordered w-full font-uber-text extracted-telefono text-sm" value="${telStr}" placeholder="Ej: 04141234567" />
+          <div class="w-full flex flex-col gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+              <div class="w-full">
+                <label class="text-xs text-body-soft mb-1 block font-medium">Nombre Completo</label>
+                <input type="text" class="input input-bordered w-full font-uber-text extracted-name text-sm" value="${nameValue}" placeholder="Nombre completo" required />
+              </div>
+              <div class="w-full">
+                <label class="text-xs text-body-soft mb-1 block font-medium">Cédula</label>
+                <input type="number" class="input input-bordered w-full font-uber-text extracted-cedula text-sm" value="${cedulaStr}" placeholder="Ej: 15370185" />
+              </div>
             </div>
-            <div class="w-full">
-              <label class="text-xs text-body-soft mb-1 block font-medium">Edad</label>
-              <input type="number" class="input input-bordered w-full font-uber-text extracted-edad text-sm" value="${edadStr}" placeholder="Años" />
+            
+            <div class="grid grid-cols-2 gap-3 w-full">
+              <div class="w-full">
+                <label class="text-xs text-body-soft mb-1 block font-medium">Teléfono</label>
+                <input type="text" class="input input-bordered w-full font-uber-text extracted-telefono text-sm" value="${telStr}" placeholder="Ej: 04141234567" />
+              </div>
+              <div class="w-full">
+                <label class="text-xs text-body-soft mb-1 block font-medium">Edad</label>
+                <input type="number" class="input input-bordered w-full font-uber-text extracted-edad text-sm" value="${edadStr}" placeholder="Años" />
+              </div>
+            </div>
+
+            <div class="text-xs text-body-soft mt-1 bg-canvas-soft p-2 rounded font-mono truncate w-full" title="${raw_context}">
+              <span class="font-bold">Raw:</span> ${raw_context || "Carga Manual"}
             </div>
           </div>
-
-          <div class="text-xs text-body-soft mt-1 bg-canvas-soft p-2 rounded font-mono truncate w-full" title="${raw_context}">
-            <span class="font-bold">Raw:</span> ${raw_context || "Carga Manual"}
-          </div>
-        </div>
-      `;
-      namesContainer.appendChild(row);
-    }
-
-    btnAddName?.addEventListener("click", () => addNameRow("", ""));
-
-    // --- EVENTOS ---
-    formUpload?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (!compressedBlob) {
-        alert("Sube una foto primero.");
-        return;
+        `;
+        nc.appendChild(row);
       }
 
-      btnAnalizar.disabled = true;
-      btnAnalizar.innerHTML = `<span class="loading loading-spinner"></span> Analizando con IA...`;
-      mostrarStatus("info", "Leyendo manuscrito...", "La IA está procesando la imagen. Esto tardará unos 10 segundos.");
+      const currentBtnAddName = document.getElementById("btn-add-name");
+      if (currentBtnAddName) {
+        const newBtnAddName = currentBtnAddName.cloneNode(true);
+        currentBtnAddName.parentNode?.replaceChild(newBtnAddName, currentBtnAddName);
+        newBtnAddName.addEventListener("click", () => addNameRow("", ""));
+      }
 
-      try {
-        const formData = new FormData();
-        formData.append("file", compressedBlob, "lista.jpg");
+      // --- EVENTOS ---
+      const currentFormUpload = document.getElementById("form-upload") as HTMLFormElement;
+      if (currentFormUpload) {
+        const newFormUpload = currentFormUpload.cloneNode(true) as HTMLFormElement;
+        currentFormUpload.parentNode?.replaceChild(newFormUpload, currentFormUpload);
+        newFormUpload.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          if (!compressedBlob) {
+            alert("Sube una foto primero.");
+            return;
+          }
 
-        const resp = await fetch("/api/analizar-lista", {
-          method: "POST",
-          body: formData
+          const btnAnalizarEl = document.getElementById("btn-analizar") as HTMLButtonElement;
+          if (btnAnalizarEl) {
+            btnAnalizarEl.disabled = true;
+            btnAnalizarEl.innerHTML = `<span class="loading loading-spinner"></span> Analizando con IA...`;
+          }
+          mostrarStatus("info", "Leyendo manuscrito...", "La IA está procesando la imagen. Esto tardará unos 10 segundos.");
+
+          try {
+            const formData = new FormData();
+            formData.append("file", compressedBlob, "lista.jpg");
+
+            const resp = await fetch("/api/analizar-lista", {
+              method: "POST",
+              body: formData
+            });
+
+            if (resp.ok) {
+              const res = await resp.json();
+              renderNames(res.personas || []);
+              document.getElementById("form-upload")?.classList.add("hidden");
+              document.getElementById("form-edit")?.classList.remove("hidden");
+              ocultarStatus();
+            } else {
+              const err = await resp.json();
+              mostrarStatus("error", "Fallo al analizar", err.error || "Error de la IA.");
+            }
+          } catch (err) {
+            mostrarStatus("error", "Error de conexión", "Fallo de red.");
+          } finally {
+            const btnAnalizarElFinal = document.getElementById("btn-analizar") as HTMLButtonElement;
+            if (btnAnalizarElFinal) {
+              btnAnalizarElFinal.disabled = false;
+              btnAnalizarElFinal.textContent = "Analizar con IA (Demora ~10s)";
+            }
+          }
         });
+      }
 
-        if (resp.ok) {
-          const res = await resp.json();
-          renderNames(res.personas || []);
-          formUpload.classList.add("hidden");
-          formEdit.classList.remove("hidden");
+      const currentBtnCancel = document.getElementById("btn-cancel");
+      if (currentBtnCancel) {
+        const newBtnCancel = currentBtnCancel.cloneNode(true);
+        currentBtnCancel.parentNode?.replaceChild(newBtnCancel, currentBtnCancel);
+        newBtnCancel.addEventListener("click", () => {
+          document.getElementById("form-edit")?.classList.add("hidden");
+          document.getElementById("form-upload")?.classList.remove("hidden");
+          clearPhoto();
           ocultarStatus();
-        } else {
-          const err = await resp.json();
-          mostrarStatus("error", "Fallo al analizar", err.error || "Error de la IA.");
-        }
-      } catch (err) {
-        mostrarStatus("error", "Error de conexión", "Fallo de red.");
-      } finally {
-        btnAnalizar.disabled = false;
-        btnAnalizar.textContent = "Analizar con IA (Demora ~10s)";
-      }
-    });
-
-    btnCancel?.addEventListener("click", () => {
-      formEdit.classList.add("hidden");
-      formUpload.classList.remove("hidden");
-      clearPhoto();
-      ocultarStatus();
-    });
-
-    formEdit?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      
-      const refugio = (document.getElementById("escaner-refugio") as HTMLInputElement).value.trim();
-      const contacto = (document.getElementById("escaner-contacto") as HTMLInputElement).value.trim();
-      
-      // Recolectar nombres de inputs
-      const rowDivs = namesContainer.querySelectorAll("[id^='name-row-']");
-      const finalPersonas: any[] = [];
-      
-      rowDivs.forEach(row => {
-        const nameInput = row.querySelector(".extracted-name") as HTMLInputElement;
-        const cedulaInput = row.querySelector(".extracted-cedula") as HTMLInputElement;
-        const telInput = row.querySelector(".extracted-telefono") as HTMLInputElement;
-        const edadInput = row.querySelector(".extracted-edad") as HTMLInputElement;
-        
-        if (nameInput && nameInput.value.trim().length > 2) {
-          finalPersonas.push({
-            nombre: nameInput.value.trim(),
-            cedula: cedulaInput.value ? parseInt(cedulaInput.value, 10) : null,
-            telefono: telInput.value ? telInput.value.trim() : null,
-            edad: edadInput.value ? parseInt(edadInput.value, 10) : null
-          });
-        }
-      });
-
-      if (finalPersonas.length === 0) {
-        alert("La lista debe tener al menos un nombre válido.");
-        return;
-      }
-
-      btnConfirmar.disabled = true;
-      btnConfirmar.textContent = "Guardando...";
-      mostrarStatus("info", "Encolando procesamientos...", "Guardando registros y cruzando con base de datos.");
-
-      try {
-        const resp = await fetch("/api/procesar-censo", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ personas: finalPersonas, refugio, contacto })
         });
+      }
 
-        if (resp.ok) {
-          mostrarStatus("success", "¡Censo cargado con éxito!", `Se registraron ${finalPersonas.length} personas en el sistema y se enviaron a cruzar.`);
-          setTimeout(() => {
-            formEdit.classList.add("hidden");
-            formUpload.classList.remove("hidden");
-            formUpload.reset();
-            clearPhoto();
-            ocultarStatus();
-          }, 4000);
-        } else {
-          const err = await resp.json();
-          mostrarStatus("error", "Fallo al guardar", err.error || "Intente de nuevo.");
-          btnConfirmar.disabled = false;
-          btnConfirmar.textContent = "Confirmar y Subir Lista Definitiva";
-        }
-      } catch (err) {
-        mostrarStatus("error", "Error de red", "Verifique su conexión.");
-        btnConfirmar.disabled = false;
-        btnConfirmar.textContent = "Confirmar y Subir Lista Definitiva";
+      const currentFormEdit = document.getElementById("form-edit") as HTMLFormElement;
+      if (currentFormEdit) {
+        const newFormEdit = currentFormEdit.cloneNode(true) as HTMLFormElement;
+        currentFormEdit.parentNode?.replaceChild(newFormEdit, currentFormEdit);
+        newFormEdit.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          
+          const refugio = (document.getElementById("escaner-refugio") as HTMLInputElement).value.trim();
+          const contacto = (document.getElementById("escaner-contacto") as HTMLInputElement).value.trim();
+          
+          // Recolectar nombres de inputs
+          const nc = document.getElementById("names-container");
+          if (!nc) return;
+          const rowDivs = nc.querySelectorAll("[id^='name-row-']");
+          const finalPersonas: any[] = [];
+          
+          rowDivs.forEach(row => {
+            const nameInput = row.querySelector(".extracted-name") as HTMLInputElement;
+            const cedulaInput = row.querySelector(".extracted-cedula") as HTMLInputElement;
+            const telInput = row.querySelector(".extracted-telefono") as HTMLInputElement;
+            const edadInput = row.querySelector(".extracted-edad") as HTMLInputElement;
+            
+            if (nameInput && nameInput.value.trim().length > 2) {
+              finalPersonas.push({
+                nombre: nameInput.value.trim(),
+                cedula: cedulaInput.value ? parseInt(cedulaInput.value, 10) : null,
+                telefono: telInput.value ? telInput.value.trim() : null,
+                edad: edadInput.value ? parseInt(edadInput.value, 10) : null
+              });
+            }
+          });
+
+          if (finalPersonas.length === 0) {
+            alert("La lista debe tener al menos un nombre válido.");
+            return;
+          }
+
+          const btnConfirmarEl = document.getElementById("btn-confirmar") as HTMLButtonElement;
+          if (btnConfirmarEl) {
+            btnConfirmarEl.disabled = true;
+            btnConfirmarEl.textContent = "Guardando...";
+          }
+          mostrarStatus("info", "Encolando procesamientos...", "Guardando registros y cruzando con base de datos.");
+
+          try {
+            const resp = await fetch("/api/procesar-censo", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ personas: finalPersonas, refugio, contacto })
+            });
+
+            if (resp.ok) {
+              mostrarStatus("success", "¡Censo cargado con éxito!", `Se registraron ${finalPersonas.length} personas en el sistema y se enviaron a cruzar.`);
+              setTimeout(() => {
+                const fe = document.getElementById("form-edit") as HTMLFormElement;
+                const fu = document.getElementById("form-upload") as HTMLFormElement;
+                if (fe) fe.classList.add("hidden");
+                if (fu) {
+                  fu.classList.remove("hidden");
+                  fu.reset();
+                }
+                clearPhoto();
+                ocultarStatus();
+              }, 4000);
+            } else {
+              const err = await resp.json();
+              mostrarStatus("error", "Fallo al guardar", err.error || "Intente de nuevo.");
+              const bc = document.getElementById("btn-confirmar") as HTMLButtonElement;
+              if (bc) {
+                bc.disabled = false;
+                bc.textContent = "Confirmar y Subir Lista Definitiva";
+              }
+            }
+          } catch (err) {
+            mostrarStatus("error", "Error de red", "Verifique su conexión.");
+            const bc = document.getElementById("btn-confirmar") as HTMLButtonElement;
+            if (bc) {
+              bc.disabled = false;
+              bc.textContent = "Confirmar y Subir Lista Definitiva";
+            }
+          }
+        });
       }
     });
   </script>

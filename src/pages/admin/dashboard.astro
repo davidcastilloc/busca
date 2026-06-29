@@ -427,78 +427,80 @@ const formatFecha = (fechaStr: string) => {
 
 <!-- Script de acciones del administrador para moderar reportes de localizado -->
 <script>
-  const botonesAprobar = document.querySelectorAll(".btn-aprobar");
-  const botonesRechazar = document.querySelectorAll(".btn-rechazar");
+  document.addEventListener("astro:page-load", () => {
+    const botonesAprobar = document.querySelectorAll(".btn-aprobar");
+    const botonesRechazar = document.querySelectorAll(".btn-rechazar");
 
-  botonesAprobar.forEach(btn => {
-    btn.addEventListener("click", async (e) => {
-      const target = e.currentTarget as HTMLButtonElement;
-      const id = target.getAttribute("data-id");
-      const tipo = target.getAttribute("data-tipo");
-      if (!id || !tipo) return;
+    botonesAprobar.forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const id = target.getAttribute("data-id");
+        const tipo = target.getAttribute("data-tipo");
+        if (!id || !tipo) return;
 
-      if (!confirm("¿Confirmar y marcar esta persona/reporte como verificado localizado?")) return;
+        if (!confirm("¿Confirmar y marcar esta persona/reporte como verificado localizado?")) return;
 
-      target.disabled = true;
-      target.textContent = "Aprobando...";
+        target.disabled = true;
+        target.textContent = "Aprobando...";
 
-      try {
-        const endpoint = tipo === "persona" ? `/api/personas/${id}` : `/api/reportes/${id}`;
-        const resp = await fetch(endpoint, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accion: "aprobar_localizado" })
-        });
+        try {
+          const endpoint = tipo === "persona" ? `/api/personas/${id}` : `/api/reportes/${id}`;
+          const resp = await fetch(endpoint, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accion: "aprobar_localizado" })
+          });
 
-        if (resp.ok) {
-          window.location.reload();
-        } else {
-          const err = await resp.json();
-          alert(`Error: ${err.error}`);
+          if (resp.ok) {
+            window.location.reload();
+          } else {
+            const err = await resp.json();
+            alert(`Error: ${err.error}`);
+            target.disabled = false;
+            target.textContent = "Aprobar";
+          }
+        } catch {
+          alert("Error de conexión");
           target.disabled = false;
           target.textContent = "Aprobar";
         }
-      } catch {
-        alert("Error de conexión");
-        target.disabled = false;
-        target.textContent = "Aprobar";
-      }
+      });
     });
-  });
 
-  botonesRechazar.forEach(btn => {
-    btn.addEventListener("click", async (e) => {
-      const target = e.currentTarget as HTMLButtonElement;
-      const id = target.getAttribute("data-id");
-      const tipo = target.getAttribute("data-tipo");
-      if (!id || !tipo) return;
+    botonesRechazar.forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const id = target.getAttribute("data-id");
+        const tipo = target.getAttribute("data-tipo");
+        if (!id || !tipo) return;
 
-      if (!confirm("¿Rechazar este reporte de localizado? La persona/reporte volverá a su estado anterior.")) return;
+        if (!confirm("¿Rechazar este reporte de localizado? La persona/reporte volverá a su estado anterior.")) return;
 
-      target.disabled = true;
-      target.textContent = "Rechazando...";
+        target.disabled = true;
+        target.textContent = "Rechazando...";
 
-      try {
-        const endpoint = tipo === "persona" ? `/api/personas/${id}` : `/api/reportes/${id}`;
-        const resp = await fetch(endpoint, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accion: "rechazar_localizado" })
-        });
+        try {
+          const endpoint = tipo === "persona" ? `/api/personas/${id}` : `/api/reportes/${id}`;
+          const resp = await fetch(endpoint, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accion: "rechazar_localizado" })
+          });
 
-        if (resp.ok) {
-          window.location.reload();
-        } else {
-          const err = await resp.json();
-          alert(`Error: ${err.error}`);
+          if (resp.ok) {
+            window.location.reload();
+          } else {
+            const err = await resp.json();
+            alert(`Error: ${err.error}`);
+            target.disabled = false;
+            target.textContent = "Rechazar";
+          }
+        } catch {
+          alert("Error de conexión");
           target.disabled = false;
           target.textContent = "Rechazar";
         }
-      } catch {
-        alert("Error de conexión");
-        target.disabled = false;
-        target.textContent = "Rechazar";
-      }
+      });
     });
   });
 </script>
@@ -510,12 +512,18 @@ const formatFecha = (fechaStr: string) => {
 
 <!-- Script del Mapa de Calor -->
 <script is:inline>
-  (function() {
+  document.addEventListener("astro:page-load", () => {
     const mapContainer = document.getElementById('heatmap');
     const statusText = document.getElementById('heatmap-status');
     const refrescarBtn = document.getElementById('btn-refrescar-mapa');
     
     if (!mapContainer || typeof L === 'undefined') return;
+
+    // Remove old map instance if it exists (Astro view transition fix)
+    if (mapContainer._leaflet_id) {
+      mapContainer.innerHTML = '';
+      mapContainer._leaflet_id = null;
+    }
 
     // Inicializar mapa centrado en Venezuela
     const map = L.map('heatmap').setView([10.4806, -66.9036], 7);
@@ -579,21 +587,31 @@ const formatFecha = (fechaStr: string) => {
     cargarHeatmap();
 
     if (refrescarBtn) {
-      refrescarBtn.addEventListener('click', function() {
+      // Remover listener previo para evitar multiplicaciones si no lo recrea
+      const newBtn = refrescarBtn.cloneNode(true);
+      refrescarBtn.parentNode.replaceChild(newBtn, refrescarBtn);
+      newBtn.addEventListener('click', function() {
         cargarHeatmap();
       });
     }
-  })();
+  });
 </script>
 
 <!-- Script de Alertas Push -->
 <script is:inline>
-  (function() {
+  document.addEventListener("astro:page-load", () => {
     var formAlerta = document.getElementById('form-alerta');
     var alertaStatus = document.getElementById('alerta-status');
     var btnEnviar = document.getElementById('btn-enviar-alerta');
 
     if (!formAlerta) return;
+    
+    // Remover eventos previos
+    var newFormAlerta = formAlerta.cloneNode(true);
+    formAlerta.parentNode.replaceChild(newFormAlerta, formAlerta);
+    formAlerta = newFormAlerta;
+    btnEnviar = document.getElementById('btn-enviar-alerta');
+    alertaStatus = document.getElementById('alerta-status');
 
     formAlerta.addEventListener('submit', function(e) {
       e.preventDefault();
@@ -653,5 +671,5 @@ const formatFecha = (fechaStr: string) => {
       alertaStatus.className = 'text-sm font-uber-text mt-3 font-medium ' + colorClass;
       alertaStatus.classList.remove('hidden');
     }
-  })();
+  });
 </script>

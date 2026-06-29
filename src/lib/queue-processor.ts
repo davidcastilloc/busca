@@ -94,7 +94,7 @@ export async function procesarCola(
           continue;
         }
         
-        const { personas, refugio, contacto, refugio_id } = data;
+        const { personas, refugio, contacto, refugio_id, created_by } = data;
         const personasRecibidas = personas as {
           nombre: string;
           cedula: number | null;
@@ -118,7 +118,8 @@ export async function procesarCola(
           personasRecibidas, 
           refugio, 
           contacto, 
-          refugio_id || null
+          refugio_id || null,
+          created_by || null
         );
 
         // Disparar notificaciones Push

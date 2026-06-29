@@ -33,7 +33,31 @@ export const GET: APIRoute = async ({ params, request }) => {
     let queryStr = `SELECT * FROM ${table} ORDER BY rowid DESC LIMIT ? OFFSET ?`;
     let bindings: any[] = [limit, offset];
 
-    if (table === 'historial_actividad') {
+    if (table === 'refugios') {
+      queryStr = `
+        SELECT t.*, v.nombre as creador_nombre 
+        FROM refugios t 
+        LEFT JOIN voluntarios v ON t.created_by = v.id 
+        ORDER BY t.rowid DESC 
+        LIMIT ? OFFSET ?
+      `;
+    } else if (table === 'reportes') {
+      queryStr = `
+        SELECT t.*, v.nombre as creador_nombre 
+        FROM reportes t 
+        LEFT JOIN voluntarios v ON t.created_by = v.id 
+        ORDER BY t.rowid DESC 
+        LIMIT ? OFFSET ?
+      `;
+    } else if (table === 'personas') {
+      queryStr = `
+        SELECT t.*, v.nombre as creador_nombre 
+        FROM personas t 
+        LEFT JOIN voluntarios v ON t.created_by = v.id 
+        ORDER BY t.rowid DESC 
+        LIMIT ? OFFSET ?
+      `;
+    } else if (table === 'historial_actividad') {
       // JOIN para obtener el nombre del voluntario en vez de solo voluntario_id
       queryStr = `
         SELECT h.*, v.nombre as voluntario_nombre 
@@ -56,6 +80,11 @@ export const GET: APIRoute = async ({ params, request }) => {
       columns = [
         ...columns,
         { name: 'voluntario_nombre', type: 'TEXT' }
+      ];
+    } else if (['refugios', 'reportes', 'personas'].includes(table)) {
+      columns = [
+        ...columns,
+        { name: 'creador_nombre', type: 'TEXT' }
       ];
     }
 
