@@ -350,6 +350,9 @@ export const prerender = false;
   }
 
   document.addEventListener("astro:page-load", () => {
+    const mapDiv = document.getElementById("map-fullscreen");
+    if (!mapDiv) return; // Solo ejecutar si estamos en la página del mapa
+
     // Limpieza
     if (map) {
       try { map.remove(); } catch {}
@@ -371,7 +374,6 @@ export const prerender = false;
       // Calcular offsets de TopBar
       const topBar = document.getElementById("map-top-bar");
       const topBarHeight = topBar?.offsetHeight || 90;
-      const mapDiv = document.getElementById("map-fullscreen")!;
       mapDiv.style.top = topBarHeight + "px";
 
       map = L.map("map-fullscreen", {
