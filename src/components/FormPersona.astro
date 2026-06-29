@@ -101,110 +101,118 @@ import FotoUpload from "./FotoUpload.astro";
 <script>
   import { encolarRegistro } from "../lib/offline-queue";
 
-  const form = document.getElementById("form-persona") as HTMLFormElement;
-  const toastContainer = document.getElementById("toast-container");
-  const toastMessage = document.getElementById("toast-message");
+  document.addEventListener("astro:page-load", () => {
+    const form = document.getElementById("form-persona") as HTMLFormElement;
+    const toastContainer = document.getElementById("toast-container");
+    const toastMessage = document.getElementById("toast-message");
 
-  if (form && toastContainer && toastMessage) {
-    // Autocompletar desde URL params si existen
-    const urlParams = new URLSearchParams(window.location.search);
-    const paramNombre = urlParams.get("nombre");
-    const paramCedula = urlParams.get("cedula");
+    if (form && toastContainer && toastMessage) {
+      // Remover listener viejo clonando el elemento
+      const newForm = form.cloneNode(true) as HTMLFormElement;
+      form.parentNode?.replaceChild(newForm, form);
 
-    if (paramNombre) {
-      const partes = paramNombre.trim().split(/\s+/);
-      const inputNombre = form.querySelector('input[name="nombre"]') as HTMLInputElement;
-      const inputApellido = form.querySelector('input[name="apellido"]') as HTMLInputElement;
-      if (partes.length > 1) {
-        if (inputNombre) inputNombre.value = partes.slice(0, Math.ceil(partes.length / 2)).join(" ");
-        if (inputApellido) inputApellido.value = partes.slice(Math.ceil(partes.length / 2)).join(" ");
-      } else {
-        if (inputNombre) inputNombre.value = paramNombre;
+      // Autocompletar desde URL params si existen
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramNombre = urlParams.get("nombre");
+      const paramCedula = urlParams.get("cedula");
+
+      if (paramNombre) {
+        const partes = paramNombre.trim().split(/\s+/);
+        const inputNombre = newForm.querySelector('input[name="nombre"]') as HTMLInputElement;
+        const inputApellido = newForm.querySelector('input[name="apellido"]') as HTMLInputElement;
+        if (partes.length > 1) {
+          if (inputNombre) inputNombre.value = partes.slice(0, Math.ceil(partes.length / 2)).join(" ");
+          if (inputApellido) inputApellido.value = partes.slice(Math.ceil(partes.length / 2)).join(" ");
+        } else {
+          if (inputNombre) inputNombre.value = paramNombre;
+        }
       }
-    }
-    if (paramCedula) {
-      const inputCedula = form.querySelector('input[name="cedula"]') as HTMLInputElement;
-      if (inputCedula) inputCedula.value = paramCedula;
-    }
+      if (paramCedula) {
+        const inputCedula = newForm.querySelector('input[name="cedula"]') as HTMLInputElement;
+        if (inputCedula) inputCedula.value = paramCedula;
+      }
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
+      newForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
 
-      const formData = new FormData(form);
-      const data = Object.fromEntries(formData.entries());
+        const formData = new FormData(newForm);
+        const data = Object.fromEntries(formData.entries());
 
-      // Parsear tipos
-      const payload = {
-        cedula: data.cedula ? String(data.cedula).trim() : null,
-        nombre: String(data.nombre).trim(),
-        apellido: data.apellido ? String(data.apellido).trim() : null,
-        edad: data.edad ? parseInt(String(data.edad), 10) : null,
-        sexo: data.sexo || "X",
-        estado: data.estado || "desconocido",
-        ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
-        latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
-        longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
-        refugio: data.refugio ? String(data.refugio).trim() : null,
-        contacto: data.contacto ? String(data.contacto).trim() : null,
-        notas: data.notas ? String(data.notas).trim() : null,
-        foto_key: data.foto_key ? String(data.foto_key).trim() : null,
-        fuente: "web"
-      };
+        // Parsear tipos
+        const payload = {
+          cedula: data.cedula ? String(data.cedula).trim() : null,
+          nombre: String(data.nombre).trim(),
+          apellido: data.apellido ? String(data.apellido).trim() : null,
+          edad: data.edad ? parseInt(String(data.edad), 10) : null,
+          sexo: data.sexo || "X",
+          estado: data.estado || "desconocido",
+          ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
+          latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
+          longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
+          refugio: data.refugio ? String(data.refugio).trim() : null,
+          contacto: data.contacto ? String(data.contacto).trim() : null,
+          notas: data.notas ? String(data.notas).trim() : null,
+          foto_key: data.foto_key ? String(data.foto_key).trim() : null,
+          fuente: "web"
+        };
 
-      mostrarToast("Procesando registro...", "border-blue-500/30");
+        mostrarToast("Procesando registro...", "border-blue-500/30");
 
-      if (navigator.onLine) {
-        try {
-          const response = await fetch("/api/personas", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-          });
+        if (navigator.onLine) {
+          try {
+            const response = await fetch("/api/personas", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(payload)
+            });
 
-          if (response.ok) {
-            mostrarToast("✓ Registro enviado con éxito.", "border-green-500/30");
-            form.reset();
-            document.getElementById("btn-quitar-foto")?.click();
-          } else {
-            const errData = await response.json();
-            throw new Error(errData.error || "Error de validación del servidor");
+            if (response.ok) {
+              mostrarToast("✓ Registro enviado con éxito.", "border-green-500/30");
+              newForm.reset();
+              document.getElementById("btn-quitar-foto")?.click();
+            } else {
+              const errData = await response.json();
+              throw new Error(errData.error || "Error de validación del servidor");
+            }
+          } catch (err: any) {
+            console.error(err);
+            await guardarOffline(payload);
           }
-        } catch (err: any) {
-          console.error(err);
+        } else {
           await guardarOffline(payload);
         }
-      } else {
-        await guardarOffline(payload);
+      });
+
+      async function guardarOffline(payload: any) {
+        try {
+          await encolarRegistro("persona", payload);
+          mostrarToast("⚠️ Guardado localmente sin red. Se sincronizará automáticamente.", "border-yellow-500/30");
+          newForm.reset();
+          document.getElementById("btn-quitar-foto")?.click();
+
+          // Disparar evento personalizado
+          const event = new CustomEvent("offline-record-added");
+          window.dispatchEvent(event);
+        } catch (e: any) {
+          mostrarToast("❌ Error al guardar localmente: " + e.message, "border-red-500/30");
+        }
       }
-    });
 
-    async function guardarOffline(payload: any) {
-      try {
-        await encolarRegistro("persona", payload);
-        mostrarToast("⚠️ Guardado localmente sin red. Se sincronizará automáticamente.", "border-yellow-500/30");
-        form.reset();
-        document.getElementById("btn-quitar-foto")?.click();
+      function mostrarToast(text: string, borderClass: string) {
+        const tc = document.getElementById("toast-container");
+        const tm = document.getElementById("toast-message");
+        if (!tc || !tm) return;
+        
+        tm.className = `bg-canvas border ${borderClass} text-ink rounded-xl p-4 shadow-md font-uber-text uber-body-sm flex items-center gap-2`;
+        tm.innerHTML = `<span>${text}</span>`;
+        tc.classList.remove("hidden");
 
-        // Disparar evento personalizado
-        const event = new CustomEvent("offline-record-added");
-        window.dispatchEvent(event);
-      } catch (e: any) {
-        mostrarToast("❌ Error al guardar localmente: " + e.message, "border-red-500/30");
+        setTimeout(() => {
+          tc.classList.add("hidden");
+        }, 5000);
       }
     }
-
-    function mostrarToast(text: string, borderClass: string) {
-      if (!toastContainer || !toastMessage) return;
-      
-      toastMessage.className = `bg-canvas border ${borderClass} text-ink rounded-xl p-4 shadow-md font-uber-text uber-body-sm flex items-center gap-2`;
-      toastMessage.innerHTML = `<span>${text}</span>`;
-      toastContainer.classList.remove("hidden");
-
-      setTimeout(() => {
-        toastContainer.classList.add("hidden");
-      }, 5000);
-    }
-  }
+  });
 </script>

@@ -139,6 +139,14 @@ export async function handleFoundState(
 
     try {
       if (env?.CENSO_QUEUE) {
+        let voluntarioId: number | null = null;
+        try {
+          const v = await db.prepare("SELECT id FROM voluntarios WHERE telegram_id = ?").bind(String(telegramId)).first<{id: number}>();
+          if (v) voluntarioId = v.id;
+        } catch (e) {
+          // ignore error
+        }
+
         await env.CENSO_QUEUE.send({
           type: "reporte",
           data: {
@@ -153,6 +161,7 @@ export async function handleFoundState(
             reportante_nombre: "Voluntario (Telegram)",
             reportante_contacto: `User ID: ${telegramId}`,
             foto_key: data.foto_key,
+            created_by: voluntarioId,
           },
         });
         await client.sendMessage(

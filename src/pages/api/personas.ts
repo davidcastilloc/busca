@@ -21,6 +21,7 @@ export const POST: APIRoute = async (context) => {
     const body = await context.request.json();
 
     const validated = PersonaSchema.parse(body);
+    validated.created_by = voluntario.id;
 
     await env.CENSO_QUEUE.send({
       type: "persona",

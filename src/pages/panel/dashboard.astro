@@ -127,38 +127,42 @@ const tables = [
 </Layout>
 
 <script>
-  let currentTable = '';
-  let currentColumns: any[] = [];
-  let currentData: any[] = [];
-  let isEditing = false;
-  let editingId: string | null = null;
-  let isReadonly = false;
+  document.addEventListener("astro:page-load", () => {
+    let currentTable = '';
+    let currentColumns: any[] = [];
+    let currentData: any[] = [];
+    let isEditing = false;
+    let editingId: string | null = null;
+    let isReadonly = false;
 
-  const UI = {
-    tabs: document.querySelectorAll('.tab-btn'),
-    title: document.getElementById('current-table-title') as HTMLElement,
-    subtitle: document.getElementById('current-table-subtitle') as HTMLElement,
-    btnRefresh: document.getElementById('btn-refresh') as HTMLButtonElement,
-    btnNew: document.getElementById('btn-new') as HTMLButtonElement,
-    loading: document.getElementById('table-loading') as HTMLElement,
-    empty: document.getElementById('table-empty') as HTMLElement,
-    error: document.getElementById('table-error') as HTMLElement,
-    errorMsg: document.getElementById('table-error-msg') as HTMLElement,
-    container: document.getElementById('table-container') as HTMLElement,
-    thead: document.getElementById('table-head') as HTMLElement,
-    tbody: document.getElementById('table-body') as HTMLElement,
-    filterWrapper: document.getElementById('filter-wrapper') as HTMLElement,
-    filterInput: document.getElementById('table-filter') as HTMLInputElement,
+    const UI = {
+      tabs: document.querySelectorAll('.tab-btn'),
+      title: document.getElementById('current-table-title') as HTMLElement,
+      subtitle: document.getElementById('current-table-subtitle') as HTMLElement,
+      btnRefresh: document.getElementById('btn-refresh') as HTMLButtonElement,
+      btnNew: document.getElementById('btn-new') as HTMLButtonElement,
+      loading: document.getElementById('table-loading') as HTMLElement,
+      empty: document.getElementById('table-empty') as HTMLElement,
+      error: document.getElementById('table-error') as HTMLElement,
+      errorMsg: document.getElementById('table-error-msg') as HTMLElement,
+      container: document.getElementById('table-container') as HTMLElement,
+      thead: document.getElementById('table-head') as HTMLElement,
+      tbody: document.getElementById('table-body') as HTMLElement,
+      filterWrapper: document.getElementById('filter-wrapper') as HTMLElement,
+      filterInput: document.getElementById('table-filter') as HTMLInputElement,
+      
+      // Modal
+      modal: document.getElementById('crud-modal') as HTMLElement,
+      modalTitle: document.getElementById('modal-title') as HTMLElement,
+      btnClose: document.getElementById('btn-close-modal') as HTMLButtonElement,
+      btnCancel: document.getElementById('btn-cancel-modal') as HTMLButtonElement,
+      btnSave: document.getElementById('btn-save-modal') as HTMLButtonElement,
+      form: document.getElementById('crud-form') as HTMLFormElement,
+      formFields: document.getElementById('form-fields') as HTMLElement,
+    };
     
-    // Modal
-    modal: document.getElementById('crud-modal') as HTMLElement,
-    modalTitle: document.getElementById('modal-title') as HTMLElement,
-    btnClose: document.getElementById('btn-close-modal') as HTMLButtonElement,
-    btnCancel: document.getElementById('btn-cancel-modal') as HTMLButtonElement,
-    btnSave: document.getElementById('btn-save-modal') as HTMLButtonElement,
-    form: document.getElementById('crud-form') as HTMLFormElement,
-    formFields: document.getElementById('form-fields') as HTMLElement,
-  };
+    // Verify that we are on the dashboard page before adding listeners
+    if (!UI.title) return;
 
   // Event Listeners
   UI.tabs.forEach(tab => {
@@ -345,6 +349,7 @@ const tables = [
       // Omitir auto-increment id si es nuevo
       if (col.name === 'id' && !isEditing) return;
       if (col.name === 'created_at' || col.name === 'updated_at') return;
+      if (col.name === 'creador_nombre' || col.name === 'voluntario_nombre') return;
 
       const value = data ? (data[col.name] !== null ? data[col.name] : '') : '';
       const type = col.type.toUpperCase();
@@ -422,33 +427,34 @@ const tables = [
     }
   };
 
-  // --- Ban Voluntarios ---
+    // --- Ban Voluntarios ---
 
-  // @ts-ignore
-  window.banVoluntario = async function(id: number, action: 'ban' | 'unban') {
-    const msg = action === 'ban' 
-      ? `¿Estás seguro de BANEAR al voluntario ID ${id}? Esto destruirá todas sus sesiones activas instantáneamente.`
-      : `¿Restaurar acceso al voluntario ID ${id}?`;
+    // @ts-ignore
+    window.banVoluntario = async function(id: number, action: 'ban' | 'unban') {
+      const msg = action === 'ban' 
+        ? `¿Estás seguro de BANEAR al voluntario ID ${id}? Esto destruirá todas sus sesiones activas instantáneamente.`
+        : `¿Restaurar acceso al voluntario ID ${id}?`;
 
-    if (!confirm(msg)) return;
+      if (!confirm(msg)) return;
 
-    let motivo = '';
-    if (action === 'ban') {
-      motivo = prompt('Motivo del ban (Opcional):') || 'Decisión administrativa';
-    }
+      let motivo = '';
+      if (action === 'ban') {
+        motivo = prompt('Motivo del ban (Opcional):') || 'Decisión administrativa';
+      }
 
-    try {
-      const res = await fetch(`/api/panel/voluntarios/${id}/ban`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accion: action, motivo })
-      });
-      if (!res.ok) throw new Error(await res.text());
-      
-      alert(`Voluntario ${action === 'ban' ? 'baneado' : 'desbaneado'} exitosamente.`);
-      loadTableData();
-    } catch (err: any) {
-      alert(`Error al banear: ${err.message}`);
-    }
-  };
+      try {
+        const res = await fetch(`/api/panel/voluntarios/${id}/ban`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accion: action, motivo })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        
+        alert(`Voluntario ${action === 'ban' ? 'baneado' : 'desbaneado'} exitosamente.`);
+        loadTableData();
+      } catch (err: any) {
+        alert(`Error al banear: ${err.message}`);
+      }
+    };
+  });
 </script>

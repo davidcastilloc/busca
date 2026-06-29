@@ -294,172 +294,180 @@ const ogDesc = shareText.replace(flyerUrl, "").trim();
 
   <!-- Script descarga y copiar -->
   <script>
-    const btnDownload = document.getElementById("btn-download");
-    const btnCopy = document.getElementById("btn-copy");
+    document.addEventListener("astro:page-load", () => {
+      const btnDownload = document.getElementById("btn-download");
+      const btnCopy = document.getElementById("btn-copy");
 
-    if (btnDownload) {
-      btnDownload.addEventListener("click", async () => {
-        btnDownload.classList.add("opacity-50");
-        const originalText = btnDownload.textContent;
-        btnDownload.textContent = "Generando...";
+      if (btnDownload) {
+        const newBtnDownload = btnDownload.cloneNode(true);
+        btnDownload.parentNode?.replaceChild(newBtnDownload, btnDownload);
+        newBtnDownload.addEventListener("click", async () => {
+          const target = newBtnDownload as HTMLButtonElement;
+          target.classList.add("opacity-50");
+          const originalText = target.textContent;
+          target.textContent = "Generando...";
 
-        try {
-          // Leer datos del cartel visible para llenar el div oculto
-          const flyerCard = document.getElementById("flyer-card");
-          if (!flyerCard) throw new Error("No se encontró el cartel");
+          try {
+            // Leer datos del cartel visible para llenar el div oculto
+            const flyerCard = document.getElementById("flyer-card");
+            if (!flyerCard) throw new Error("No se encontró el cartel");
 
-          const cartelNombre = document.getElementById("cartel-nombre");
-          const cartelDatos = document.getElementById("cartel-datos");
-          const cartelDescripcion = document.getElementById("cartel-descripcion");
-          const cartelContactoInfo = document.getElementById("cartel-contacto-info");
-          const cartelContacto = document.getElementById("cartel-contacto");
-          const cartelFotoWrap = document.getElementById("cartel-foto-wrap");
+            const cartelNombre = document.getElementById("cartel-nombre");
+            const cartelDatos = document.getElementById("cartel-datos");
+            const cartelDescripcion = document.getElementById("cartel-descripcion");
+            const cartelContactoInfo = document.getElementById("cartel-contacto-info");
+            const cartelContacto = document.getElementById("cartel-contacto");
+            const cartelFotoWrap = document.getElementById("cartel-foto-wrap");
 
-          // Extraer datos del DOM visible
-          const h1 = flyerCard.querySelector("h1");
-          const nombre = h1 ? h1.textContent?.trim() || "PERSONA" : "PERSONA";
-          if (cartelNombre) cartelNombre.textContent = nombre;
+            // Extraer datos del DOM visible
+            const h1 = flyerCard.querySelector("h1");
+            const nombre = h1 ? h1.textContent?.trim() || "PERSONA" : "PERSONA";
+            if (cartelNombre) cartelNombre.textContent = nombre;
 
-          // Descripción
-          const descDiv = flyerCard.querySelector(".whitespace-pre-wrap");
-          if (cartelDescripcion && descDiv) {
-            cartelDescripcion.textContent = descDiv.textContent?.trim() || "";
-          }
-
-          // Teléfonos y redes
-          const phonesEl = flyerCard.querySelectorAll("h3");
-          const contactParts: string[] = [];
-          phonesEl.forEach((h3) => {
-            const container = h3.parentElement;
-            if (container) {
-              const vals = container.querySelectorAll("p");
-              vals.forEach(p => {
-                if (p.textContent?.trim()) contactParts.push(p.textContent.trim());
-              });
+            // Descripción
+            const descDiv = flyerCard.querySelector(".whitespace-pre-wrap");
+            if (cartelDescripcion && descDiv) {
+              cartelDescripcion.textContent = descDiv.textContent?.trim() || "";
             }
-          });
-          
-          if (cartelContacto) {
-            cartelContacto.textContent = contactParts.length > 0 
-              ? `CONTACTO: ${contactParts[0]}` 
-              : "CONTACTE AUTORIDADES";
-          }
-          if (cartelDatos && contactParts.length > 1) {
-            cartelDatos.textContent = contactParts.slice(1).join(" | ");
-          }
 
-          // Cargar foto como blob URL
-          const fotoImg = flyerCard.querySelector("img[fetchpriority]") as HTMLImageElement;
-          if (fotoImg && fotoImg.src && cartelFotoWrap) {
-            const cartelFoto = document.getElementById("cartel-foto") as HTMLImageElement;
-            try {
-              const fotoResp = await fetch(fotoImg.src);
-              if (!fotoResp.ok) throw new Error();
-              const fotoBlob = await fotoResp.blob();
-              const blobUrl = URL.createObjectURL(fotoBlob);
+            // Teléfonos y redes
+            const phonesEl = flyerCard.querySelectorAll("h3");
+            const contactParts: string[] = [];
+            phonesEl.forEach((h3) => {
+              const container = h3.parentElement;
+              if (container) {
+                const vals = container.querySelectorAll("p");
+                vals.forEach(p => {
+                  if (p.textContent?.trim()) contactParts.push(p.textContent.trim());
+                });
+              }
+            });
+            
+            if (cartelContacto) {
+              cartelContacto.textContent = contactParts.length > 0 
+                ? `CONTACTO: ${contactParts[0]}` 
+                : "CONTACTE AUTORIDADES";
+            }
+            if (cartelDatos && contactParts.length > 1) {
+              cartelDatos.textContent = contactParts.slice(1).join(" | ");
+            }
 
-              await new Promise((resolve, reject) => {
-                const tempImg = new Image();
-                tempImg.src = blobUrl;
-                tempImg.onload = () => {
-                  const containerW = 600;
-                  const containerH = 400;
-                  const imgW = tempImg.naturalWidth;
-                  const imgH = tempImg.naturalHeight;
-                  const containerAspect = containerW / containerH;
-                  const imgAspect = imgW / imgH;
+            // Cargar foto como blob URL
+            const fotoImg = flyerCard.querySelector("img[fetchpriority]") as HTMLImageElement;
+            if (fotoImg && fotoImg.src && cartelFotoWrap) {
+              const cartelFoto = document.getElementById("cartel-foto") as HTMLImageElement;
+              try {
+                const fotoResp = await fetch(fotoImg.src);
+                if (!fotoResp.ok) throw new Error();
+                const fotoBlob = await fotoResp.blob();
+                const blobUrl = URL.createObjectURL(fotoBlob);
 
-                  cartelFoto.src = blobUrl;
-                  if (imgAspect > containerAspect) {
-                    const newHeight = containerW / imgAspect;
-                    cartelFoto.style.width = `${containerW}px`;
-                    cartelFoto.style.height = `${newHeight}px`;
-                    cartelFoto.style.left = "0px";
-                    cartelFoto.style.top = `${(containerH - newHeight) / 2}px`;
-                  } else {
-                    const newWidth = containerH * imgAspect;
-                    cartelFoto.style.height = `${containerH}px`;
-                    cartelFoto.style.width = `${newWidth}px`;
-                    cartelFoto.style.top = "0px";
-                    cartelFoto.style.left = `${(containerW - newWidth) / 2}px`;
-                  }
-                  resolve(null);
-                };
-                tempImg.onerror = () => reject();
-              });
-            } catch {
+                await new Promise((resolve, reject) => {
+                  const tempImg = new Image();
+                  tempImg.src = blobUrl;
+                  tempImg.onload = () => {
+                    const containerW = 600;
+                    const containerH = 400;
+                    const imgW = tempImg.naturalWidth;
+                    const imgH = tempImg.naturalHeight;
+                    const containerAspect = containerW / containerH;
+                    const imgAspect = imgW / imgH;
+
+                    cartelFoto.src = blobUrl;
+                    if (imgAspect > containerAspect) {
+                      const newHeight = containerW / imgAspect;
+                      cartelFoto.style.width = `${containerW}px`;
+                      cartelFoto.style.height = `${newHeight}px`;
+                      cartelFoto.style.left = "0px";
+                      cartelFoto.style.top = `${(containerH - newHeight) / 2}px`;
+                    } else {
+                      const newWidth = containerH * imgAspect;
+                      cartelFoto.style.height = `${containerH}px`;
+                      cartelFoto.style.width = `${newWidth}px`;
+                      cartelFoto.style.top = "0px";
+                      cartelFoto.style.left = `${(containerW - newWidth) / 2}px`;
+                    }
+                    resolve(null);
+                  };
+                  tempImg.onerror = () => reject();
+                });
+              } catch {
+                cartelFotoWrap.style.flexDirection = "column";
+                cartelFotoWrap.innerHTML = `<div style="font-size:72px;color:#afafaf;">👤</div><div style="font-size:16px;color:#5e5e5e;font-weight:bold;margin-top:8px;">SIN FOTO</div>`;
+              }
+            } else if (cartelFotoWrap) {
               cartelFotoWrap.style.flexDirection = "column";
-              cartelFotoWrap.innerHTML = `<div style="font-size:72px;color:#afafaf;">👤</div><div style="font-size:16px;color:#5e5e5e;font-weight:bold;margin-top:8px;">SIN FOTO</div>`;
+              cartelFotoWrap.style.alignItems = "center";
+              cartelFotoWrap.style.justifyContent = "center";
+              cartelFotoWrap.style.background = "#f3f4f6";
+              
+              const emoji = nombre.includes("REFUGIO") ? "🏠" : nombre.includes("EMERGENCIA") ? "⚠️" : "📢";
+              const subtitulo = nombre.includes("REFUGIO") ? "REFUGIO ACTIVO" : nombre.includes("EMERGENCIA") ? "NECESIDAD CRÍTICA" : "DIFUSIÓN DE EMERGENCIA";
+              
+              cartelFotoWrap.innerHTML = `<div style="font-size:80px;margin-bottom:8px;">${emoji}</div><div style="font-size:16px;color:#374151;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">${subtitulo}</div>`;
             }
-          } else if (cartelFotoWrap) {
-            cartelFotoWrap.style.flexDirection = "column";
-            cartelFotoWrap.style.alignItems = "center";
-            cartelFotoWrap.style.justifyContent = "center";
-            cartelFotoWrap.style.background = "#f3f4f6";
-            
-            const emoji = nombre.includes("REFUGIO") ? "🏠" : nombre.includes("EMERGENCIA") ? "⚠️" : "📢";
-            const subtitulo = nombre.includes("REFUGIO") ? "REFUGIO ACTIVO" : nombre.includes("EMERGENCIA") ? "NECESIDAD CRÍTICA" : "DIFUSIÓN DE EMERGENCIA";
-            
-            cartelFotoWrap.innerHTML = `<div style="font-size:80px;margin-bottom:8px;">${emoji}</div><div style="font-size:16px;color:#374151;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">${subtitulo}</div>`;
+
+            // Import dinámico html2canvas
+            const { default: html2canvas } = await import("html2canvas");
+
+            const cartelEl = document.getElementById("cartel-se-busca");
+            if (!cartelEl) throw new Error("Cartel element not found");
+
+            const canvas = await html2canvas(cartelEl, {
+              scale: 2,
+              useCORS: true,
+              allowTaint: true,
+              backgroundColor: "#ffffff",
+              onclone: (clonedDoc) => {
+                const styles = clonedDoc.querySelectorAll("style, link[rel='stylesheet']");
+                styles.forEach(s => s.remove());
+              }
+            });
+
+            const blob = await new Promise<Blob>((resolve) => {
+              canvas.toBlob((b) => resolve(b!), "image/png");
+            });
+
+            const nombreArchivo = `SE_BUSCA_${nombre.replace(/\s+/g, "_")}.png`;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = nombreArchivo;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            target.textContent = "✓ Descargado";
+            setTimeout(() => {
+              target.textContent = originalText;
+              target.classList.remove("opacity-50");
+            }, 2500);
+
+          } catch (err) {
+            console.error("Fallo de descarga de flyer:", err);
+            alert("Error al generar imagen del cartel. Toma una captura de pantalla.");
+            target.classList.remove("opacity-50");
+            target.textContent = originalText;
           }
+        });
+      }
 
-          // Import dinámico html2canvas
-          const { default: html2canvas } = await import("html2canvas");
-
-          const cartelEl = document.getElementById("cartel-se-busca");
-          if (!cartelEl) throw new Error("Cartel element not found");
-
-          const canvas = await html2canvas(cartelEl, {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: "#ffffff",
-            onclone: (clonedDoc) => {
-              const styles = clonedDoc.querySelectorAll("style, link[rel='stylesheet']");
-              styles.forEach(s => s.remove());
-            }
-          });
-
-          const blob = await new Promise<Blob>((resolve) => {
-            canvas.toBlob((b) => resolve(b!), "image/png");
-          });
-
-          const nombreArchivo = `SE_BUSCA_${nombre.replace(/\s+/g, "_")}.png`;
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = nombreArchivo;
-          a.click();
-          URL.revokeObjectURL(url);
-
-          btnDownload.textContent = "✓ Descargado";
+      if (btnCopy) {
+        const newBtnCopy = btnCopy.cloneNode(true);
+        btnCopy.parentNode?.replaceChild(newBtnCopy, btnCopy);
+        newBtnCopy.addEventListener("click", () => {
+          const target = newBtnCopy as HTMLButtonElement;
+          navigator.clipboard.writeText(window.location.href);
+          const originalText = target.textContent;
+          target.textContent = "✓ Enlace Copiado";
+          target.classList.add("opacity-85");
+          
           setTimeout(() => {
-            btnDownload.textContent = originalText;
-            btnDownload.classList.remove("opacity-50");
-          }, 2500);
-
-        } catch (err) {
-          console.error("Fallo de descarga de flyer:", err);
-          alert("Error al generar imagen del cartel. Toma una captura de pantalla.");
-          btnDownload.classList.remove("opacity-50");
-          btnDownload.textContent = originalText;
-        }
-      });
-    }
-
-    if (btnCopy) {
-      btnCopy.addEventListener("click", () => {
-        navigator.clipboard.writeText(window.location.href);
-        const originalText = btnCopy.textContent;
-        btnCopy.textContent = "✓ Enlace Copiado";
-        btnCopy.classList.add("opacity-85");
-        
-        setTimeout(() => {
-          btnCopy.textContent = originalText;
-          btnCopy.classList.remove("opacity-85");
-        }, 2000);
-      });
-    }
+            target.textContent = originalText;
+            target.classList.remove("opacity-85");
+          }, 2000);
+        });
+      }
+    });
   </script>
 </Layout>
 

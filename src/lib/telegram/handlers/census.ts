@@ -86,12 +86,21 @@ export async function handleCensusState(
 
       // Enviar a la cola para registro asíncrono
       if (env?.CENSO_QUEUE) {
+        let voluntarioId: number | null = null;
+        try {
+          const v = await db.prepare("SELECT id FROM voluntarios WHERE telegram_id = ?").bind(String(telegramId)).first<{id: number}>();
+          if (v) voluntarioId = v.id;
+        } catch (e) {
+          // ignore error
+        }
+
         await env.CENSO_QUEUE.send({
           type: "procesar_nombres_censo",
           data: {
             personas,
             refugio: data.ubicacion,
-            contacto: `Voluntario Telegram (ID: ${telegramId})`
+            contacto: `Voluntario Telegram (ID: ${telegramId})`,
+            created_by: voluntarioId
           }
         });
         await client.sendMessage(chatId, "🟢 Lista enviada a procesamiento masivo. ¡Buen trabajo, cavernícola!");

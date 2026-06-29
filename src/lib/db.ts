@@ -16,6 +16,7 @@ export interface PersonaData {
   foto_key?: string | null;
   fuente?: string;
   refugio_id?: number | null;
+  created_by?: number | null;
 }
 
 export interface ReporteData {
@@ -42,9 +43,9 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
       INSERT INTO personas (
         cedula, nombre, apellido, edad, sexo, estado, 
         ubicacion_nombre, latitud, longitud, refugio, 
-        contacto, notas, foto_key, fuente, refugio_id, created_at, updated_at, updated_at, created_at
+        contacto, notas, foto_key, fuente, refugio_id, created_by, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
       ON CONFLICT(cedula) DO UPDATE SET
         nombre = excluded.nombre,
         apellido = excluded.apellido,
@@ -56,10 +57,11 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
         longitud = excluded.longitud,
         refugio = excluded.refugio,
         contacto = excluded.contacto,
-        notas = excluded.notes,
+        notas = excluded.notas,
         foto_key = excluded.foto_key,
         fuente = excluded.fuente,
         refugio_id = excluded.refugio_id,
+        created_by = COALESCE(personas.created_by, excluded.created_by),
         updated_at = datetime('now', '-4 hours')
     `).bind(
       data.cedula,
@@ -76,16 +78,17 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
       data.notas || null,
       data.foto_key || null,
       data.fuente || "web",
-      data.refugio_id || null
+      data.refugio_id || null,
+      data.created_by || null
     ).run();
   } else {
     return await db.prepare(`
       INSERT INTO personas (
         nombre, apellido, edad, sexo, estado, 
         ubicacion_nombre, latitud, longitud, refugio, 
-        contacto, notas, foto_key, fuente, refugio_id, created_at, updated_at
+        contacto, notas, foto_key, fuente, refugio_id, created_by, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
     `).bind(
       data.nombre,
       data.apellido || null,
@@ -100,7 +103,8 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
       data.notas || null,
       data.foto_key || null,
       data.fuente || "web",
-      data.refugio_id || null
+      data.refugio_id || null,
+      data.created_by || null
     ).run();
   }
 }
@@ -190,7 +194,8 @@ export async function procesarCensoBatch(
   personas: CensoPersona[],
   refugio: string | null,
   contacto: string | null,
-  refugioId: number | null
+  refugioId: number | null,
+  voluntarioId: number | null = null
 ): Promise<{ matchesCount: number; results: { nombre: string; matches: any[]; personaId: number }[] }> {
   if (personas.length === 0) return { matchesCount: 0, results: [] };
 
@@ -222,8 +227,8 @@ export async function procesarCensoBatch(
     const finalContacto = [p.telefono, contacto].filter(Boolean).join(" - ") || null;
 
     return db.prepare(`
-      INSERT INTO personas (nombre, apellido, estado, refugio, contacto, cedula, edad, fuente, refugio_id, updated_at, created_at)
-      VALUES (?, ?, 'localizado', ?, ?, ?, ?, 'escaner_ia', ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+      INSERT INTO personas (nombre, apellido, estado, refugio, contacto, cedula, edad, fuente, refugio_id, created_by, updated_at, created_at)
+      VALUES (?, ?, 'localizado', ?, ?, ?, ?, 'escaner_ia', ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
       RETURNING id
     `).bind(
       nombre,
@@ -232,7 +237,8 @@ export async function procesarCensoBatch(
       finalContacto,
       p.cedula ? String(p.cedula) : null,
       p.edad,
-      refugioId
+      refugioId,
+      voluntarioId
     );
   });
 

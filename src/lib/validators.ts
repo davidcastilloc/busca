@@ -14,7 +14,8 @@ export const PersonaSchema = z.object({
   contacto: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
   notas: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
   foto_key: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
-  fuente: z.string().default("web")
+  fuente: z.string().default("web"),
+  created_by: z.number().nullable().optional()
 });
 
 export const ReporteSchema = z.object({

@@ -127,9 +127,6 @@
   }
 
   // Inicializar cuando el DOM esté listo
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initPushBanner);
-  } else {
-    initPushBanner();
-  }
+  // Ejecutar al cargar o transicionar de página
+  document.addEventListener("astro:page-load", initPushBanner);
 </script>
