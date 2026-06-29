@@ -610,13 +610,13 @@ export const prerender = false;
       let maxCount = -1;
       let bestCenter = allPoints[0];
 
-      // Buscar el punto con más vecinos en un radio de 50km
+      // Buscar el punto con más vecinos en un radio de 15km (más enfocado)
       for (let i = 0; i < allPoints.length; i++) {
         const p1 = allPoints[i];
         let count = 0;
         for (let j = 0; j < allPoints.length; j++) {
           const p2 = allPoints[j];
-          if (haversine(p1.lat, p1.lng, p2.lat, p2.lng) < 50) {
+          if (haversine(p1.lat, p1.lng, p2.lat, p2.lng) < 15) {
             count++;
           }
         }
@@ -627,11 +627,11 @@ export const prerender = false;
       }
 
       // Obtener todos los puntos dentro de ese radio para hacer bounds
-      const clusterPoints = allPoints.filter(p => haversine(bestCenter.lat, bestCenter.lng, p.lat, p.lng) < 50);
+      const clusterPoints = allPoints.filter(p => haversine(bestCenter.lat, bestCenter.lng, p.lat, p.lng) < 15);
       const bounds = L.latLngBounds(clusterPoints.map(p => [p.lat, p.lng]));
       
-      // Ajustar la vista. maxZoom evita que se acerque excesivamente si hay 1 solo punto
-      map.fitBounds(bounds.pad(0.15), { maxZoom: 14 });
+      // Ajustar la vista: menos padding y maxZoom=16 para que la cámara baje más
+      map.fitBounds(bounds.pad(0.05), { maxZoom: 16 });
     }
   }
 
