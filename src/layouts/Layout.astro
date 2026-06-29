@@ -56,6 +56,29 @@ const {
 
   </head>
   <body class="bg-canvas text-ink min-h-screen flex flex-col antialiased font-sans">
+    
+    <!-- Global Loader Overlay -->
+    <div id="global-loader" class="fixed inset-0 z-[100] flex items-center justify-center bg-canvas/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
+      <div class="animate-spin rounded-full h-12 w-12 border-4 border-ink border-t-transparent"></div>
+    </div>
+
+    <script>
+      document.addEventListener('astro:before-preparation', () => {
+        const loader = document.getElementById('global-loader');
+        if (loader) {
+          loader.classList.remove('opacity-0', 'pointer-events-none');
+          loader.classList.add('opacity-100');
+        }
+      });
+      document.addEventListener('astro:page-load', () => {
+        const loader = document.getElementById('global-loader');
+        if (loader) {
+          loader.classList.remove('opacity-100');
+          loader.classList.add('opacity-0', 'pointer-events-none');
+        }
+      });
+    </script>
+
     <slot />
 
     <!-- Toast de actualización del Service Worker -->
