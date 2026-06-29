@@ -28,15 +28,22 @@ try {
   console.error("Error al cargar flyer de base de datos:", error);
 }
 
-const formatFecha = (fechaStr: string) => {
+const formatFechaHora = (fechaStr: string) => {
   try {
     const d = new Date(fechaStr + " UTC");
-    return d.toLocaleDateString("es-ES", { 
+    const dateStr = d.toLocaleDateString("es-ES", { 
       timeZone: "America/Caracas",
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
+    const timeStr = d.toLocaleTimeString("es-ES", {
+      timeZone: "America/Caracas",
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    return `Reportado el: ${dateStr} a las ${timeStr}`;
   } catch (e) {
     return fechaStr;
   }
@@ -231,7 +238,7 @@ const ogDesc = shareText.replace(flyerUrl, "").trim();
               </div>
             </div>
             <div class="text-[8px] text-body mt-2 flex justify-between font-uber-text">
-              <span>Reporte #{id} • Creado el {formatFecha(flyer.created_at)}</span>
+              <span>Reporte #{id} • {formatFechaHora(flyer.created_at)}</span>
             </div>
           </div>
         </div>
@@ -280,8 +287,9 @@ const ogDesc = shareText.replace(flyerUrl, "").trim();
         </div>
         <!-- Franja inferior -->
         <div style="background:#000;color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;">
-          <div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
             <div id="cartel-contacto" style="font-size:16px;font-weight:700;"></div>
+            <div style="font-size:10px;opacity:0.8;">{formatFechaHora(flyer.created_at)}</div>
           </div>
           <div style="font-size:11px;opacity:0.7;text-align:right;">
             <div>dondeestan.org</div>

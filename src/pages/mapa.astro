@@ -1282,7 +1282,7 @@ export const prerender = false;
       const routeDistance = document.getElementById("route-distance")!;
       const routeTime = document.getElementById("route-time")!;
 
-      routeDestName.textContent = marker.getPopup().getContent().match(/<h4[^>]*>([^<]+)<\\/h4>/)?.[1] || "Destino";
+      routeDestName.textContent = marker.getPopup().getContent().match(new RegExp("<h4[^>]*>([^<]+)</h4>"))?.[1] || "Destino";
       routeDistance.textContent = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
       routeTime.textContent = minsWalk < 60 ? `${minsWalk} min` : `${Math.floor(minsWalk / 60)}h ${minsWalk % 60}m`;
 
