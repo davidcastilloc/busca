@@ -985,26 +985,35 @@ try {
 
           map.addLayer(markers);
 
-          // Ajustar mapa (Weighted Center para enfocar zonas con más centros y problemas)
+          // Ajustar mapa enfocando en la zona más densa
           if (puntos.length > 0) {
-            let sumLat = 0, sumLon = 0, totalWeight = 0;
-            puntos.forEach((p: any) => {
-              if (p.lat && p.lon) {
-                const w = p.peso || 1;
-                sumLat += p.lat * w;
-                sumLon += p.lon * w;
-                totalWeight += w;
+            const haversine = (lat1, lon1, lat2, lon2) => {
+              const R = 6371;
+              const dLat = (lat2 - lat1) * Math.PI / 180;
+              const dLon = (lon2 - lon1) * Math.PI / 180;
+              const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+              return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            };
+
+            const pValids = puntos.filter(p => p.lat && p.lon);
+            if (pValids.length > 0) {
+              let maxCount = -1;
+              let bestCenter = pValids[0];
+              
+              for (let i = 0; i < pValids.length; i++) {
+                let count = 0;
+                for (let j = 0; j < pValids.length; j++) {
+                  if (haversine(pValids[i].lat, pValids[i].lon, pValids[j].lat, pValids[j].lon) < 15) count++;
+                }
+                if (count > maxCount) { maxCount = count; bestCenter = pValids[i]; }
               }
-            });
-            
-            if (totalWeight > 0) {
-              const centerLat = sumLat / totalWeight;
-              const centerLon = sumLon / totalWeight;
-              map.flyTo([centerLat, centerLon], 11, { duration: 1.5 });
-            } else {
-              const bounds = markers.getBounds();
+              
+              const clusterPoints = pValids.filter(p => haversine(bestCenter.lat, bestCenter.lon, p.lat, p.lon) < 15);
+              const L = window.L;
+              const bounds = L.latLngBounds(clusterPoints.map(p => [p.lat, p.lon]));
+              
               if (bounds.isValid()) {
-                map.fitBounds(bounds, { padding: [30, 30] });
+                map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
               }
             }
           }
