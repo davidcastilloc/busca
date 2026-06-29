@@ -84,7 +84,7 @@ self.addEventListener("fetch", (e) => {
         .then((response) => {
           if (response.ok) {
             const clone = response.clone();
-            caches.open(API_CACHE).then((cache) => cache.put(e.request, clone));
+            caches.open(API_CACHE).then((cache) => cache.put(e.request, clone).catch(() => {}));
           }
           return response;
         })
@@ -100,7 +100,7 @@ self.addEventListener("fetch", (e) => {
         return cache.match(e.request).then((cached) => {
           const fetchPromise = fetch(e.request).then((response) => {
             if (response.ok) {
-              cache.put(e.request, response.clone());
+              cache.put(e.request, response.clone()).catch(() => {});
             }
             return response;
           }).catch(() => cached);
@@ -122,7 +122,7 @@ self.addEventListener("fetch", (e) => {
       caches.open(TILES_CACHE).then((cache) => {
         return cache.match(e.request).then((cached) => {
           const fetchPromise = fetch(e.request).then((response) => {
-            if (response.ok) cache.put(e.request, response.clone());
+            if (response.ok) cache.put(e.request, response.clone()).catch(() => {});
             return response;
           }).catch(() => cached);
           return cached || fetchPromise;
@@ -142,12 +142,12 @@ self.addEventListener("fetch", (e) => {
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(e.request, clone);
+              cache.put(e.request, clone).catch(() => {});
             });
           }
           return response;
-        }).catch(() => {
-          return new Response("Asset no disponible offline", { status: 503 });
+        }).catch((err) => {
+          throw err;
         });
       })
     );
@@ -163,7 +163,7 @@ self.addEventListener("fetch", (e) => {
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(e.request, clone);
+              cache.put(e.request, clone).catch(() => {});
             });
           }
           return response;
@@ -174,14 +174,18 @@ self.addEventListener("fetch", (e) => {
   }
 
   // Páginas HTML: NETWORK-FIRST con fallback a cache
-  if (e.request.mode === "navigate" || e.request.headers.get("accept")?.includes("text/html")) {
+  const isHtmlPage = e.request.mode === "navigate" || 
+                     e.request.headers.get("accept")?.includes("text/html") ||
+                     (url.origin === location.origin && !url.pathname.startsWith("/api/") && !url.pathname.includes("."));
+
+  if (isHtmlPage) {
     e.respondWith(
       fetch(e.request)
         .then((response) => {
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(e.request, clone);
+              cache.put(e.request, clone).catch(() => {});
             });
           }
           return response;
@@ -210,11 +214,14 @@ self.addEventListener("fetch", (e) => {
         if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(e.request, clone);
+            cache.put(e.request, clone).catch(() => {});
           });
         }
         return response;
-      }).catch(() => cached || new Response("", { status: 503 }));
+      }).catch((err) => {
+        if (cached) return cached;
+        throw err;
+      });
 
       return cached || fetchPromise;
     })
