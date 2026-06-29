@@ -800,12 +800,10 @@ export const prerender = false;
   }
 
   // --- DETALLES DE ENTIDAD ---
-  window.addEventListener("DOMContentLoaded", () => {
-    (window as any)._showDetails = (tipo: string, id: string) => {
-      showEntityDetail(tipo, id);
-      expandSheet("medio");
-    };
-  });
+  (window as any)._showDetails = (tipo: string, id: string) => {
+    showEntityDetail(tipo, id);
+    expandSheet("medio");
+  };
 
   function showEntityDetail(tipo: string, id: string) {
     const listContainer = document.getElementById("default-list")!;
@@ -1254,93 +1252,91 @@ export const prerender = false;
   }
 
   // Rutas y compartición globales
-  window.addEventListener("DOMContentLoaded", () => {
-    const L = (window as any).L;
+  const L_global = (window as any).L;
 
-    (window as any)._rutaA = (key: string) => {
-      const marker = markers.get(key);
-      if (!marker) return;
+  (window as any)._rutaA = (key: string) => {
+    const marker = markers.get(key);
+    if (!marker) return;
 
-      const destLatLng = marker.getLatLng();
+    const destLatLng = marker.getLatLng();
 
-      function drawRoute(uLat: number, uLng: number) {
-        if (routeLine && map) map.removeLayer(routeLine);
+    function drawRoute(uLat: number, uLng: number) {
+      if (routeLine && map) map.removeLayer(routeLine);
 
-        routeLine = L.polyline([[uLat, uLng], [destLatLng.lat, destLatLng.lng]], {
-          color: "#2563eb",
-          weight: 4,
-          className: "route-line"
-        }).addTo(map);
+      routeLine = (window as any).L.polyline([[uLat, uLng], [destLatLng.lat, destLatLng.lng]], {
+        color: "#2563eb",
+        weight: 4,
+        className: "route-line"
+      }).addTo(map);
 
-        const bounds = L.latLngBounds([[uLat, uLng], [destLatLng.lat, destLatLng.lng]]);
-        map.fitBounds(bounds.pad(0.15));
+      const bounds = (window as any).L.latLngBounds([[uLat, uLng], [destLatLng.lat, destLatLng.lng]]);
+      map.fitBounds(bounds.pad(0.15));
 
-        const dist = haversine(uLat, uLng, destLatLng.lat, destLatLng.lng);
-        const minsWalk = Math.round((dist / 5) * 60);
+      const dist = haversine(uLat, uLng, destLatLng.lat, destLatLng.lng);
+      const minsWalk = Math.round((dist / 5) * 60);
 
-        const routeInfo = document.getElementById("route-info")!;
-        const routeDestName = document.getElementById("route-dest-name")!;
-        const routeDistance = document.getElementById("route-distance")!;
-        const routeTime = document.getElementById("route-time")!;
+      const routeInfo = document.getElementById("route-info")!;
+      const routeDestName = document.getElementById("route-dest-name")!;
+      const routeDistance = document.getElementById("route-distance")!;
+      const routeTime = document.getElementById("route-time")!;
 
-        routeDestName.textContent = marker.getPopup().getContent().match(/<h4[^>]*>([^<]+)<\/h4>/)?.[1] || "Destino";
-        routeDistance.textContent = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
-        routeTime.textContent = minsWalk < 60 ? `${minsWalk} min` : `${Math.floor(minsWalk / 60)}h ${minsWalk % 60}m`;
+      routeDestName.textContent = marker.getPopup().getContent().match(/<h4[^>]*>([^<]+)<\\/h4>/)?.[1] || "Destino";
+      routeDistance.textContent = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`;
+      routeTime.textContent = minsWalk < 60 ? `${minsWalk} min` : `${Math.floor(minsWalk / 60)}h ${minsWalk % 60}m`;
 
-        (document.getElementById("route-gmaps") as HTMLAnchorElement).href = `https://www.google.com/maps/dir/?api=1&origin=${uLat},${uLng}&destination=${destLatLng.lat}&travelmode=walking`;
-        (document.getElementById("route-waze") as HTMLAnchorElement).href = `https://waze.com/ul?ll=${destLatLng.lat},${destLatLng.lng}&navigate=yes`;
+      (document.getElementById("route-gmaps") as HTMLAnchorElement).href = `https://www.google.com/maps/dir/?api=1&origin=${uLat},${uLng}&destination=${destLatLng.lat}&travelmode=walking`;
+      (document.getElementById("route-waze") as HTMLAnchorElement).href = `https://waze.com/ul?ll=${destLatLng.lat},${destLatLng.lng}&navigate=yes`;
 
-        routeInfo.classList.remove("hidden");
-        map.closePopup();
-      }
+      routeInfo.classList.remove("hidden");
+      map.closePopup();
+    }
 
-      if (userLatLng) {
-        drawRoute(userLatLng[0], userLatLng[1]);
-      } else {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            userLatLng = [pos.coords.latitude, pos.coords.longitude];
-            drawRoute(userLatLng[0], userLatLng[1]);
-          },
-          () => {
-            window.open(`https://www.google.com/maps/dir/?api=1&destination=${destLatLng.lat},${destLatLng.lng}`, "_blank");
-          },
-          { enableHighAccuracy: true, timeout: 6000 }
-        );
-      }
-    };
+    if (userLatLng) {
+      drawRoute(userLatLng[0], userLatLng[1]);
+    } else {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          userLatLng = [pos.coords.latitude, pos.coords.longitude];
+          drawRoute(userLatLng[0], userLatLng[1]);
+        },
+        () => {
+          window.open(`https://www.google.com/maps/dir/?api=1&destination=${destLatLng.lat},${destLatLng.lng}`, "_blank");
+        },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    }
+  };
 
-    document.getElementById("btn-route-close")?.addEventListener("click", () => {
-      if (routeLine && map) {
-        map.removeLayer(routeLine);
-        routeLine = null;
-      }
-      document.getElementById("route-info")!.classList.add("hidden");
-    });
-
-    (window as any)._shareEntity = (tipo: string, id: string) => {
-      let text = "";
-      let url = `${window.location.origin}/mapa?tipo=${tipo}&id=${id}`;
-
-      if (tipo === "refugio") {
-        const r = dataStore.refugios.find(x => String(x.id) === String(id));
-        if (!r) return;
-        text = `🏠 Refugio: *${r.nombre}*\n📍 Dirección: ${r.direccion}\n👥 Ocupación: ${r.ocupacion}/${r.capacidad}\n🗺️ Ver en mapa: `;
-      } else if (tipo === "necesidad") {
-        const n = dataStore.necesidades.find(x => String(x.id) === String(id));
-        if (!n) return;
-        text = `📦 Necesidad: *${n.categoria}*\n⚠️ Gravedad: ${n.gravedad}\n📝 Descripción: ${n.descripcion}\n🗺️ Ver en mapa: `;
-      } else if (tipo === "persona") {
-        const p = dataStore.personas.find(x => String(x.id) === String(id));
-        if (!p) return;
-        text = `👥 Persona: *${p.nombre}*\n🟢 Estado: ${p.estado}\n📝 Notas: ${p.notas}\n🗺️ Ver en mapa: `;
-      }
-
-      if (navigator.share) {
-        navigator.share({ title: "dondeestan.org", text, url }).catch(() => {});
-      } else {
-        window.open(`https://wa.me/?text=${encodeURIComponent(text + " " + url)}`, "_blank");
-      }
-    };
+  document.getElementById("btn-route-close")?.addEventListener("click", () => {
+    if (routeLine && map) {
+      map.removeLayer(routeLine);
+      routeLine = null;
+    }
+    document.getElementById("route-info")!.classList.add("hidden");
   });
+
+  (window as any)._shareEntity = (tipo: string, id: string) => {
+    let text = "";
+    let url = `${window.location.origin}/mapa?tipo=${tipo}&id=${id}`;
+
+    if (tipo === "refugio") {
+      const r = dataStore.refugios.find(x => String(x.id) === String(id));
+      if (!r) return;
+      text = `🏠 Refugio: *${r.nombre}*\\n📍 Dirección: ${r.direccion}\\n👥 Ocupación: ${r.ocupacion}/${r.capacidad}\\n🗺️ Ver en mapa: `;
+    } else if (tipo === "necesidad") {
+      const n = dataStore.necesidades.find(x => String(x.id) === String(id));
+      if (!n) return;
+      text = `📦 Necesidad: *${n.categoria}*\\n⚠️ Gravedad: ${n.gravedad}\\n📝 Descripción: ${n.descripcion}\\n🗺️ Ver en mapa: `;
+    } else if (tipo === "persona") {
+      const p = dataStore.personas.find(x => String(x.id) === String(id));
+      if (!p) return;
+      text = `👥 Persona: *${p.nombre}*\\n🟢 Estado: ${p.estado}\\n📝 Notas: ${p.notas}\\n🗺️ Ver en mapa: `;
+    }
+
+    if (navigator.share) {
+      navigator.share({ title: "dondeestan.org", text, url }).catch(() => {});
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text + " " + url)}`, "_blank");
+    }
+  };
 </script>
