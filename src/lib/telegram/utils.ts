@@ -167,3 +167,53 @@ export async function resolveLocation(
 
   return { ubicacion_nombre, latitud, longitud, refugio_id, hospital_id, centro_acopio_id, valid };
 }
+
+// Validar initData de Telegram WebApp usando Web Crypto API
+export async function verifyTelegramInitData(initData: string, botToken: string): Promise<boolean> {
+  try {
+    const params = new URLSearchParams(initData);
+    const hash = params.get("hash");
+    if (!hash) return false;
+
+    params.delete("hash");
+
+    // Ordenar alfabéticamente
+    const keys = Array.from(params.keys()).sort();
+    const dataCheckString = keys.map((key) => `${key}=${params.get(key)}`).join("\n");
+
+    const encoder = new TextEncoder();
+    const secretKeyData = encoder.encode("WebAppData");
+    
+    const secretKey = await crypto.subtle.importKey(
+      "raw",
+      secretKeyData,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+
+    const botKeyData = encoder.encode(botToken);
+    const botSignatureBuffer = await crypto.subtle.sign("HMAC", secretKey, botKeyData);
+
+    const hmacKey = await crypto.subtle.importKey(
+      "raw",
+      botSignatureBuffer,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+
+    const dataCheckBuffer = encoder.encode(dataCheckString);
+    const signatureBuffer = await crypto.subtle.sign("HMAC", hmacKey, dataCheckBuffer);
+
+    // Convertir firma a hex
+    const signatureArray = Array.from(new Uint8Array(signatureBuffer));
+    const calculatedHash = signatureArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+    return calculatedHash === hash;
+  } catch (err) {
+    console.error("Error al validar initData de Telegram:", err);
+    return false;
+  }
+}
+
