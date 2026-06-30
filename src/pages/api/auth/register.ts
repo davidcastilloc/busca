@@ -15,7 +15,7 @@ export const POST: APIRoute = async (context) => {
     }
 
     const body = await context.request.json();
-    const { nombre, telefono, pin } = body;
+    const { nombre, telefono, pin, rol } = body;
 
     // Validar requeridos
     if (!nombre || !telefono || !pin) {
@@ -27,6 +27,7 @@ export const POST: APIRoute = async (context) => {
 
     const cleanedTelefono = telefono.replace(/[^0-9+]/g, "").trim();
     const cleanedPin = pin.replace(/[^0-9]/g, "").trim();
+    const selectedRol = rol || 'general';
 
     if (cleanedPin.length !== 4) {
       return new Response(JSON.stringify({ error: "El PIN debe ser exactamente de 4 dígitos numéricos." }), {
@@ -42,13 +43,14 @@ export const POST: APIRoute = async (context) => {
     let voluntarioId: number;
     try {
       const res = await DB.prepare(`
-        INSERT INTO voluntarios (nombre, telefono, pin_hash, activo, created_at)
-        VALUES (?, ?, ?, 1, datetime('now', '-4 hours'))
+        INSERT INTO voluntarios (nombre, telefono, pin_hash, rol, activo, created_at)
+        VALUES (?, ?, ?, ?, 1, datetime('now', '-4 hours'))
         RETURNING id
       `).bind(
         nombre.trim(),
         cleanedTelefono,
-        pinHash
+        pinHash,
+        selectedRol
       ).first<{ id: number }>();
 
       if (!res?.id) {

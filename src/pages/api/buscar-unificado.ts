@@ -43,7 +43,7 @@ interface RequestBody {
 /** Búsqueda exacta por cédula en ambas tablas */
 async function buscarPorCedula(DB: D1Database, cedula: string): Promise<ResultadoUnificado[]> {
   const [personas, reportes] = await Promise.all([
-    DB.prepare("SELECT * FROM personas WHERE cedula = ?").bind(cedula).all(),
+    DB.prepare("SELECT * FROM personas WHERE cedula = ? AND (fuente = 'web' OR fuente IS NULL)").bind(cedula).all(),
     DB.prepare("SELECT * FROM reportes WHERE cedula_buscado = ?").bind(cedula).all(),
   ]);
 
@@ -88,7 +88,7 @@ async function buscarPorNombre(DB: D1Database, query: string): Promise<Resultado
   const rWhere = buildFuzzyWhere(variantes, ['nombre_buscado']);
 
   const [personas, reportes] = await Promise.all([
-    DB.prepare(`SELECT * FROM personas WHERE ${pWhere.clause} ORDER BY updated_at DESC LIMIT 50`)
+    DB.prepare(`SELECT * FROM personas WHERE (${pWhere.clause}) AND (fuente = 'web' OR fuente IS NULL) ORDER BY updated_at DESC LIMIT 50`)
       .bind(...pWhere.params).all(),
     DB.prepare(`SELECT * FROM reportes WHERE ${rWhere.clause} ORDER BY updated_at DESC LIMIT 50`)
       .bind(...rWhere.params).all(),
@@ -128,7 +128,7 @@ async function buscarPorDescripcion(DB: D1Database, query: string): Promise<Resu
   });
 
   const [personas, reportes] = await Promise.all([
-    DB.prepare(`SELECT * FROM personas WHERE ${pCondiciones.join(" AND ")} ORDER BY updated_at DESC LIMIT 50`)
+    DB.prepare(`SELECT * FROM personas WHERE (${pCondiciones.join(" AND ")}) AND (fuente = 'web' OR fuente IS NULL) ORDER BY updated_at DESC LIMIT 50`)
       .bind(...pParams).all(),
     DB.prepare(`SELECT * FROM reportes WHERE ${rCondiciones.join(" AND ")} ORDER BY updated_at DESC LIMIT 50`)
       .bind(...rParams).all(),

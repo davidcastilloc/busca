@@ -262,6 +262,32 @@ export async function processTelegramUpdate(
         return;
       }
 
+      if (lowerText.startsWith("/cubierta")) {
+        if (!isAuthorized) {
+          await client.sendMessage(
+            chatId,
+            "🚷 Acceso denegado. Este comando es solo para voluntarios autorizados. Inicia sesión con /login."
+          );
+          return;
+        }
+        const args = text.substring(9).trim();
+        if (!args) {
+          await client.sendMessage(chatId, "⚠️ Formato incorrecto. Uso: /cubierta [ID_Necesidad]");
+          return;
+        }
+        try {
+          const res = await db.prepare("UPDATE necesidades SET estado = 'atendida', updated_at = datetime('now', '-4 hours') WHERE id = ?").bind(args).run();
+          if (res.meta.changes > 0) {
+            await client.sendMessage(chatId, `✅ <b>¡Necesidad #${args} marcada como cubierta!</b>\nGracias por mantener actualizada la información.`);
+          } else {
+            await client.sendMessage(chatId, `❌ No se encontró la necesidad con ID: ${args}`);
+          }
+        } catch (e) {
+          await client.sendMessage(chatId, "❌ Ocurrió un error al actualizar la base de datos.");
+        }
+        return;
+      }
+
       // Comandos de Admin (requieren isAdmin)
       if (lowerText.startsWith("/alerta") || lowerText.startsWith("/broadcast")) {
         if (!isAdmin) {
@@ -324,7 +350,8 @@ async function sendWelcomeMessage(
     helpText += `✅ /encontrado [cédula] - Marcar persona como localizado.\n`;
     helpText += `📷 /censo - Leer lista de nombres de papel con IA.\n`;
     helpText += `⛺ /refugio - Actualizar capacidad de un refugio.\n`;
-    helpText += `🆘 /urgencia [insumo] - Alerta crítica de necesidad en terreno.\n\n`;
+    helpText += `🆘 /urgencia [insumo] - Alerta crítica de necesidad en terreno.\n`;
+    helpText += `✅ /cubierta [ID] - Marcar una necesidad como cubierta.\n\n`;
   }
 
   if (isAdmin) {

@@ -115,7 +115,7 @@ const formatFecha = (fechaStr: string) => {
               <h3 class="text-xs font-bold text-mute uppercase tracking-wider font-uber-text mb-3">Datos de Cuenta</h3>
               <div class="text-xs text-body font-uber-text space-y-1.5">
                 <div>📞 Teléfono: <strong class="text-ink">{voluntario.telefono}</strong></div>
-                <div>📅 Rol: <strong class="text-ink">Voluntario Activo</strong></div>
+                <div>📅 Especialidad: <strong class="text-ink capitalize">{voluntario.rol || "General"}</strong></div>
               </div>
             </div>
             <div class="text-[10px] text-mute font-uber-text mt-4">
@@ -320,6 +320,16 @@ const formatFecha = (fechaStr: string) => {
             />
           </div>
 
+          <div>
+            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reg-rol">Especialidad / Rol *</label>
+            <select id="reg-rol" required class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent text-ink rounded-xl">
+              <option value="general">General (Cualquier ayuda)</option>
+              <option value="busqueda">Búsqueda de Personas</option>
+              <option value="rescate">Rescate en Terreno</option>
+              <option value="logistica">Logística y Refugios</option>
+            </select>
+          </div>
+
           <div id="reg-error" class="hidden text-xs text-red-500 font-uber-text bg-red-500/5 border border-red-500/20 p-3 rounded-lg"></div>
 
           <button type="submit" id="btn-submit-reg" class="btn bg-primary text-white w-full font-uber-text font-semibold py-3 rounded-xl cursor-pointer">
@@ -409,6 +419,7 @@ const formatFecha = (fechaStr: string) => {
       const nombre = (document.getElementById("reg-nombre") as HTMLInputElement).value.trim();
       const telefono = (document.getElementById("reg-telefono") as HTMLInputElement).value;
       const pin = (document.getElementById("reg-pin") as HTMLInputElement).value;
+      const rol = (document.getElementById("reg-rol") as HTMLSelectElement).value;
       const errorDiv = document.getElementById("reg-error");
       const btnSubmit = document.getElementById("btn-submit-reg") as HTMLButtonElement;
 
@@ -419,7 +430,7 @@ const formatFecha = (fechaStr: string) => {
         const resp = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nombre, telefono, pin })
+          body: JSON.stringify({ nombre, telefono, pin, rol })
         });
 
         if (resp.ok) {
