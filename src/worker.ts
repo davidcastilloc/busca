@@ -31,6 +31,6 @@ export default {
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
-    ctx.waitUntil(processHourlyAlerts(env));
+    ctx.waitUntil(processHourlyAlerts(env as any));
   }
 } satisfies ExportedHandler<Env>;

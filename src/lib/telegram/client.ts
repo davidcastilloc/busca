@@ -108,6 +108,18 @@ export class TelegramClient {
     });
   }
 
+  async editMessageReplyMarkup(
+    chatId: string | number,
+    messageId: number,
+    replyMarkup: any = {}
+  ): Promise<any> {
+    return this.call("editMessageReplyMarkup", {
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: replyMarkup,
+    });
+  }
+
   async setMyCommands(commands: Array<{command: string, description: string}>, scope: any = { type: "default" }): Promise<any> {
     return this.call("setMyCommands", {
       commands,
