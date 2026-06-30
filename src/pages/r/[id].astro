@@ -109,16 +109,15 @@ const descripcion = `${tipoLabel} en ${r.direccion || "Venezuela"}. Ayuda a difu
       </div>
       
       <div class="refugio-card bg-canvas border border-canvas-soft p-5 sm:p-8 rounded-2xl shadow-md space-y-6">
-        {fotosArray && fotosArray.length > 0 && (
-          <div class="w-full h-48 sm:h-72 rounded-xl overflow-hidden border border-canvas-soft bg-surface-pressed mb-2">
-            <img 
-              src={`/api/upload?key=${fotosArray[0]}`} 
-              alt={`Foto de ${r.nombre}`} 
-              class="w-full h-full object-cover"
-              loading="eager"
-            />
-          </div>
-        )}
+        
+        <div class="w-full bg-canvas-soft border border-canvas-soft rounded-xl overflow-hidden flex justify-center p-2 mb-4">
+          <img 
+            src={flyerUrl} 
+            alt={`Ficha de ${r.nombre}`} 
+            class="max-w-full h-auto rounded-lg border border-canvas-soft shadow-sm"
+            loading="eager"
+          />
+        </div>
         
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
           <div>
