@@ -77,7 +77,13 @@ const currentUrl = Astro.url.href;
   </main>
 </Layout>
 
-<script define:vars={{ flyerUrl, nombre }}>
+<script define:vars={{ flyerUrl, nombre, id }}>
+  // Redirección inmediata para humanos al Home con el ID del refugio seleccionado.
+  // Los bots de WhatsApp, Telegram, etc., no ejecutan JS y leerán las etiquetas OpenGraph para la previsualización.
+  if (!navigator.userAgent.includes("WhatsApp") && !navigator.userAgent.includes("facebookexternalhit") && !navigator.userAgent.includes("Twitterbot")) {
+    window.location.replace(`/#refugio-${id}`);
+  }
+
   const btnDescargar = document.getElementById('btn-descargar');
   btnDescargar?.addEventListener('click', async () => {
     try {
