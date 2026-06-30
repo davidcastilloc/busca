@@ -83,10 +83,14 @@ export async function processTelegramUpdate(
       if (data.startsWith("ref:")) {
         const refugioId = data.split(":")[1];
         // Buscar nombre
-        const r = await db
-          .prepare("SELECT nombre FROM refugios WHERE id = ?")
-          .bind(refugioId)
-          .first<any>();
+        const query = `
+          SELECT nombre FROM (
+            SELECT id, nombre FROM refugios
+            UNION ALL
+            SELECT id, nombre FROM centros_acopio
+          ) WHERE id = ?
+        `;
+        const r = await db.prepare(query).bind(refugioId).first<any>();
         if (r) {
           await sendCategories(client, chatId, refugioId, r.nombre, messageId);
         }

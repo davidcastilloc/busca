@@ -22,7 +22,7 @@ try {
     const voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
     esVoluntario = !!voluntario;
 
-    const resRefugios = await DB.prepare("SELECT COUNT(*) as total FROM refugios").first<{ total: number }>();
+    const resRefugios = await DB.prepare("SELECT COUNT(*) as total FROM (SELECT id FROM refugios UNION ALL SELECT id FROM centros_acopio UNION ALL SELECT id FROM hospitales)").first<{ total: number }>();
     if (resRefugios) totalRefugios = resRefugios.total;
 
     const resNecesidades = await DB.prepare("SELECT COUNT(*) as total FROM necesidades WHERE estado = 'abierta'").first<{ total: number }>();
@@ -33,7 +33,24 @@ try {
       necesidadesCriticas = resCriticas.results;
     }
 
-    const resRefugiosList = await DB.prepare("SELECT * FROM refugios ORDER BY nombre ASC").all();
+    const queryUnified = `
+      SELECT id, nombre, direccion, latitud, longitud, contacto, necesidades, 'refugio' as tipo, 
+             capacidad_maxima, ocupacion_actual, ninos, bebes_lactantes, adultos_mayores, 
+             personal_profesional, voluntarios, inventario, fecha_registro, created_at, updated_at
+      FROM refugios
+      UNION ALL
+      SELECT id, nombre, direccion, latitud, longitud, contacto, necesidades, 'centro_acopio' as tipo, 
+             NULL as capacidad_maxima, NULL as ocupacion_actual, NULL as ninos, NULL as bebes_lactantes, NULL as adultos_mayores,
+             NULL as personal_profesional, NULL as voluntarios, inventario, fecha_registro, created_at, updated_at
+      FROM centros_acopio
+      UNION ALL
+      SELECT id, nombre, direccion, latitud, longitud, contacto, necesidades, 'hospital' as tipo, 
+             NULL as capacidad_maxima, NULL as ocupacion_actual, NULL as ninos, NULL as bebes_lactantes, NULL as adultos_mayores,
+             NULL as personal_profesional, NULL as voluntarios, NULL as inventario, fecha_registro, created_at, updated_at
+      FROM hospitales
+      ORDER BY nombre ASC
+    `;
+    const resRefugiosList = await DB.prepare(queryUnified).all();
     refugiosIniciales = resRefugiosList.results || [];
   }
 } catch (e) {

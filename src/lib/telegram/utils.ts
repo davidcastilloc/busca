@@ -18,9 +18,16 @@ export function getDistance(lat1: number, lon1: number, lat2: number, lon2: numb
 // Helper para generar el teclado de refugios y opción GPS
 export async function getShelterKeyboard(db: D1Database): Promise<any> {
   try {
-    const { results } = await db
-      .prepare("SELECT nombre FROM refugios ORDER BY nombre ASC")
-      .all<{ nombre: string }>();
+    const query = `
+      SELECT nombre FROM (
+        SELECT nombre FROM refugios
+        UNION ALL
+        SELECT nombre FROM hospitales
+        UNION ALL
+        SELECT nombre FROM centros_acopio
+      ) ORDER BY nombre ASC
+    `;
+    const { results } = await db.prepare(query).all<{ nombre: string }>();
 
     const keyboard: any[][] = [];
     if (results && results.length > 0) {
@@ -55,26 +62,43 @@ export async function getShelterKeyboard(db: D1Database): Promise<any> {
   }
 }
 
-// Helper para resolver la ubicación en texto, refugio_id y coords
+// Helper para resolver la ubicación en texto, refugio_id, hospital_id, centro_acopio_id y coords
 export async function resolveLocation(
   db: D1Database,
   text: string | undefined,
   location: { latitude: number; longitude: number } | undefined
-): Promise<{ ubicacion_nombre: string; latitud: number | null; longitud: number | null; refugio_id: number | null; valid: boolean }> {
+): Promise<{ 
+  ubicacion_nombre: string; 
+  latitud: number | null; 
+  longitud: number | null; 
+  refugio_id: number | null; 
+  hospital_id: number | null; 
+  centro_acopio_id: number | null; 
+  valid: boolean 
+}> {
   let ubicacion_nombre = "";
   let latitud: number | null = null;
   let longitud: number | null = null;
   let refugio_id: number | null = null;
+  let hospital_id: number | null = null;
+  let centro_acopio_id: number | null = null;
   let valid = true;
 
   if (location) {
     latitud = location.latitude;
     longitud = location.longitude;
     
-    // Buscar refugio más cercano para darle contexto
+    // Buscar refugio/hospital/acopio más cercano para darle contexto
     try {
-      const { results } = await db.prepare("SELECT id, nombre, latitud, longitud FROM refugios").all<{ id: number; nombre: string; latitud: number; longitud: number }>();
-      let refugioCercano = null;
+      const query = `
+        SELECT id, nombre, latitud, longitud, 'refugio' as tipo FROM refugios
+        UNION ALL
+        SELECT id, nombre, latitud, longitud, 'hospital' as tipo FROM hospitales
+        UNION ALL
+        SELECT id, nombre, latitud, longitud, 'centro_acopio' as tipo FROM centros_acopio
+      `;
+      const { results } = await db.prepare(query).all<{ id: number; nombre: string; latitud: number; longitud: number; tipo: string }>();
+      let centroCercano = null;
       let minDist = 0.15; // 150 metros
       
       if (results) {
@@ -82,14 +106,23 @@ export async function resolveLocation(
           const d = getDistance(location.latitude, location.longitude, r.latitud, r.longitud);
           if (d < minDist) {
             minDist = d;
-            refugioCercano = r.nombre;
-            refugio_id = r.id;
+            centroCercano = r.nombre;
+            refugio_id = null;
+            hospital_id = null;
+            centro_acopio_id = null;
+            if (r.tipo === "hospital") {
+              hospital_id = r.id;
+            } else if (r.tipo === "centro_acopio") {
+              centro_acopio_id = r.id;
+            } else {
+              refugio_id = r.id;
+            }
           }
         }
       }
       
-      if (refugioCercano) {
-        ubicacion_nombre = `GPS cerca de: ${refugioCercano}`;
+      if (centroCercano) {
+        ubicacion_nombre = `GPS cerca de: ${centroCercano}`;
       } else {
         ubicacion_nombre = `GPS (${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)})`;
       }
@@ -97,15 +130,28 @@ export async function resolveLocation(
       ubicacion_nombre = `GPS (${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)})`;
     }
   } else if (text && text.trim().length >= 3) {
-    // Intentar buscar si coincide exactamente con el nombre de un refugio
+    // Intentar buscar si coincide exactamente con el nombre de un refugio/hospital/acopio
     try {
+      const query = `
+        SELECT id, nombre, latitud, longitud, 'refugio' as tipo FROM refugios WHERE nombre = ?
+        UNION ALL
+        SELECT id, nombre, latitud, longitud, 'hospital' as tipo FROM hospitales WHERE nombre = ?
+        UNION ALL
+        SELECT id, nombre, latitud, longitud, 'centro_acopio' as tipo FROM centros_acopio WHERE nombre = ?
+      `;
       const shelter = await db
-        .prepare("SELECT id, nombre, latitud, longitud FROM refugios WHERE nombre = ?")
-        .bind(text.trim())
-        .first<{ id: number; nombre: string; latitud: number; longitud: number }>();
+        .prepare(query)
+        .bind(text.trim(), text.trim(), text.trim())
+        .first<{ id: number; nombre: string; latitud: number; longitud: number; tipo: string }>();
 
       if (shelter) {
-        refugio_id = shelter.id;
+        if (shelter.tipo === "hospital") {
+          hospital_id = shelter.id;
+        } else if (shelter.tipo === "centro_acopio") {
+          centro_acopio_id = shelter.id;
+        } else {
+          refugio_id = shelter.id;
+        }
         ubicacion_nombre = shelter.nombre;
         latitud = shelter.latitud;
         longitud = shelter.longitud;
@@ -119,5 +165,5 @@ export async function resolveLocation(
     valid = false;
   }
 
-  return { ubicacion_nombre, latitud, longitud, refugio_id, valid };
+  return { ubicacion_nombre, latitud, longitud, refugio_id, hospital_id, centro_acopio_id, valid };
 }

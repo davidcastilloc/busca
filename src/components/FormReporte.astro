@@ -15,7 +15,15 @@ let refugios: any[] = [];
 try {
   const { DB } = env;
   if (DB) {
-    refugios = await DB.prepare(`SELECT id, nombre, latitud, longitud FROM refugios ORDER BY nombre ASC`).all().then(r => r.results || []);
+    const res = await DB.prepare(`
+      SELECT id, nombre, latitud, longitud, 'refugio' as tipo FROM refugios
+      UNION ALL
+      SELECT id, nombre, latitud, longitud, 'hospital' as tipo FROM hospitales
+      UNION ALL
+      SELECT id, nombre, latitud, longitud, 'centro_acopio' as tipo FROM centros_acopio
+      ORDER BY nombre ASC
+    `).all();
+    refugios = res.results || [];
   }
 } catch (e) {
   console.error("Error al cargar refugios en FormReporte:", e);
@@ -184,10 +192,12 @@ try {
               <select name="refugio_id" id="select_refugio_id" class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent">
                 <option value="">Ninguno / Ubicación Manual en Mapa</option>
                 {refugios.map((r: any) => (
-                  <option value={r.id} data-lat={r.latitud} data-lng={r.longitud} data-nombre={r.nombre}>{r.nombre}</option>
+                  <option value={`${r.tipo}:${r.id}`} data-lat={r.latitud} data-lng={r.longitud} data-nombre={r.nombre}>
+                    {r.tipo === 'hospital' ? '🏥 ' : r.tipo === 'centro_acopio' ? '📦 ' : '⛺ '} {r.nombre}
+                  </option>
                 ))}
               </select>
-              <span class="text-xs text-mute mt-1 block font-uber-text">Selecciona un refugio si los insumos son para uno de ellos.</span>
+              <span class="text-xs text-mute mt-1 block font-uber-text">Selecciona un refugio/centro/hospital si los insumos son para uno de ellos.</span>
             </div>
           )}
         </div>
@@ -692,6 +702,21 @@ try {
       let payload: any = {};
       let endpointUrl = "/api/reportes";
       
+      let refugio_id = null;
+      let hospital_id = null;
+      let centro_acopio_id = null;
+      if (data.refugio_id) {
+        const [tipo, idStr] = String(data.refugio_id).split(":");
+        const id = parseInt(idStr, 10);
+        if (tipo === "hospital") {
+          hospital_id = id;
+        } else if (tipo === "centro_acopio") {
+          centro_acopio_id = id;
+        } else if (tipo === "refugio") {
+          refugio_id = id;
+        }
+      }
+
       if (data.tipo === "desaparecido") {
         const fechaContacto = String(data.extra_ultimo_contacto).replace("T", " ");
         const ubicacion = `${String(data.extra_estado).trim()}, ${String(data.extra_ciudad).trim()}, Sector ${String(data.extra_sector).trim()}`;
@@ -709,7 +734,9 @@ try {
           latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
           longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
           foto_key: data.foto_key ? String(data.foto_key).trim() : null,
-          refugio_id: data.refugio_id ? parseInt(String(data.refugio_id), 10) : null
+          refugio_id,
+          hospital_id,
+          centro_acopio_id
         };
       } else if (data.tipo === "encontrado") {
         payload = {
@@ -723,7 +750,9 @@ try {
           latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
           longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
           foto_key: data.foto_key ? String(data.foto_key).trim() : null,
-          refugio_id: data.refugio_id ? parseInt(String(data.refugio_id), 10) : null
+          refugio_id,
+          hospital_id,
+          centro_acopio_id
         };
       } else if (data.tipo === "necesidad") {
         endpointUrl = "/api/necesidades";
@@ -737,7 +766,9 @@ try {
           longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
           telefono: data.necesidad_telefono ? String(data.necesidad_telefono).trim() : null,
           foto_key: data.foto_key ? String(data.foto_key).trim() : null,
-          refugio_id: data.refugio_id ? parseInt(String(data.refugio_id), 10) : null,
+          refugio_id,
+          hospital_id,
+          centro_acopio_id,
           reportante_nombre: data.reportante_nombre ? String(data.reportante_nombre).trim() : null,
           reportante_contacto: data.reportante_contacto ? String(data.reportante_contacto).trim() : null
         };
@@ -758,7 +789,9 @@ try {
           latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
           longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
           foto_key: data.foto_key ? String(data.foto_key).trim() : null,
-          refugio_id: data.refugio_id ? parseInt(String(data.refugio_id), 10) : null
+          refugio_id,
+          hospital_id,
+          centro_acopio_id
         };
       }
 

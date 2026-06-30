@@ -81,6 +81,8 @@ export async function handleSosState(
     data.latitud = resolved.latitud;
     data.longitud = resolved.longitud;
     data.refugio_id = resolved.refugio_id;
+    data.hospital_id = resolved.hospital_id;
+    data.centro_acopio_id = resolved.centro_acopio_id;
 
     try {
       if (env?.CENSO_QUEUE) {
@@ -93,6 +95,8 @@ export async function handleSosState(
             latitud: data.latitud || null,
             longitud: data.longitud || null,
             refugio_id: data.refugio_id || null,
+            hospital_id: data.hospital_id || null,
+            centro_acopio_id: data.centro_acopio_id || null,
             reportante_nombre: "Voluntario SOS",
             reportante_contacto: `Telegram ID: ${telegramId}`
           }

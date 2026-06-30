@@ -10,7 +10,14 @@ const { DB } = env;
 let refugios = [];
 if (DB) {
   try {
-    const refugiosRes = await DB.prepare("SELECT id, nombre FROM refugios ORDER BY nombre").all();
+    const query = `
+      SELECT id, nombre FROM (
+        SELECT id, nombre FROM refugios
+        UNION ALL
+        SELECT id, nombre FROM centros_acopio
+      ) ORDER BY nombre
+    `;
+    const refugiosRes = await DB.prepare(query).all();
     refugios = refugiosRes.results || [];
   } catch (err) {
     console.error("Error cargando refugios en SSR:", err);

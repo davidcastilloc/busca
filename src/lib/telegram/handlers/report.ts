@@ -121,6 +121,7 @@ export async function handleReportState(
     data.latitud = resolved.latitud;
     data.longitud = resolved.longitud;
     data.refugio_id = resolved.refugio_id;
+    data.hospital_id = resolved.hospital_id;
 
     await setSession(db, telegramId, chatId, "rep_desc", data);
     await client.sendMessage(
@@ -206,9 +207,10 @@ export async function handleReportState(
           cedula_buscado: data.cedula_buscado,
           descripcion: data.descripcion,
           ubicacion_nombre: data.ubicacion_nombre,
-          latitud: data.latitud || null,
-          longitud: data.longitud || null,
-          refugio_id: data.refugio_id || null,
+           latitud: data.latitud || null,
+           longitud: data.longitud || null,
+           refugio_id: data.refugio_id || null,
+           hospital_id: data.hospital_id || null,
           reportante_nombre: `Bot Telegram`,
           reportante_contacto: `User ID: ${telegramId}`,
           foto_key: data.foto_key,

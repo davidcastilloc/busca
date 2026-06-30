@@ -99,6 +99,7 @@ export async function handleFoundState(
     data.latitud = resolved.latitud;
     data.longitud = resolved.longitud;
     data.refugio_id = resolved.refugio_id;
+    data.hospital_id = resolved.hospital_id;
 
     await setSession(db, telegramId, chatId, "fnd_photo", data);
     await client.sendMessage(
@@ -158,6 +159,7 @@ export async function handleFoundState(
             latitud: data.latitud || null,
             longitud: data.longitud || null,
             refugio_id: data.refugio_id || null,
+            hospital_id: data.hospital_id || null,
             reportante_nombre: "Voluntario (Telegram)",
             reportante_contacto: `User ID: ${telegramId}`,
             foto_key: data.foto_key,

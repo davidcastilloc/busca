@@ -15,8 +15,8 @@ export const POST: APIRoute = async (context) => {
     const result = await DB.prepare(`
       INSERT INTO necesidades (
         categoria, gravedad, afectados, descripcion, ubicacion_nombre, 
-        latitud, longitud, telefono, foto_key, refugio_id, reportante_nombre, reportante_contacto
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        latitud, longitud, telefono, foto_key, refugio_id, centro_acopio_id, hospital_id, reportante_nombre, reportante_contacto
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING id
     `).bind(
       validated.categoria,
@@ -29,6 +29,8 @@ export const POST: APIRoute = async (context) => {
       validated.telefono ?? null,
       validated.foto_key ?? null,
       validated.refugio_id ?? null,
+      validated.centro_acopio_id ?? null,
+      validated.hospital_id ?? null,
       validated.reportante_nombre ?? null,
       validated.reportante_contacto ?? null
     ).first<{ id: number }>();
@@ -56,9 +58,11 @@ export const GET: APIRoute = async (context) => {
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
     const result = await DB.prepare(`
-      SELECT n.*, r.nombre as refugio_nombre 
+      SELECT n.*, COALESCE(r.nombre, c.nombre, h.nombre) as refugio_nombre 
       FROM necesidades n
       LEFT JOIN refugios r ON n.refugio_id = r.id
+      LEFT JOIN centros_acopio c ON n.centro_acopio_id = c.id
+      LEFT JOIN hospitales h ON n.hospital_id = h.id
       ORDER BY n.created_at DESC
       LIMIT ? OFFSET ?
     `).bind(limit, offset).all();

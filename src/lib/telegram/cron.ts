@@ -12,14 +12,16 @@ export async function processHourlyAlerts(env: {
     // 1. Obtener necesidades creadas/actualizadas en la última hora (65 min para tener un buffer)
     const { results: needs } = await db.prepare(`
       SELECT n.id, n.categoria, n.gravedad, n.descripcion,
-             COALESCE(n.latitud, ref.latitud) as latitud,
-             COALESCE(n.longitud, ref.longitud) as longitud,
-             COALESCE(ref.nombre, 'Sin refugio') as refugio_nombre
+             COALESCE(n.latitud, ref.latitud, hosp.latitud, acop.latitud) as latitud,
+             COALESCE(n.longitud, ref.longitud, hosp.longitud, acop.longitud) as longitud,
+             COALESCE(ref.nombre, hosp.nombre, acop.nombre, 'Sin centro') as refugio_nombre
       FROM necesidades n
       LEFT JOIN refugios ref ON n.refugio_id = ref.id
+      LEFT JOIN hospitales hosp ON n.hospital_id = hosp.id
+      LEFT JOIN centros_acopio acop ON n.centro_acopio_id = acop.id
       WHERE n.estado = 'abierta'
         AND n.created_at >= datetime('now', '-65 minutes')
-        AND (n.latitud IS NOT NULL OR ref.latitud IS NOT NULL)
+        AND (n.latitud IS NOT NULL OR ref.latitud IS NOT NULL OR hosp.latitud IS NOT NULL OR acop.latitud IS NOT NULL)
     `).all<any>();
 
     if (!needs || needs.length === 0) {
