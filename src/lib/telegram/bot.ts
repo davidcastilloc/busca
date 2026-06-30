@@ -22,6 +22,7 @@ import { startBroadcast, handleBroadcastState } from "./handlers/broadcast";
 import { startLogin, handleLoginState } from "./handlers/login";
 import { startPeligro, handlePeligroState } from "./handlers/peligro";
 import { startAlerta, handleAlertaState } from "./handlers/alerta";
+import { handleAcopio } from "./handlers/acopio";
 
 // Helper para verificar si un ID de Telegram pertenece a un voluntario activo o admin
 async function checkIsVolunteerOrAdmin(
@@ -322,6 +323,18 @@ export async function processTelegramUpdate(
         return;
       }
 
+      if (lowerText === "/acopio") {
+        if (!isAuthorized) {
+          await client.sendMessage(
+            chatId,
+            "🚷 Acceso denegado. Este comando es solo para voluntarios autorizados. Inicia sesión con /login."
+          );
+          return;
+        }
+        await handleAcopio(client, db, chatId, telegramId);
+        return;
+      }
+
       // Comandos de Admin (requieren isAdmin)
       if (lowerText.startsWith("/broadcast")) {
         if (!isAdmin) {
@@ -387,7 +400,8 @@ async function sendWelcomeMessage(
     helpText += `🆘 /urgencia [insumo] - Alerta crítica de necesidad en terreno.\n`;
     helpText += `✅ /cubierta [ID] - Marcar una necesidad como cubierta.\n`;
     helpText += `🚧 /peligro - Reportar peligro en la vía (bloqueo/derrumbe).\n`;
-    helpText += `🔔 /alerta - Suscribirse a alertas GPS (radio 10km).\n\n`;
+    helpText += `🔔 /alerta - Suscribirse a alertas GPS (radio 10km).\n`;
+    helpText += `📦 /acopio - Abrir Dashboard del Centro de Acopio.\n\n`;
   }
 
   if (isAdmin) {

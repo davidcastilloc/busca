@@ -162,7 +162,8 @@ export async function handleLoginState(
         { command: "urgencia", description: "Alerta critica de necesidad en terreno" },
         { command: "cubierta", description: "Marcar una necesidad como cubierta" },
         { command: "peligro", description: "Reportar peligro en la via (bloqueo)" },
-        { command: "alerta", description: "Suscribirse a alertas GPS (radio 10km)" }
+        { command: "alerta", description: "Suscribirse a alertas GPS (radio 10km)" },
+        { command: "acopio", description: "Abrir Dashboard del Centro de Acopio" }
       ], { type: "chat", chat_id: chatId });
     } catch (cmdErr) {
       console.error("Error al setear comandos personalizados:", cmdErr);
