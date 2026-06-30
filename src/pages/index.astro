@@ -4,19 +4,39 @@ import Navbar from "../components/Navbar.astro";
 import BuscadorRapido from "../components/BuscadorRapido.astro";
 import { env } from "cloudflare:workers";
 import { obtenerVoluntarioSesion } from "../lib/auth-helpers";
+import { CATEGORIAS_INVENTARIO } from "../lib/items";
 
 export const prerender = false;
 
 let esVoluntario = false;
+let totalRefugios = 0;
+let totalNecesidades = 0;
+let necesidadesCriticas: any[] = [];
+let refugiosIniciales: any[] = [];
+
 try {
   const { DB } = env;
   if (DB) {
     const sessionToken = Astro.cookies.get("session_token")?.value;
     const voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
     esVoluntario = !!voluntario;
+
+    const resRefugios = await DB.prepare("SELECT COUNT(*) as total FROM refugios").first<{ total: number }>();
+    if (resRefugios) totalRefugios = resRefugios.total;
+
+    const resNecesidades = await DB.prepare("SELECT COUNT(*) as total FROM necesidades WHERE estado = 'abierta'").first<{ total: number }>();
+    if (resNecesidades) totalNecesidades = resNecesidades.total;
+
+    const resCriticas = await DB.prepare("SELECT * FROM necesidades WHERE estado = 'abierta' AND gravedad LIKE '%alta%' ORDER BY created_at DESC LIMIT 4").all();
+    if (resCriticas && resCriticas.results) {
+      necesidadesCriticas = resCriticas.results;
+    }
+
+    const resRefugiosList = await DB.prepare("SELECT * FROM refugios ORDER BY nombre ASC").all();
+    refugiosIniciales = resRefugiosList.results || [];
   }
 } catch (e) {
-  console.error("Error al comprobar sesión en index:", e);
+  console.error("Error al cargar datos en index:", e);
 }
 ---
 
@@ -33,368 +53,818 @@ try {
         Buscador ciudadano para reunir familias tras la emergencia. Consulta registros aportados por voluntarios y rescatistas.
       </p>
 
-      <div class="flex flex-col sm:flex-row gap-3 justify-center mb-3 px-4 max-w-md mx-auto">
-        <button id="btn-estoy-a-salvo" class="flex-1 btn bg-canvas text-ink hover:bg-canvas-soft border border-canvas-soft font-uber-text uber-body-md-strong px-6 py-3.5 rounded-full flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98] cursor-pointer">
-          <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-          Localizado
+      <div class="flex justify-center mb-3 px-4 max-w-md mx-auto">
+        <a href="/reportar" class="w-full btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong px-6 py-3.5 rounded-full flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98] cursor-pointer">
+          Reportar emergencia
+        </a>
+      </div>
+
+      <!-- FEED DE NECESIDADES CRÍTICAS -->
+      {necesidadesCriticas.length > 0 && (
+        <div class="px-4 max-w-lg mx-auto mb-8">
+          <div class="flex justify-between items-end mb-3">
+            <h3 class="font-uber-display text-lg text-ink font-semibold">Urgencias (Gravedad Alta)</h3>
+            <a href="/mapa?layer=necesidades" class="text-xs text-primary font-bold hover:underline">Ver todas</a>
+          </div>
+          <div class="space-y-3">
+            {necesidadesCriticas.map((n) => (
+              <div class="bg-red-50 border border-red-100 rounded-xl p-4 flex gap-3 shadow-sm">
+                <div class="text-red-500 text-xl mt-0.5">⚠️</div>
+                <div>
+                  <h4 class="font-uber-display text-sm font-bold text-red-800">{n.categoria}</h4>
+                  <p class="font-uber-text text-xs text-red-900 mt-1 line-clamp-2">{n.descripcion}</p>
+                  <div class="text-[10px] text-red-700/80 mt-2 flex justify-between">
+                    <span>📍 {n.ubicacion_nombre || 'Sin ubicación'}</span>
+                    <span>Hace {Math.round((new Date().getTime() - new Date(n.created_at).getTime()) / 3600000)}h</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <!-- OTRAS ACCIONES: Voluntarios, Telegram -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 justify-center mb-6 px-4 max-w-lg mx-auto">
+        <a href="/ayudar" class="w-full btn bg-black text-white hover:bg-zinc-800 border-none font-uber-text uber-body-md-strong px-4 py-3 rounded-xl flex items-center justify-start gap-3 shadow-sm transition-transform active:scale-[0.98]">
+          <div class="text-2xl">👷</div>
+          <div class="text-left leading-tight">
+            <div class="font-bold text-sm">Ser Voluntario</div>
+            <div class="text-[10px] text-zinc-300 font-normal">Apoya la logística</div>
+          </div>
+        </a>
+        <a href="https://t.me/DondeEstanBot" target="_blank" rel="noopener noreferrer" class="w-full btn bg-[#2481cc] text-white hover:bg-[#1d6ba8] border-none font-uber-text uber-body-md-strong px-4 py-3 rounded-xl flex items-center justify-start gap-3 shadow-sm transition-transform active:scale-[0.98]">
+          <div class="text-2xl w-6 flex items-center justify-center">
+            <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.892-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+          </div>
+          <div class="text-left leading-tight">
+            <div class="font-bold text-sm">Usar Telegram</div>
+            <div class="text-[10px] text-blue-100 font-normal">Reporta vía Bot</div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- SECCIÓN DE REFUGIOS Y CENTROS DE ACOPIO (MIGRADO) -->
+    <div id="refugios-seccion" class="max-w-4xl mx-auto mt-10 mb-10 px-2 animate-fade-in">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h2 class="font-uber-display text-2xl sm:text-3xl text-ink tracking-tight">
+            Refugios y Centros de Acopio
+          </h2>
+          <p class="text-xs sm:text-sm text-body font-uber-text mt-1">
+            Directorio en tiempo real de albergues activos y sus necesidades críticas.
+          </p>
+        </div>
+        <div class="flex gap-2 shrink-0">
+          <a href="/mapa?layer=refugios" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text uber-body-md-strong px-5 py-2.5 rounded-[36px] text-center border border-canvas-soft">
+            🗺️ Mapa Completo
+          </a>
+          {esVoluntario && (
+            <a href="/refugios/nuevo" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong px-5 py-2.5 rounded-[36px] text-center shadow-sm">
+              ➕ Registrar Refugio
+            </a>
+          )}
+        </div>
+      </div>
+
+      <!-- Mapa Interactivo -->
+      <div class="mb-6 relative">
+        <div id="mapa-refugios" class="w-full h-80 sm:h-96 rounded-xl border border-canvas-soft shadow-sm z-0"></div>
+        <button type="button" id="btn-geolocalizar" class="absolute bottom-4 right-4 z-[400] w-10 h-10 bg-white border border-canvas-soft rounded-full shadow-md hover:bg-canvas-soft active:scale-95 transition-transform flex items-center justify-center cursor-pointer text-lg" title="Encontrar mi ubicación">
+          📍
         </button>
-        <a href="/reportar" class="flex-1 btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong px-6 py-3.5 rounded-full flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98] cursor-pointer">
-          Reportar desaparecido
-        </a>
       </div>
-      <div class="flex flex-col sm:flex-row gap-3 justify-center mb-3 px-4 max-w-md mx-auto">
-        <a href="/ayudar" class="flex-1 btn bg-canvas-soft text-ink hover:bg-surface-pressed border border-canvas-soft font-uber-text uber-body-md-strong px-6 py-3.5 rounded-full flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98] text-center">
-          👷 Voluntarios
-        </a>
-        <a href="/mapa?layer=necesidades" class="flex-1 btn bg-[#fef3c7] text-[#d97706] hover:bg-[#fde68a] border-none font-uber-text uber-body-md-strong px-6 py-3.5 rounded-full flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98] text-center">
-          🚨 Ver Necesidades
-        </a>
+
+      <!-- Filtros Rápidos y Buscador -->
+      <div class="space-y-4 mb-6">
+        <!-- Filtros por tipo -->
+        <div class="flex flex-wrap gap-2 overflow-x-auto pb-1 scrollbar-none" id="tipo-filtros">
+          <button type="button" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border border-canvas-soft bg-primary text-white cursor-pointer transition-all" data-tipo="todos">
+            Todos
+          </button>
+          <button type="button" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border border-canvas-soft bg-canvas text-ink hover:bg-canvas-soft cursor-pointer transition-all" data-tipo="refugio">
+            🏠 Refugios
+          </button>
+          <button type="button" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border border-canvas-soft bg-canvas text-ink hover:bg-canvas-soft cursor-pointer transition-all" data-tipo="centro_acopio">
+            📦 Centros de Acopio
+          </button>
+          <button type="button" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border border-canvas-soft bg-canvas text-ink hover:bg-canvas-soft cursor-pointer transition-all" data-tipo="hospital">
+            🏥 Hospitales / Salud
+          </button>
+        </div>
+
+        <!-- Buscador por texto -->
+        <input 
+          type="text" 
+          id="search-refugios" 
+          placeholder="Buscar refugio por nombre, ubicación o insumos..." 
+          class="input w-full font-uber-text uber-body-md border border-canvas-soft bg-canvas px-4 py-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary shadow-sm animate-fade-in"
+        />
       </div>
-      <div class="px-4 max-w-md mx-auto mb-6">
-        <a href="https://t.me/DondeEstanBot" target="_blank" rel="noopener noreferrer" class="w-full btn bg-[#2481cc] text-white hover:bg-[#1d6ba8] border-none font-uber-text uber-body-md-strong px-6 py-3.5 rounded-full flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98] text-center">
-          <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.892-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-          Usar Bot de Telegram
-        </a>
+
+      <!-- Lista de Refugios -->
+      <div id="refugios-container" class="space-y-4">
+        {refugiosIniciales.length === 0 ? (
+          <div class="text-center py-12 bg-canvas-soft border border-canvas-soft rounded-xl">
+            <p class="text-sm text-mute font-uber-text">No hay centros registrados en este momento.</p>
+          </div>
+        ) : (
+          refugiosIniciales.map((r) => {
+            const ocupacion = r.ocupacion_actual || 0;
+            const capacidad = r.capacidad_maxima || 100;
+            const pct = Math.min(Math.round((ocupacion / capacidad) * 100), 100);
+            
+            let colorBar = "bg-success"; // Verde
+            if (pct >= 90) colorBar = "bg-error"; // Rojo
+            else if (pct >= 70) colorBar = "bg-warning"; // Amarillo/Naranja
+
+            let tipoLabel = "Refugio / Albergue";
+            let tipoColor = "bg-blue-100 text-blue-800 border-blue-200";
+            if (r.tipo === "hospital") {
+              tipoLabel = "Hospital / Salud";
+              tipoColor = "bg-red-100 text-red-800 border-red-200";
+            } else if (r.tipo === "centro_acopio") {
+              tipoLabel = "Centro de Acopio";
+              tipoColor = "bg-yellow-100 text-yellow-800 border-yellow-200";
+            }
+
+            // Parsear inventario para extraer críticos y alertas
+            let itemsCriticos: string[] = [];
+            let itemsAlerta: string[] = [];
+            if (r.inventario) {
+              try {
+                const inv = typeof r.inventario === 'string' ? JSON.parse(r.inventario) : r.inventario;
+                for (const [itemId, estado] of Object.entries(inv)) {
+                  const itemObj = CATEGORIAS_INVENTARIO.flatMap(c => c.items).find(i => i.id === itemId);
+                  if (itemObj) {
+                    if (estado === "Crítico") {
+                      itemsCriticos.push(itemObj.nombre);
+                    } else if (estado === "Alerta") {
+                      itemsAlerta.push(itemObj.nombre);
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error("Error al parsear inventario:", e);
+              }
+            }
+
+            // Formatear fecha
+            let fechaFormateada = "";
+            if (r.fecha_registro) {
+              try {
+                fechaFormateada = new Date(r.fecha_registro).toLocaleString('es-VE', {
+                  dateStyle: 'short',
+                  timeStyle: 'short'
+                });
+              } catch {
+                fechaFormateada = r.fecha_registro;
+              }
+            }
+
+            // Parsear fotos
+            let fotosArray: string[] = [];
+            if (r.fotos) {
+              try {
+                fotosArray = typeof r.fotos === 'string' ? JSON.parse(r.fotos) : r.fotos;
+              } catch (e) {
+                console.error("Error al parsear fotos:", e);
+              }
+            }
+
+            return (
+              <div 
+                class="refugio-card bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm space-y-4 transition-all hover:shadow-md"
+                data-id={r.id}
+                data-nombre={r.nombre.toLowerCase()}
+                data-direccion={(r.direccion || "").toLowerCase()}
+                data-necesidades={(r.necesidades || "").toLowerCase()}
+                data-tipo={r.tipo || "refugio"}
+                data-lat={r.latitud || ""}
+                data-lng={r.longitud || ""}
+                data-ocupacion={ocupacion}
+                data-capacidad={capacidad}
+                data-contacto={r.contacto || ""}
+                data-encargado={r.encargado || ""}
+                data-semaforo={itemsCriticos.length > 0 ? "rojo" : itemsAlerta.length > 0 ? "amarillo" : "verde"}
+                data-fotos={typeof r.fotos === 'string' ? r.fotos : JSON.stringify(r.fotos || [])}
+              >
+                {fotosArray && fotosArray.length > 0 && (
+                  <div class="w-full h-40 sm:h-48 rounded-xl overflow-hidden border border-canvas-soft bg-surface-pressed mb-2">
+                    <img 
+                      src={`/api/upload?key=${fotosArray[0]}`} 
+                      alt={`Foto de ${r.nombre}`} 
+                      class="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                  <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${tipoColor} font-uber-text`}>
+                        {tipoLabel}
+                      </span>
+                      <h3 class="font-uber-display text-lg text-ink font-semibold">{r.nombre}</h3>
+                    </div>
+                    {r.direccion && <p class="text-xs text-body font-uber-text mt-1">📍 {r.direccion}</p>}
+                  </div>
+                  <div class="text-right shrink-0">
+                    <span class="text-xs font-semibold text-ink font-uber-text bg-canvas-soft px-2.5 py-1 rounded-full border border-canvas-soft">
+                      {ocupacion} / {capacidad} personas
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Encargado y Fecha -->
+                {(r.encargado || fechaFormateada) && (
+                  <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs font-uber-text text-body border-t border-canvas-soft pt-2">
+                    {r.encargado && <span>👤 Encargado: <strong>{r.encargado}</strong></span>}
+                    {fechaFormateada && <span>📅 Reportado: <strong>{fechaFormateada}</strong></span>}
+                  </div>
+                )}
+
+                <!-- Barra de capacidad -->
+                <div class="space-y-1">
+                  <div class="flex justify-between text-[11px] font-uber-text font-medium text-mute">
+                    <span>Capacidad ocupada</span>
+                    <span>{pct}%</span>
+                  </div>
+                  <div class="w-full bg-canvas-soft h-2.5 rounded-full overflow-hidden border border-canvas-soft">
+                    <div class={`h-full ${colorBar}`} style={`width: ${pct}%`}></div>
+                  </div>
+                </div>
+
+                <!-- Demografía -->
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-uber-text bg-canvas-soft p-3 rounded-lg border border-canvas-soft">
+                  <div>👶 Niños: <strong class="text-ink">{r.ninos || 0}</strong></div>
+                  <div>🍼 Lactantes: <strong class="text-ink">{r.bebes_lactantes || 0}</strong></div>
+                  <div>👵 Mayores: <strong class="text-ink">{r.adultos_mayores || 0}</strong></div>
+                  <div>🩺 Personal: <strong class="text-ink">{r.personal_profesional || 0}</strong></div>
+                  <div>🤝 Vols: <strong class="text-ink">{r.voluntarios || 0}</strong></div>
+                </div>
+
+                <!-- Inventario Crítico/Alerta -->
+                {(itemsCriticos.length > 0 || itemsAlerta.length > 0) && (
+                  <div class="space-y-1.5 bg-canvas-soft/50 border border-canvas-soft p-3 rounded-lg">
+                    {itemsCriticos.length > 0 && (
+                      <div class="flex flex-wrap gap-1 items-center">
+                        <span class="text-[9px] font-bold text-red-700 uppercase tracking-wider font-uber-text mr-1">Crítico:</span>
+                        {itemsCriticos.map(item => (
+                          <span class="text-[9px] bg-red-500/10 text-red-700 font-semibold px-2 py-0.5 rounded-full border border-red-500/20">{item}</span>
+                        ))}
+                      </div>
+                    )}
+                    {itemsAlerta.length > 0 && (
+                      <div class="flex flex-wrap gap-1 items-center">
+                        <span class="text-[9px] font-bold text-amber-700 uppercase tracking-wider font-uber-text mr-1">Alerta:</span>
+                        {itemsAlerta.map(item => (
+                          <span class="text-[9px] bg-amber-500/10 text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-500/20">{item}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <!-- Botones de Acción -->
+                <div class="flex flex-wrap sm:justify-between items-center gap-2 pt-2 border-t border-canvas-soft">
+                  <div class="flex gap-2">
+                    <button 
+                      class="btn-ver-en-mapa py-1.5 px-4 rounded-full bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-xs text-ink font-semibold cursor-pointer"
+                      data-lat={r.latitud || ""}
+                      data-lng={r.longitud || ""}
+                      data-id={r.id}
+                    >
+                      🗺️ Ver en Mapa
+                    </button>
+                    {r.contacto && (
+                      <a 
+                        href={`tel:${r.contacto}`} 
+                        class="py-1.5 px-4 rounded-full bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-xs text-ink font-semibold flex items-center justify-center"
+                      >
+                        📞 Llamar
+                      </a>
+                    )}
+                  </div>
+                  {esVoluntario && (
+                    <button 
+                      class="btn-edit-refugio py-1.5 px-4 rounded-full bg-black text-white hover:bg-zinc-800 text-xs font-semibold cursor-pointer"
+                      data-id={r.id}
+                      data-nombre={r.nombre}
+                      data-direccion={r.direccion || ""}
+                      data-necesidades={r.necesidades || ""}
+                      data-tipo={r.tipo || "refugio"}
+                      data-lat={r.latitud || ""}
+                      data-lng={r.longitud || ""}
+                      data-ocupacion={ocupacion}
+                      data-capacidad={capacidad}
+                      data-contacto={r.contacto || ""}
+                      data-encargado={r.encargado || ""}
+                      data-ninos={r.ninos || "0"}
+                      data-bebes={r.bebes_lactantes || "0"}
+                      data-mayores={r.adultos_mayores || "0"}
+                      data-prof={r.personal_profesional || "0"}
+                      data-vols={r.voluntarios || "0"}
+                      data-inventario={typeof r.inventario === 'string' ? r.inventario : JSON.stringify(r.inventario || {})}
+                      data-fotos={typeof r.fotos === 'string' ? r.fotos : JSON.stringify(r.fotos || [])}
+                    >
+                      ✏️ Actualizar Estado
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })
+        )}
       </div>
     </div>
 
-    <!-- Buscador principal -->
-    <BuscadorRapido />
-
-    <!-- ¿Para qué sirve el buscador? -->
-    <div class="max-w-3xl mx-auto mt-8 mb-6 px-2">
-      <h3 class="font-uber-display text-lg text-ink font-semibold mb-4 text-center">💡 ¿Para qué sirve el buscador?</h3>
-      
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- Tarjeta 1: Rescatistas y Voluntarios -->
-        <div class="bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm flex flex-col justify-between transition-all hover:border-ink/20">
-          <div>
-            <div class="text-2xl mb-2">👷</div>
-            <h4 class="font-uber-display text-sm font-bold text-ink mb-2">Rescatistas y Voluntarios</h4>
-            <ul class="text-xs text-body font-uber-text space-y-1.5 list-disc pl-4">
-              <li>Encuentran persona viva/herida en escombros o refugio.</li>
-              <li>Buscan nombre en plataforma.</li>
-              <li>Hacen clic en <span class="font-semibold">"✅ Localizado"</span> y añaden ubicación actual.</li>
-              <li>El sistema actualiza el estado.</li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Tarjeta 2: Familias -->
-        <div class="bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm flex flex-col justify-between transition-all hover:border-ink/20">
-          <div>
-            <div class="text-2xl mb-2">👨‍👩‍👧‍👦</div>
-            <h4 class="font-uber-display text-sm font-bold text-ink mb-2">Familias</h4>
-            <ul class="text-xs text-body font-uber-text space-y-1.5 list-disc pl-4">
-              <li>Revisan plataforma desde casa.</li>
-              <li>Ven estado cambiar de "desaparecido" a "resuelto/localizado".</li>
-              <li>Ven ubicación exacta del refugio.</li>
-              <li>Recuperan contacto de inmediato.</li>
-            </ul>
-          </div>
-        </div>
-
-        <!-- Tarjeta 3: Organización de Refugios -->
-        <div class="bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm flex flex-col justify-between transition-all hover:border-ink/20">
-          <div>
-            <div class="text-2xl mb-2">🏢</div>
-            <h4 class="font-uber-display text-sm font-bold text-ink mb-2">Organización de Refugios</h4>
-            <ul class="text-xs text-body font-uber-text space-y-1.5 list-disc pl-4">
-              <li>Llega grupo evacuados a estadio/hospital.</li>
-              <li>Encargado ingresa nombres en buscador.</li>
-              <li>Avisa automáticamente a familias que buscaban a esas personas.</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Mapa interactivo de casos -->
-    <div class="max-w-3xl mx-auto mt-10 mb-10 px-2">
-      <h3 class="font-uber-display text-lg text-ink font-semibold mb-3">Mapa de Casos y Refugios</h3>
-      <div id="home-map" class="w-full h-80 sm:h-96 rounded-xl border border-canvas-soft bg-canvas shadow-sm overflow-hidden z-10"></div>
-    </div>
 
     <!-- Sección informativa en Home (Acordeón) y Colaboradores -->
     <div class="max-w-5xl mx-auto mt-12 mb-10 px-2 grid grid-cols-1 md:grid-cols-[1fr_300px] gap-6 items-start">
       <!-- Acordeón -->
       <div class="cv-auto join join-vertical w-full bg-canvas border border-canvas-soft rounded-xl shadow-sm">
-      <div class="collapse collapse-arrow join-item border-b border-canvas-soft">
-        <input type="radio" name="info-accordion" checked="checked" /> 
-        <div class="collapse-title font-uber-display text-base text-ink font-semibold">
-          Sobre esta plataforma
+        <div class="collapse collapse-arrow join-item border-b border-canvas-soft">
+          <input type="radio" name="info-accordion" checked="checked" /> 
+          <div class="collapse-title font-uber-display text-base text-ink font-semibold">
+            Sobre esta plataforma
+          </div>
+          <div class="collapse-content font-uber-text text-sm text-body space-y-2">
+            <p>
+              Plataforma ciudadana, colaborativa y voluntaria a raíz del evento sísmico del 24 de junio de 2026 en Venezuela.
+            </p>
+            <p>
+              Su objetivo principal es centralizar reportes de búsqueda y hallazgos en una interfaz accesible para facilitar la reconexión de familias y amigos, mientras las autoridades oficiales ejecutan las labores de rescate.
+            </p>
+          </div>
         </div>
-        <div class="collapse-content font-uber-text text-sm text-body space-y-2">
-          <p>
-            Plataforma ciudadana, colaborativa y voluntaria a raíz del evento sísmico del 24 de junio de 2026 en Venezuela.
-          </p>
-          <p>
-            Su objetivo principal es centralizar reportes de búsqueda y hallazgos en una interfaz accesible para facilitar la reconexión de familias y amigos, mientras las autoridades oficiales ejecutan las labores de rescate.
-          </p>
+        
+        <div class="collapse collapse-arrow join-item border-b border-canvas-soft">
+          <input type="radio" name="info-accordion" /> 
+          <div class="collapse-title font-uber-display text-base text-ink font-semibold">
+            Directorio de Emergencia
+          </div>
+          <div class="collapse-content font-uber-text text-sm text-body">
+            <div class="overflow-x-auto">
+              <table class="table table-sm w-full text-left font-uber-text text-xs">
+                <thead>
+                  <tr class="text-ink">
+                    <th>Servicio</th>
+                    <th>Número</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-canvas-soft text-body">
+                  <tr>
+                    <td class="py-2">Emergencias Nacionales</td>
+                    <td class="py-2 font-bold"><a href="tel:911" class="text-primary hover:underline">911</a></td>
+                  </tr>
+                  <tr>
+                    <td class="py-2">Bomberos</td>
+                    <td class="py-2 font-bold"><a href="tel:0212-5454545" class="text-primary hover:underline">0212-5454545</a></td>
+                  </tr>
+                  <tr>
+                    <td class="py-2">Protección Civil</td>
+                    <td class="py-2 font-bold"><a href="tel:0800-7248454" class="text-primary hover:underline">0800-7248454</a></td>
+                  </tr>
+                  <tr>
+                    <td class="py-2">Cruz Roja Venezolana</td>
+                    <td class="py-2 font-bold"><a href="tel:0212-5714545" class="text-primary hover:underline">0212-5714545</a></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
-      
-      <div class="collapse collapse-arrow join-item border-b border-canvas-soft">
-        <input type="radio" name="info-accordion" /> 
-        <div class="collapse-title font-uber-display text-base text-ink font-semibold">
-          Directorio de Emergencia
-        </div>
-        <div class="collapse-content font-uber-text text-sm text-body">
-          <div class="overflow-x-auto">
-            <table class="table table-sm w-full text-left font-uber-text text-xs">
-              <thead>
-                <tr class="text-ink">
-                  <th>Servicio</th>
-                  <th>Número</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>CANTV</td>
-                  <td class="font-semibold">171</td>
-                </tr>
-                <tr>
-                  <td>Movilnet</td>
-                  <td class="font-semibold">*1</td>
-                </tr>
-                <tr>
-                  <td>Digitel</td>
-                  <td class="font-semibold">112</td>
-                </tr>
-                <tr>
-                  <td>Movistar</td>
-                  <td class="font-semibold">911</td>
-                </tr>
-                <tr>
-                  <td>Rescarven</td>
-                  <td class="text-mute">—</td>
-                </tr>
-                <tr>
-                  <td>Aeroambulancias</td>
-                  <td class="text-mute">—</td>
-                </tr>
-                <tr>
-                  <td>Ambulancias Metropolitanas</td>
-                  <td class="text-mute">—</td>
-                </tr>
-              </tbody>
-            </table>
+
+        <div class="collapse collapse-arrow join-item">
+          <input type="radio" name="info-accordion" /> 
+          <div class="collapse-title font-uber-display text-base text-ink font-semibold">
+            ¿Cómo ayudar?
+          </div>
+          <div class="collapse-content font-uber-text text-sm text-body space-y-2">
+            <p>
+              1. <strong>Comparte la plataforma:</strong> Ayuda a que más personas publiquen reportes y se registren a salvo.
+            </p>
+            <p>
+              2. <strong>Únete como voluntario:</strong> Si tienes habilidades técnicas, médicas, de rescate o apoyo logístico, regístrate en la sección "👷 Voluntarios" para coordinar esfuerzos.
+            </p>
+            <p>
+              3. <strong>Valida información:</strong> Si confirmas el paradero o estado de un reporte existente, repórtalo como localizado para mantener los datos limpios.
+            </p>
           </div>
         </div>
       </div>
 
-      <div class="collapse collapse-arrow join-item border-b border-canvas-soft">
-        <input type="radio" name="info-accordion" /> 
-        <div class="collapse-title font-uber-display text-base text-ink font-semibold">
-          Políticas de Uso
-        </div>
-        <div class="collapse-content font-uber-text text-sm text-body space-y-2">
-          <ul class="list-disc list-inside space-y-1">
-            <li>Gratuidad total. No se solicita dinero bajo ningún concepto.</li>
-            <li>Los datos publicados son responsabilidad exclusiva de quien los comparte.</li>
-            <li>La información y fotos publicadas son de acceso público para facilitar la localización de personas.</li>
-            <li>Iniciativa no partidista, no gubernamental y de carácter civil.</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="collapse collapse-arrow join-item">
-        <input type="radio" name="info-accordion" /> 
-        <div class="collapse-title font-uber-display text-base text-ink font-semibold">
-          Contacto
-        </div>
-        <div class="collapse-content font-uber-text text-sm text-body">
-          <p>
-            Soporte técnico o retiro de información administrado por <span class="font-semibold">pc911itglobal.com</span>. Contacto: 
-            <a href="mailto:info@pc911itglobal.com" class="text-primary hover:underline font-semibold">
-              info@pc911itglobal.com
-            </a>
-          </p>
+      <!-- Apoyo Voluntario -->
+      <div class="space-y-4 w-full">
+        <!-- Colaboradores / Voluntarios Especiales -->
+        <div class="flex flex-col items-center justify-center p-6 bg-canvas border border-canvas-soft rounded-xl shadow-sm">
+          <h3 class="font-uber-display text-xs text-mute font-semibold mb-6 text-center uppercase tracking-wider">Con el apoyo voluntario de</h3>
+          <div class="flex flex-col items-center gap-3">
+            <div class="relative group cursor-pointer" title="Honrando a los Scouts voluntarios">
+              <div class="absolute -inset-1 bg-gradient-to-r from-purple-600 to-blue-500 rounded-full blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
+              <img 
+                src="/SCOUTS.webp" 
+                alt="Scouts Voluntarios" 
+                class="relative w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-full drop-shadow-lg transition-transform duration-300 hover:scale-105"
+              />
+            </div>
+            <span class="text-[10px] font-uber-text text-mute uppercase tracking-wider font-semibold bg-canvas-soft px-3 py-1 rounded-full shadow-sm text-center">
+              Grupo Scout Madre Rafols
+            </span>
+          </div>
         </div>
       </div>
     </div>
-      
-      <!-- Colaboradores / Voluntarios Especiales -->
-      <div class="flex flex-col items-center justify-center p-6 bg-canvas border border-canvas-soft rounded-xl shadow-sm">
-        <h3 class="font-uber-display text-xs text-mute font-semibold mb-6 text-center uppercase tracking-wider">Con el apoyo voluntario de</h3>
-        <div class="flex flex-col items-center gap-3">
-          <div class="relative group cursor-pointer" title="Honrando a los Scouts voluntarios">
-            <div class="absolute -inset-1 bg-gradient-to-r from-purple-600 to-blue-500 rounded-full blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
-            <img 
-              src="/SCOUTS.webp" 
-              alt="Scouts Voluntarios" 
-              class="relative w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-full drop-shadow-lg transition-transform duration-300 hover:scale-105"
+
+    <!-- Modal para actualizar refugio -->
+    <div id="modal-edit-refugio" class="fixed inset-0 z-50 bg-black/60 hidden flex items-end sm:items-center justify-center animate-fade-in" style="backdrop-filter:blur(4px)">
+      <div class="bg-canvas w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl p-6 space-y-4 max-h-[95vh] overflow-y-auto border border-canvas-soft shadow-xl">
+        <div class="flex justify-between items-center">
+          <h3 class="font-uber-display text-lg text-ink font-semibold" id="edit-refugio-titulo">Actualizar Centro</h3>
+          <button id="btn-close-edit" class="w-8 h-8 rounded-full bg-canvas-soft flex items-center justify-center text-ink text-sm hover:bg-surface-pressed cursor-pointer">✕</button>
+        </div>
+
+        <form id="form-edit-refugio" class="space-y-4">
+          <input type="hidden" id="edit-refugio-id" />
+          
+          <div>
+            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-tipo">Tipo de Centro *</label>
+            <select id="edit-tipo" required class="select w-full font-uber-text uber-body-md">
+              <option value="refugio">Refugio / Albergue</option>
+              <option value="centro_acopio">Centro de Acopio</option>
+              <option value="hospital">Hospital / Puesto de Salud</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-encargado">Encargado *</label>
+            <input 
+              type="text" 
+              id="edit-encargado" 
+              required
+              class="input w-full font-uber-text uber-body-md" 
             />
           </div>
-          <span class="text-[10px] font-uber-text text-mute uppercase tracking-wider font-semibold bg-canvas-soft px-3 py-1 rounded-full shadow-sm text-center">
-            Grupo Scout Madre Rafols
-          </span>
-        </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-direccion">Dirección / Sector *</label>
+            <div class="flex gap-2 mb-3">
+              <input 
+                type="text" 
+                id="edit-direccion" 
+                required 
+                class="input flex-grow font-uber-text uber-body-md" 
+                placeholder="Ej: Sector La Lucha, Caracas"
+              />
+              <button type="button" id="btn-edit-buscar-direccion" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed border border-canvas-soft font-uber-text font-semibold px-3 py-2 rounded-xl text-xs shrink-0 cursor-pointer">
+                📍 Ubicar
+              </button>
+            </div>
+
+            <!-- Bloque de ubicación integrado para edicion -->
+            <div class="p-3.5 bg-canvas-soft rounded-xl flex flex-col gap-3 border border-canvas-soft">
+              <span class="text-[10px] font-bold text-mute uppercase tracking-wider font-uber-text">📍 Método de Ubicación GPS *</span>
+              
+              <!-- Tabs de selección de método -->
+              <div class="flex gap-1 bg-canvas p-1 rounded-lg border border-canvas-soft">
+                <button type="button" id="tab-edit-gps" class="flex-1 text-center py-1.5 px-2 text-[10px] font-bold font-uber-text rounded-md bg-primary text-white border-none cursor-pointer">
+                  GPS Móvil
+                </button>
+                <button type="button" id="tab-edit-gmaps" class="flex-1 text-center py-1.5 px-2 text-[10px] font-bold font-uber-text rounded-md bg-transparent text-ink border-none cursor-pointer">
+                  Pegar Enlace
+                </button>
+                <button type="button" id="tab-edit-map" class="flex-1 text-center py-1.5 px-2 text-[10px] font-bold font-uber-text rounded-md bg-transparent text-ink border-none cursor-pointer">
+                  Mapa Manual
+                </button>
+              </div>
+
+              <!-- Inputs ocultos para lat/lng -->
+              <input type="hidden" id="edit-latitud" />
+              <input type="hidden" id="edit-longitud" />
+
+              <!-- Panel 1: GPS Móvil -->
+              <div id="panel-edit-gps" class="flex items-center justify-between gap-2">
+                <span class="text-[10px] text-body font-uber-text">Obtén la ubicación actual del dispositivo.</span>
+                <button id="btn-edit-ref-gps" type="button" class="btn btn-xs bg-primary text-white font-uber-text px-3 py-1.5 rounded-lg text-[10px] cursor-pointer shrink-0">
+                  Detectar GPS
+                </button>
+              </div>
+
+              <!-- Panel 2: Pegar Enlace -->
+              <div id="panel-edit-gmaps" class="space-y-2 hidden">
+                <div class="flex gap-2">
+                  <input 
+                    type="url" 
+                    id="edit-gmaps-link" 
+                    class="input flex-grow font-uber-text text-xs p-2.5 min-h-[36px]" 
+                    placeholder="Pegar enlace de Google Maps..."
+                  />
+                  <button type="button" id="btn-edit-resolver-gmaps" class="btn bg-primary text-white font-uber-text font-semibold px-3 py-1.5 rounded-lg text-[10px] shrink-0 cursor-pointer">
+                    Extraer
+                  </button>
+                </div>
+              </div>
+
+              <!-- Panel 3: Mapa Manual -->
+              <div id="panel-edit-map" class="text-[10px] text-mute font-uber-text italic hidden">
+                Toca el mapa abajo para ajustar el marcador manualmente.
+              </div>
+
+              <!-- Contenedor del mapa (común) -->
+              <div id="edit-gps-map" class="w-full h-40 rounded-lg overflow-hidden border border-canvas-soft bg-canvas"></div>
+              
+              <!-- Tarjeta de Info de Google Places en Modal (oculta por defecto) -->
+              <div id="edit-google-place-info" class="hidden mt-2 p-3 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/80 to-indigo-50/60 space-y-2">
+                <div class="flex items-center gap-1.5 text-[11px] font-uber-text font-bold text-blue-700 uppercase tracking-wider">
+                  <span>📍</span> Datos del lugar (Google)
+                </div>
+                <div id="edit-gpi-content" class="grid gap-1.5 text-[11px] font-uber-text text-body">
+                </div>
+              </div>
+
+              <!-- Estatus de Ubicación -->
+              <div id="edit-gps-status" class="text-[11px] text-mute font-uber-text italic">Ubicación cargada.</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-capacidad">Capacidad Máxima *</label>
+              <input 
+                type="number" 
+                id="edit-capacidad" 
+                required 
+                min="1"
+                class="input w-full font-uber-text uber-body-md" 
+              />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-ocupacion">Población Total *</label>
+              <input 
+                type="number" 
+                id="edit-ocupacion" 
+                required 
+                min="0"
+                class="input w-full font-uber-text uber-body-md" 
+              />
+            </div>
+          </div>
+
+          <div class="bg-canvas border border-canvas-soft p-3 rounded-xl space-y-2">
+            <span class="text-xs font-semibold text-ink font-uber-text block">👥 Desglose de Población</span>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block text-[9px] font-bold text-mute uppercase font-uber-text" for="edit-ninos">Niños</label>
+                <input type="number" id="edit-ninos" min="0" class="input w-full font-uber-text text-xs p-2 min-h-[36px]" />
+              </div>
+              <div>
+                <label class="block text-[9px] font-bold text-mute uppercase font-uber-text" for="edit-bebes">Bebés</label>
+                <input type="number" id="edit-bebes" min="0" class="input w-full font-uber-text text-xs p-2 min-h-[36px]" />
+              </div>
+              <div>
+                <label class="block text-[9px] font-bold text-mute uppercase font-uber-text" for="edit-mayores">Adultos M.</label>
+                <input type="number" id="edit-mayores" min="0" class="input w-full font-uber-text text-xs p-2 min-h-[36px]" />
+              </div>
+              <div>
+                <label class="block text-[9px] font-bold text-mute uppercase font-uber-text" for="edit-prof">Prof. Salud</label>
+                <input type="number" id="edit-prof" min="0" class="input w-full font-uber-text text-xs p-2 min-h-[36px]" />
+              </div>
+              <div>
+                <label class="block text-[9px] font-bold text-mute uppercase font-uber-text" for="edit-vols">Voluntarios</label>
+                <input type="number" id="edit-vols" min="0" class="input w-full font-uber-text text-xs p-2 min-h-[36px]" />
+              </div>
+            </div>
+            <div id="edit-demografia-warning" class="hidden text-[10px] text-red-500 font-uber-text font-medium bg-red-500/5 p-2 rounded">
+              ⚠️ La Población Total debe ser mayor o igual a la suma de los subgrupos.
+            </div>
+          </div>
+
+          <div class="bg-canvas border border-canvas-soft p-3 rounded-xl space-y-3">
+            <span class="text-xs font-semibold text-ink font-uber-text block">📋 Estado del Inventario (43 Ítems)</span>
+            
+            <div class="flex gap-1 overflow-x-auto pb-1.5 border-b border-canvas-soft scrollbar-none" id="edit-tabs-container">
+              {CATEGORIAS_INVENTARIO.map((cat, idx) => (
+                <button 
+                  type="button" 
+                  class={`edit-tab-btn font-uber-text text-[11px] whitespace-nowrap px-2.5 py-1 rounded-lg border ${idx === 0 ? 'bg-primary text-white border-primary' : 'bg-canvas-soft text-ink border-transparent'} cursor-pointer`}
+                  data-target={`edit-tab-${idx}`}
+                >
+                  {cat.nombre}
+                </button>
+              ))}
+            </div>
+
+            <div class="edit-tab-contents max-h-48 overflow-y-auto">
+              {CATEGORIAS_INVENTARIO.map((cat, idx) => (
+                <div id={`edit-tab-${idx}`} class={`edit-tab-pane space-y-2 ${idx === 0 ? '' : 'hidden'}`}>
+                  {cat.items.map((item) => (
+                    <div class="flex flex-col gap-1 py-1 border-b border-canvas-soft last:border-b-0">
+                      <span class="text-[11px] font-uber-text text-ink font-medium">{item.nombre}</span>
+                      <div class="flex gap-0.5 bg-canvas-soft p-0.5 rounded-lg w-full overflow-x-auto">
+                        {["Crítico", "Alerta", "Estable", "Excedente"].map((est) => {
+                          let activeClass = "";
+                          if (est === "Crítico") activeClass = "has-[:checked]:bg-red-500 has-[:checked]:text-white";
+                          else if (est === "Alerta") activeClass = "has-[:checked]:bg-amber-500 has-[:checked]:text-white";
+                          else if (est === "Estable") activeClass = "has-[:checked]:bg-green-600 has-[:checked]:text-white";
+                          else if (est === "Excedente") activeClass = "has-[:checked]:bg-blue-600 has-[:checked]:text-white";
+
+                          return (
+                            <label class={`flex-grow text-center py-1 text-[9px] rounded-md cursor-pointer transition-all font-semibold font-uber-text select-none border border-transparent hover:bg-surface-pressed ${activeClass}`}>
+                              <input 
+                                type="radio" 
+                                name={`edit-inv-${item.id}`} 
+                                value={est} 
+                                class="hidden" 
+                              />
+                              {est}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-necesidades">Notas Adicionales de Necesidades (Texto Libre)</label>
+            <textarea 
+              id="edit-necesidades" 
+              rows="2"
+              class="textarea w-full font-uber-text uber-body-md" 
+              placeholder="Ej: Agua mineral, mantas, leche de fórmula..."
+            ></textarea>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-contacto">Teléfono o Datos de Contacto</label>
+            <input 
+              type="text" 
+              id="edit-contacto" 
+              class="input w-full font-uber-text uber-body-md" 
+              placeholder="Ej: 0412-1234567"
+            />
+          </div>
+
+          <div class="bg-canvas border border-canvas-soft p-3 rounded-xl space-y-3">
+            <span class="text-xs font-semibold text-ink font-uber-text block">📸 Fotos del Centro</span>
+            
+            <!-- Fotos Existentes -->
+            <div id="edit-preview-existentes" class="grid grid-cols-3 gap-2 empty:hidden">
+              <!-- Cargadas por JS -->
+            </div>
+            
+            <!-- Subir nuevas -->
+            <div class="flex flex-col gap-2 border-t border-canvas-soft pt-2">
+              <span class="text-[10px] font-bold text-mute uppercase font-uber-text">Subir nuevas fotos (Máx 3 en total)</span>
+              <input 
+                type="file" 
+                id="edit-fotos-nuevas" 
+                multiple 
+                accept="image/*" 
+                class="block w-full text-xs text-mute font-uber-text file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover cursor-pointer"
+              />
+              <div id="edit-preview-nuevas" class="grid grid-cols-3 gap-2 mt-2">
+                <!-- Nuevas previsualizaciones -->
+              </div>
+            </div>
+          </div>
+
+          <div id="edit-refugio-error" class="hidden text-xs text-red-500 font-uber-text bg-red-500/5 border border-red-500/20 p-3 rounded-lg"></div>
+
+          <button type="submit" class="btn bg-primary text-white w-full font-uber-text font-semibold py-2.5 rounded-xl">
+            Guardar Cambios
+          </button>
+        </form>
       </div>
     </div>
   </main>
-</Layout>
 
-<!-- Modal "Localizado" -->
-<div id="modal-salvo" class="fixed inset-0 z-[120] bg-black/60 hidden flex items-end sm:items-center justify-center animate-fade-in" style="backdrop-filter:blur(4px)">
-  <div class="bg-canvas w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-xl border border-canvas-soft">
-    <div class="flex justify-between items-center">
-      <h3 class="font-uber-display text-xl text-ink font-semibold">Localizado</h3>
-      <button id="btn-close-salvo" class="w-8 h-8 rounded-full bg-canvas-soft flex items-center justify-center text-ink text-sm hover:bg-surface-pressed cursor-pointer">✕</button>
-    </div>
-    <p class="text-sm text-body font-uber-text">
-      Si eres una persona reportada o deseas registrar que estás localizado, ingresa tu cédula o nombre completo para buscarte en el censo.
-    </p>
+  <style is:global>
+    /* Marcadores personalizados para el mapa de emergencia */
+    .custom-marker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9999px;
+      border: 2px solid white;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 2px 4px -2px rgba(0, 0, 0, 0.15);
+      width: 32px;
+      height: 32px;
+      position: relative;
+      color: white;
+      font-size: 14px;
+    }
     
-    <form id="form-salvo-buscar" class="space-y-3">
-      <div class="flex flex-col gap-3">
-        <input 
-          type="text" 
-          id="input-salvo-query" 
-          required
-          class="w-full font-uber-text uber-body-md bg-canvas-soft border border-transparent text-ink placeholder:text-mute focus:border-ink focus:bg-canvas transition-all duration-200 py-3.5 px-4 outline-none rounded-none" 
-          placeholder="Tu Cédula o Nombre completo..." 
-        />
-        <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text font-semibold rounded-full cursor-pointer">
-          Buscar registro
-        </button>
-      </div>
-    </form>
+    .marker-refugio {
+      background-color: #2563eb; /* Azul */
+    }
+    
+    .marker-acopio {
+      background-color: #d97706; /* Naranja/Amarillo */
+    }
+    
+    .marker-hospital {
+      background-color: #dc2626; /* Rojo */
+    }
 
-    <!-- Resultados del auto-reporte -->
-    <div id="salvo-results-loader" class="hidden flex justify-center py-4">
-      <span class="loading loading-spinner text-primary"></span>
-    </div>
-    <div id="salvo-results" class="space-y-3 max-h-60 overflow-y-auto"></div>
+    .custom-marker-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 9999px;
+      border: 1.5px solid white;
+    }
 
-    <div id="salvo-no-results" data-es-voluntario={esVoluntario ? "true" : "false"} class="hidden text-center py-4 space-y-3 border-t border-canvas-soft">
-      <p class="text-sm text-body font-uber-text">
-        No encontramos un registro con tus datos en la base de datos.
-      </p>
-      {esVoluntario ? (
-        <a id="btn-salvo-registrar" href="/registrar" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text font-semibold rounded-full cursor-pointer">
-          Registrar en el censo
-        </a>
-      ) : (
-        <a id="btn-salvo-registrar" href="/reportar" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text font-semibold rounded-full cursor-pointer">
-          Emitir reporte de emergencia
-        </a>
-      )}
-    </div>
+    .badge-verde {
+      background-color: #16a34a;
+    }
 
-    <!-- Contenedor secundario para confirmar datos, contacto y GPS -->
-    <div id="salvo-confirmar-container" class="hidden space-y-4 border-t border-canvas-soft pt-4 animate-fade-in">
-      <h4 class="font-uber-display text-base text-ink font-semibold">Completar datos de ubicación y contacto</h4>
-      <p class="text-xs text-body font-uber-text">
-        Ingresa información real para notificar y reconectar con tus familiares.
-      </p>
-      
-      <div class="space-y-3">
-        <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="salvo-contacto">Tu Teléfono / Contacto Actual *</label>
-          <input 
-            type="text" 
-            id="salvo-contacto" 
-            required 
-            class="w-full font-uber-text uber-body-md bg-canvas-soft border border-transparent text-ink placeholder:text-mute focus:border-ink focus:bg-canvas transition-all duration-200 py-3.5 px-4 outline-none rounded-none" 
-            placeholder="Ej: 0412-1234567, telegram, email..."
-          />
-        </div>
-        <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="salvo-refugio">¿Dónde te encuentras? / Refugio</label>
-          <input 
-            type="text" 
-            id="salvo-refugio" 
-            class="w-full font-uber-text uber-body-md bg-canvas-soft border border-transparent text-ink placeholder:text-mute focus:border-ink focus:bg-canvas transition-all duration-200 py-3.5 px-4 outline-none rounded-none" 
-            placeholder="Ej: Albergue Polideportivo, casa de familiares..."
-          />
-        </div>
-        <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="salvo-estado-salud">Tu Estado de Salud (Opcional)</label>
-          <select id="salvo-estado-salud" class="select w-full font-uber-text uber-body-md rounded-none bg-canvas-soft focus:border-ink border-transparent">
-            <option value="localizado">Localizado / Sin lesiones</option>
-            <option value="herido">Herido / Requiere asistencia médica</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="salvo-notas">Mensaje rápido o Necesidades</label>
-          <textarea 
-            id="salvo-notas" 
-            rows="2" 
-            class="textarea w-full font-uber-text uber-body-md rounded-none bg-canvas-soft focus:border-ink border-transparent py-3.5 px-4 outline-none" 
-            placeholder="Ej: Estoy bien, necesito medicamentos para la tensión."
-          ></textarea>
-        </div>
-        <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text">Foto Evidencia (Opcional)</label>
-          <div class="flex items-center gap-3 bg-canvas-soft border border-canvas-soft p-3 rounded-none">
-            <input 
-              type="file" 
-              id="salvo-foto-file" 
-              accept="image/*" 
-              class="block w-full text-xs text-mute font-uber-text file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-black-elevated file:cursor-pointer" 
-            />
-            <input type="hidden" id="salvo-foto-key" />
-          </div>
-          <div id="salvo-foto-status" class="text-[10px] text-mute font-uber-text mt-1 italic hidden">Cargando imagen...</div>
-        </div>
-        
-        <!-- GPS Status Panel -->
-        <div class="p-3 bg-canvas-soft rounded-xl flex flex-col gap-1 border border-canvas-soft">
-          <div class="flex justify-between items-center">
-            <span class="text-xs font-semibold text-ink font-uber-text">Coordenadas de GPS</span>
-            <button id="btn-salvo-gps" type="button" class="btn btn-xs bg-primary text-white font-uber-text px-2.5 py-1 rounded-full text-[11px] cursor-pointer hover:bg-black-elevated">
-              Recargar GPS
-            </button>
-          </div>
-          <div id="salvo-gps-status" class="text-xs text-mute font-uber-text italic">Iniciando búsqueda...</div>
-          <input type="hidden" id="salvo-latitud" />
-          <input type="hidden" id="salvo-longitud" />
-          <div id="salvo-gps-map" class="w-full h-36 rounded-lg overflow-hidden border border-canvas-soft bg-canvas mt-2 hidden"></div>
-        </div>
+    .badge-amarillo {
+      background-color: #fbbf24;
+    }
 
-        <!-- Checkbox de confirmación -->
-        <div class="flex items-start gap-2 pt-1">
-          <input 
-            type="checkbox" 
-            id="chk-salvo-confirmacion" 
-            class="w-4 h-4 rounded border-2 border-primary bg-canvas text-primary focus:ring-0 focus:ring-offset-0 mt-0.5 accent-black cursor-pointer" 
-            required 
-          />
-          <label for="chk-salvo-confirmacion" class="text-xs text-body font-uber-text select-none cursor-pointer">
-            Confirmo que estos datos de contacto y ubicación son correctos para mis familiares.
-          </label>
-        </div>
-      </div>
+    .badge-rojo {
+      background-color: #dc2626;
+    }
 
-      <div class="flex gap-2 pt-2">
-        <button id="btn-salvo-confirmar-enviar" class="btn bg-primary text-white hover:bg-black-elevated flex-1 font-uber-text uber-body-md-strong rounded-full cursor-pointer">Confirmar "Localizado"</button>
-        <button id="btn-salvo-confirmar-cancelar" type="button" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed flex-1 font-uber-text uber-body-md-strong rounded-full cursor-pointer">Atrás</button>
-      </div>
-    </div>
+    .custom-marker-pulse {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 9999px;
+      background-color: #dc2626;
+      animation: marker-pulse-anim 1.5s infinite;
+    }
 
-    <!-- Panel de Éxito y Compartir -->
-    <div id="salvo-exito-container" class="hidden text-center space-y-4 border-t border-canvas-soft pt-4 animate-fade-in">
-      <div class="text-3xl">🎉</div>
-      <h4 class="font-uber-display text-lg text-ink font-semibold">¡Estado actualizado!</h4>
-      <p class="text-xs text-body font-uber-text">
-        Tu registro ha sido marcado como localizado. Puedes compartir este reporte con familiares y amigos.
-      </p>
-      
-      <div class="space-y-2 pt-2">
-        <button id="btn-salvo-compartir" class="btn bg-[#25D366] text-white w-full font-uber-text font-semibold flex items-center justify-center rounded-full cursor-pointer">
-          Compartir por WhatsApp
-        </button>
-        <button id="btn-salvo-compartir-copiar" class="btn bg-primary text-white hover:bg-black-elevated w-full font-uber-text font-semibold flex items-center justify-center rounded-full cursor-pointer">
-          Copiar enlace de reporte
-        </button>
-        <button id="btn-salvo-listo" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed w-full font-uber-text font-semibold rounded-full cursor-pointer">
-          Listo / Cerrar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+    @keyframes marker-pulse-anim {
+      0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+      }
+      70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 6px rgba(220, 38, 38, 0);
+      }
+      100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+      }
+    }
+
+    /* Indicador de posición del usuario */
+    .user-location-marker {
+      width: 16px;
+      height: 16px;
+      border-radius: 9999px;
+      background-color: #3b82f6;
+      border: 2px solid white;
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+      position: relative;
+    }
+
+    .user-location-pulse {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 9999px;
+      background-color: rgba(59, 130, 246, 0.4);
+      animation: user-pulse 2s infinite;
+    }
+
+    @keyframes user-pulse {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(3.5);
+        opacity: 0;
+      }
+    }
+
+    /* Ajustes del Popup de Leaflet */
+    .leaflet-popup-content-wrapper {
+      border-radius: 16px !important;
+      padding: 0 !important;
+      border: 1px solid var(--canvas-soft) !important;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+    }
+    .leaflet-popup-content { margin: 0 !important; }
+    .leaflet-popup-tip { border-top-color: var(--canvas, #fff) !important; }
+  </style>
+
+</Layout>
 
 <!-- Leaflet y MarkerCluster para mini-mapa GPS y mapa interactivo -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -404,629 +874,978 @@ try {
 <script is:inline src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
 <script>
-  function initHome() {
-    const btnEstoyASalvo = document.getElementById("btn-estoy-a-salvo");
-    const modalSalvo = document.getElementById("modal-salvo");
-    const btnCloseSalvo = document.getElementById("btn-close-salvo");
-    const formSalvoBuscar = document.getElementById("form-salvo-buscar") as HTMLFormElement;
-    const inputSalvoQuery = document.getElementById("input-salvo-query") as HTMLInputElement;
-    const salvoLoader = document.getElementById("salvo-results-loader");
-    const salvoResults = document.getElementById("salvo-results");
-    const salvoNoResults = document.getElementById("salvo-no-results");
-    const btnSalvoRegistrar = document.getElementById("btn-salvo-registrar") as HTMLAnchorElement;
+  let map: any = null;
+  let editMap: any = null;
+  let editMarker: any = null;
+  const marcadores = new Map<string, any>();
+  let userMarker: any = null;
+  let esVoluntario = false;
 
-    // Confirmar form elements
-    const salvoConfirmarContainer = document.getElementById("salvo-confirmar-container");
-    const salvoContacto = document.getElementById("salvo-contacto") as HTMLInputElement;
-    const salvoRefugio = document.getElementById("salvo-refugio") as HTMLInputElement;
-    const salvoEstadoSalud = document.getElementById("salvo-estado-salud") as HTMLSelectElement;
-    const salvoNotas = document.getElementById("salvo-notas") as HTMLTextAreaElement;
-    const salvoFotoFile = document.getElementById("salvo-foto-file") as HTMLInputElement;
-    const salvoFotoKey = document.getElementById("salvo-foto-key") as HTMLInputElement;
-    const salvoFotoStatus = document.getElementById("salvo-foto-status");
+  document.addEventListener('astro:page-load', () => {
+    // Limpieza de mapas e instancias previas
+    if (map) {
+      try { map.remove(); } catch (e) {}
+      map = null;
+    }
+    if (editMap) {
+      try { editMap.remove(); } catch (e) {}
+      editMap = null;
+    }
+    editMarker = null;
+    userMarker = null;
+    marcadores.clear();
 
-    const btnSalvoGps = document.getElementById("btn-salvo-gps");
-    const salvoGpsStatus = document.getElementById("salvo-gps-status");
-    const salvoLatitud = document.getElementById("salvo-latitud") as HTMLInputElement;
-    const salvoLongitud = document.getElementById("salvo-longitud") as HTMLInputElement;
-    const chkSalvoConfirmacion = document.getElementById("chk-salvo-confirmacion") as HTMLInputElement;
-    const btnSalvoConfirmarEnviar = document.getElementById("btn-salvo-confirmar-enviar") as HTMLButtonElement;
-    const btnSalvoConfirmarCancelar = document.getElementById("btn-salvo-confirmar-cancelar");
+    const btnEdits = document.querySelectorAll(".btn-edit-refugio");
+    esVoluntario = btnEdits.length > 0;
 
-    // Panel de éxito
-    const salvoExitoContainer = document.getElementById("salvo-exito-container");
-    const btnSalvoCompartir = document.getElementById("btn-salvo-compartir");
-    const btnSalvoCompartirCopiar = document.getElementById("btn-salvo-compartir-copiar");
-    const btnSalvoListo = document.getElementById("btn-salvo-listo");
+    // Elementos UI
+    const searchInput = document.getElementById("search-refugios") as HTMLInputElement;
+    const filterBtns = document.querySelectorAll(".filter-btn");
+    const cards = document.querySelectorAll(".refugio-card");
+    const btnGeolocalizar = document.getElementById("btn-geolocalizar");
 
-    let personaIdConfirmar: number | null = null;
-    let reporteIdConfirmar: number | null = null;
-    let personaNombreConfirmar: string = "";
+    // Inicializar Mapa
+    function initMap() {
+      const mapDiv = document.getElementById("mapa-refugios");
+      if (!mapDiv) return;
 
-    btnEstoyASalvo?.addEventListener("click", () => {
-      modalSalvo?.classList.remove("hidden");
-      document.body.style.overflow = "hidden";
-      inputSalvoQuery?.focus();
-    });
+      // Centrar en Venezuela por defecto
+      // @ts-ignore
+      map = L.map("mapa-refugios", {
+        zoomControl: false
+      }).setView([8.0, -66.0], 6);
 
-    function cerrarModalSalvo() {
-      modalSalvo?.classList.add("hidden");
-      document.body.style.overflow = "";
-      if (formSalvoBuscar) {
-        formSalvoBuscar.reset();
-        formSalvoBuscar.classList.remove("hidden");
+      // Añadir control de Zoom abajo a la derecha
+      // @ts-ignore
+      L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+      // Capa de mosaicos (Tiles)
+      // @ts-ignore
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+
+      // Crear marcadores desde los datos del DOM de las tarjetas
+      cards.forEach((card) => {
+        const el = card as HTMLElement;
+        const id = el.dataset.id || "";
+        const latRaw = el.dataset.lat;
+        const lngRaw = el.dataset.lng;
+        const nombre = el.dataset.nombre || "";
+        const direccion = el.dataset.direccion || "";
+        const tipo = el.dataset.tipo || "refugio";
+        const ocupacion = el.dataset.ocupacion || "0";
+        const capacidad = el.dataset.capacidad || "100";
+        const contacto = el.dataset.contacto || "";
+        const semaforo = el.dataset.semaforo || "verde";
+        const fotosRaw = el.dataset.fotos;
+        
+        let fotos: string[] = [];
+        try {
+          if (fotosRaw) {
+            fotos = JSON.parse(fotosRaw);
+          }
+        } catch (err) {
+          console.error("Error al parsear fotos en marcador:", err);
+        }
+
+        if (!latRaw || !lngRaw) return;
+
+        const lat = parseFloat(latRaw);
+        const lng = parseFloat(lngRaw);
+
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        // Definir emoji e icono del marcador según tipo y semáforo
+        let emoji = "🏠";
+        let classTipo = "marker-refugio";
+        if (tipo === "hospital") {
+          emoji = "🏥";
+          classTipo = "marker-hospital";
+        } else if (tipo === "centro_acopio") {
+          emoji = "📦";
+          classTipo = "marker-acopio";
+        }
+
+        // Badge indicador de inventario en marcador
+        let badgeHTML = "";
+        if (semaforo === "rojo") {
+          badgeHTML = `<div class="custom-marker-pulse"></div><div class="custom-marker-badge badge-rojo"></div>`;
+        } else if (semaforo === "amarillo") {
+          badgeHTML = `<div class="custom-marker-badge badge-amarillo"></div>`;
+        } else {
+          badgeHTML = `<div class="custom-marker-badge badge-verde"></div>`;
+        }
+
+        // Crear el DivIcon personalizado
+        // @ts-ignore
+        const customIcon = L.divIcon({
+          html: `<div class="custom-marker ${classTipo}">${emoji}${badgeHTML}</div>`,
+          className: "", // Limpiar clase por defecto de Leaflet
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+          popupAnchor: [0, -32]
+        });
+
+        // Crear popup
+        let semaforoText = "🟢 Estable";
+        let semaforoColor = "text-green-600";
+        if (semaforo === "rojo") {
+          semaforoText = "🔴 Insumos Críticos";
+          semaforoColor = "text-red-600 font-bold";
+        } else if (semaforo === "amarillo") {
+          semaforoText = "🟡 Alertas de Insumo";
+          semaforoColor = "text-amber-600 font-semibold";
+        }
+
+        const popupHTML = `
+          <div class="p-3 space-y-2 max-w-[240px] font-uber-text">
+            ${fotos.length > 0 ? `
+              <div class="w-full h-24 rounded-lg overflow-hidden border border-canvas-soft bg-surface-pressed mb-1">
+                <img src="/api/upload?key=${fotos[0]}" class="w-full h-full object-cover" />
+              </div>
+            ` : ''}
+            <div class="flex items-center gap-1.5">
+              <span class="text-base">${emoji}</span>
+              <h4 class="font-bold text-ink text-sm leading-tight capitalize">${nombre}</h4>
+            </div>
+            <p class="text-[10px] text-body leading-normal">📍 ${direccion || 'Sin dirección registrada'}</p>
+            <div class="flex flex-col gap-1 text-[11px] bg-canvas-soft p-2 rounded-lg border border-canvas-soft">
+              <div>👥 Ocupación: <strong class="text-ink">${ocupacion} / ${capacidad} pers.</strong></div>
+              <div>📦 Inventario: <span class="font-semibold ${semaforoColor}">${semaforoText}</span></div>
+              ${contacto ? `<div>📞 Contacto: <strong class="text-ink">${contacto}</strong></div>` : ''}
+            </div>
+            <div class="flex flex-col gap-1.5 pt-1">
+              <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-primary text-primary-content text-center py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 no-underline">
+                🚗 Cómo llegar
+              </a>
+              ${esVoluntario ? `
+                <button type="button" class="btn-mapa-edit btn btn-xs btn-outline border-canvas-soft text-center py-2 rounded-lg text-[10px] font-semibold cursor-pointer" data-id="${id}">
+                  ✏️ Actualizar Estado
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+
+        // @ts-ignore
+        const marker = L.marker([lat, lng], { icon: customIcon }).bindPopup(popupHTML);
+        marker.addTo(map);
+        marcadores.set(id, marker);
+      });
+
+      // Si hay marcadores, ajustar el mapa enfocando en la zona más densa
+      if (marcadores.size > 0) {
+        const haversine = (lat1, lon1, lat2, lon2) => {
+          const R = 6371;
+          const dLat = (lat2 - lat1) * Math.PI / 180;
+          const dLon = (lon2 - lon1) * Math.PI / 180;
+          const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+          return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        };
+
+        const pts = Array.from(marcadores.values()).map(m => m.getLatLng());
+        let maxCount = -1;
+        let bestCenter = pts[0];
+        
+        for (let i = 0; i < pts.length; i++) {
+          let count = 0;
+          for (let j = 0; j < pts.length; j++) {
+            if (haversine(pts[i].lat, pts[i].lng, pts[j].lat, pts[j].lng) < 15) count++;
+          }
+          if (count > maxCount) { maxCount = count; bestCenter = pts[i]; }
+        }
+        
+        const clusterPoints = pts.filter(p => haversine(bestCenter.lat, bestCenter.lng, p.lat, p.lng) < 15);
+        const L = window.L;
+        const bounds = L.latLngBounds(clusterPoints.map(p => [p.lat, p.lng]));
+        
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+        }
       }
-      if (salvoResults) {
-        salvoResults.innerHTML = "";
-        salvoResults.classList.remove("hidden");
-      }
-      salvoNoResults?.classList.add("hidden");
-      salvoConfirmarContainer?.classList.add("hidden");
-      salvoExitoContainer?.classList.add("hidden");
-      btnCloseSalvo?.classList.remove("hidden");
-      personaIdConfirmar = null;
-      reporteIdConfirmar = null;
-      personaNombreConfirmar = "";
+
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 250);
     }
 
-    btnCloseSalvo?.addEventListener("click", cerrarModalSalvo);
-    modalSalvo?.addEventListener("click", (e) => {
-      if (e.target === modalSalvo) cerrarModalSalvo();
-    });
+    // Filtro de Búsqueda y Tipo
+    function filtrarCentros() {
+      const term = searchInput.value.toLowerCase().trim();
+      const activeBtn = document.querySelector(".filter-btn.bg-primary") as HTMLElement;
+      const tipoActivo = activeBtn ? activeBtn.dataset.tipo : "todos";
 
-    // Función para comprimir imagen en el cliente antes de la subida
-    async function comprimirImagen(file: File): Promise<Blob> {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-          const img = new Image();
-          img.src = event.target?.result as string;
-          img.onload = () => {
-            const canvas = document.createElement("canvas");
-            const maxDim = 800;
-            let width = img.width;
-            let height = img.height;
-            
-            if (width > height) {
-              if (width > maxDim) {
-                height = Math.round((height * maxDim) / width);
-                width = maxDim;
-              }
-            } else {
-              if (height > maxDim) {
-                width = Math.round((width * maxDim) / height);
-                height = maxDim;
-              }
-            }
-            
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext("2d");
-            ctx?.drawImage(img, 0, 0, width, height);
-            canvas.toBlob(
-              (blob) => {
-                if (blob) resolve(blob);
-                else reject(new Error("Error al comprimir blob"));
-              },
-              "image/jpeg",
-              0.75
-            );
-          };
-          img.onerror = (err) => reject(err);
-        };
-        reader.onerror = (err) => reject(err);
+      cards.forEach((card) => {
+        const el = card as HTMLElement;
+        const id = el.dataset.id || "";
+        const nombre = el.dataset.nombre || "";
+        const direccion = el.dataset.direccion || "";
+        const necesidades = el.dataset.necesidades || "";
+        const tipo = el.dataset.tipo || "";
+
+        const coincideTexto = nombre.includes(term) || direccion.includes(term) || necesidades.includes(term);
+        const coincideTipo = tipoActivo === "todos" || tipo === tipoActivo;
+
+        const marker = marcadores.get(id);
+
+        if (coincideTexto && coincideTipo) {
+          el.classList.remove("hidden");
+          if (marker && map) {
+            marker.addTo(map);
+          }
+        } else {
+          el.classList.add("hidden");
+          if (marker && map) {
+            map.removeLayer(marker);
+          }
+        }
       });
     }
 
-    // Manejo de carga de foto con compresión
-    salvoFotoFile?.addEventListener("change", async (ev) => {
-      const input = ev.currentTarget as HTMLInputElement;
-      if (!input.files || input.files.length === 0) return;
+    // Escuchar entrada de búsqueda
+    searchInput?.addEventListener("input", filtrarCentros);
 
-      const file = input.files[0];
-      if (salvoFotoStatus) {
-        salvoFotoStatus.textContent = "Comprimiendo foto...";
-        salvoFotoStatus.className = "text-[10px] text-yellow-600 font-uber-text mt-1 italic font-medium";
-        salvoFotoStatus.classList.remove("hidden");
+    // Escuchar filtros de tipo
+    filterBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        filterBtns.forEach((b) => {
+          b.classList.remove("bg-primary", "text-white");
+          b.classList.add("bg-canvas", "text-ink", "hover:bg-canvas-soft");
+        });
+        btn.classList.add("bg-primary", "text-white");
+        btn.classList.remove("bg-canvas", "text-ink", "hover:bg-canvas-soft");
+        
+        filtrarCentros();
+      });
+    });
+
+    // Geolocalización
+    btnGeolocalizar?.addEventListener("click", () => {
+      if (!navigator.geolocation) {
+        alert("Tu navegador no soporta geolocalización.");
+        return;
       }
 
-      try {
-        const compressedBlob = await comprimirImagen(file);
-        const formData = new FormData();
-        formData.append("file", compressedBlob, "evidencia.jpg");
+      btnGeolocalizar.classList.add("scale-90");
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          btnGeolocalizar.classList.remove("scale-90");
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
 
-        if (salvoFotoStatus) {
-          salvoFotoStatus.textContent = "Cargando foto de verificación...";
-        }
+          if (map) {
+            map.setView([lat, lng], 14);
 
-        const resp = await fetch("/api/upload", {
-          method: "POST",
-          body: formData
-        });
-
-        if (resp.ok) {
-          const res = await resp.json();
-          if (salvoFotoKey) salvoFotoKey.value = res.key;
-          if (salvoFotoStatus) {
-            salvoFotoStatus.textContent = "✓ Foto cargada correctamente";
-            salvoFotoStatus.className = "text-[10px] text-success font-uber-text mt-1 italic font-semibold";
+            if (userMarker) {
+              userMarker.setLatLng([lat, lng]);
+            } else {
+              // @ts-ignore
+              const userIcon = L.divIcon({
+                html: `<div class="user-location-marker"><div class="user-location-pulse"></div></div>`,
+                className: "",
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+              });
+              // @ts-ignore
+              userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map);
+            }
           }
-        } else {
-          throw new Error();
-        }
-      } catch (err) {
-        console.error(err);
-        if (salvoFotoStatus) {
-          salvoFotoStatus.textContent = "❌ Error al comprimir o cargar foto";
-          salvoFotoStatus.className = "text-[10px] text-red-500 font-uber-text mt-1 italic";
+        },
+        (error) => {
+          btnGeolocalizar.classList.remove("scale-90");
+          console.error("Error de geolocalización:", error);
+          alert("No se pudo obtener tu ubicación. Verifica los permisos de tu navegador.");
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    });
+
+    // Delegar click del botón "Editar" del mapa para abrir el modal nativo
+    document.getElementById("mapa-refugios")?.addEventListener("click", (e) => {
+      const target = e.target as HTMLElement;
+      if (target.classList.contains("btn-mapa-edit")) {
+        const id = target.getAttribute("data-id");
+        if (id) {
+          const btnLista = document.querySelector(`.btn-edit-refugio[data-id="${id}"]`) as HTMLButtonElement;
+          if (btnLista) {
+            btnLista.click();
+          }
         }
       }
     });
 
-    let salvoMiniMap: any = null;
-    let salvoMarker: any = null;
+    // Ver en Mapa desde la lista de tarjetas
+    document.querySelectorAll(".btn-ver-en-mapa").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const el = btn as HTMLElement;
+        const lat = parseFloat(el.dataset.lat || "");
+        const lng = parseFloat(el.dataset.lng || "");
+        const id = el.dataset.id || "";
+        if (!isNaN(lat) && !isNaN(lng) && map) {
+          map.setView([lat, lng], 15);
+          const marker = marcadores.get(id);
+          if (marker) {
+            marker.openPopup();
+          }
+          document.getElementById("mapa-refugios")?.scrollIntoView({ behavior: "smooth" });
+        }
+      });
+    });
 
-    function initSalvoMiniMap(lat: number, lon: number) {
-      const mapDiv = document.getElementById("salvo-gps-map");
-      if (!mapDiv || typeof (window as any).L === "undefined") return;
+    // Inicializar Leaflet cuando cargue la página
+    if (typeof window !== "undefined") {
+      // @ts-ignore
+      if (typeof L !== "undefined") {
+        initMap();
+      } else {
+        const interval = setInterval(() => {
+          // @ts-ignore
+          if (typeof L !== "undefined") {
+            initMap();
+            clearInterval(interval);
+          }
+        }, 100);
+      }
+    }
 
-      mapDiv.classList.remove("hidden");
+    // ================= MODAL DE EDICIÓN NATIVO =================
+    const modal = document.getElementById("modal-edit-refugio");
+    const closeBtn = document.getElementById("btn-close-edit");
+    const form = document.getElementById("form-edit-refugio") as HTMLFormElement;
+    const errorDiv = document.getElementById("edit-refugio-error");
 
+    const inputId = document.getElementById("edit-refugio-id") as HTMLInputElement;
+    const selectTipo = document.getElementById("edit-tipo") as HTMLSelectElement;
+    const inputEncargado = document.getElementById("edit-encargado") as HTMLInputElement;
+    const inputDireccion = document.getElementById("edit-direccion") as HTMLInputElement;
+    const btnEditBuscarDireccion = document.getElementById("btn-edit-buscar-direccion");
+    const inputOcupacion = document.getElementById("edit-ocupacion") as HTMLInputElement;
+    const inputCapacidad = document.getElementById("edit-capacidad") as HTMLInputElement;
+    const inputNecesidades = document.getElementById("edit-necesidades") as HTMLTextAreaElement;
+    const inputContacto = document.getElementById("edit-contacto") as HTMLInputElement;
+    const editTitulo = document.getElementById("edit-refugio-titulo");
+
+    const inputNinos = document.getElementById("edit-ninos") as HTMLInputElement;
+    const inputBebes = document.getElementById("edit-bebes") as HTMLInputElement;
+    const inputMayores = document.getElementById("edit-mayores") as HTMLInputElement;
+    const inputProf = document.getElementById("edit-prof") as HTMLInputElement;
+    const inputVols = document.getElementById("edit-vols") as HTMLInputElement;
+
+    const latEditInput = document.getElementById("edit-latitud") as HTMLInputElement;
+    const lonEditInput = document.getElementById("edit-longitud") as HTMLInputElement;
+    const gpsEditStatus = document.getElementById("edit-gps-status");
+    const btnEditGps = document.getElementById("btn-edit-ref-gps");
+
+    const previewExistentes = document.getElementById("edit-preview-existentes");
+    const inputFotosNuevas = document.getElementById("edit-fotos-nuevas") as HTMLInputElement;
+    const previewNuevas = document.getElementById("edit-preview-nuevas");
+    
+    let existingFotos: string[] = [];
+    let newFilesToUpload: File[] = [];
+
+    function renderEditPreviews() {
+      if (previewExistentes) {
+        previewExistentes.innerHTML = "";
+        existingFotos.forEach((fotoKey, index) => {
+          const div = document.createElement("div");
+          div.className = "relative aspect-square rounded-lg overflow-hidden border border-canvas-soft bg-surface-pressed";
+          
+          const img = document.createElement("img");
+          img.src = `/api/upload?key=${fotoKey}`;
+          img.className = "w-full h-full object-cover";
+          
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.innerHTML = "✕";
+          removeBtn.className = "absolute top-1 right-1 bg-black/60 hover:bg-black text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-none cursor-pointer";
+          removeBtn.addEventListener("click", () => {
+            existingFotos.splice(index, 1);
+            renderEditPreviews();
+          });
+          
+          div.appendChild(img);
+          div.appendChild(removeBtn);
+          previewExistentes.appendChild(div);
+        });
+      }
+      
+      if (previewNuevas) {
+        previewNuevas.innerHTML = "";
+        newFilesToUpload.forEach((file, index) => {
+          const url = URL.createObjectURL(file);
+          const div = document.createElement("div");
+          div.className = "relative aspect-square rounded-lg overflow-hidden border border-canvas-soft bg-surface-pressed";
+          
+          const img = document.createElement("img");
+          img.src = url;
+          img.className = "w-full h-full object-cover";
+          
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.innerHTML = "✕";
+          removeBtn.className = "absolute top-1 right-1 bg-black/60 hover:bg-black text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-none cursor-pointer";
+          removeBtn.addEventListener("click", () => {
+            newFilesToUpload.splice(index, 1);
+            URL.revokeObjectURL(url);
+            renderEditPreviews();
+          });
+          
+          div.appendChild(img);
+          div.appendChild(removeBtn);
+          previewNuevas.appendChild(div);
+        });
+      }
+    }
+
+    inputFotosNuevas?.addEventListener("change", () => {
+      if (!inputFotosNuevas.files) return;
+      const newFiles = Array.from(inputFotosNuevas.files);
+      for (const file of newFiles) {
+        if (existingFotos.length + newFilesToUpload.length < 3) {
+          newFilesToUpload.push(file);
+        }
+      }
+      inputFotosNuevas.value = "";
+      renderEditPreviews();
+    });
+
+    function mostrarInfoGoogleModal(data: any) {
+      const container = document.getElementById("edit-google-place-info");
+      const content = document.getElementById("edit-gpi-content");
+      if (!container || !content) return;
+
+      const items: string[] = [];
+
+      if (data.name) {
+        items.push(`<div class="flex items-center gap-1"><span class="font-semibold text-ink">🏛️ ${data.name}</span></div>`);
+      }
+
+      if (data.estado_operativo || data.estado_label) {
+        const label = data.estado_label || data.estado || data.estado_operativo;
+        const isOpen = data.estado_operativo === "OPERATIONAL";
+        const isClosed = data.estado_operativo?.includes("CLOSED");
+        const color = isOpen ? "text-green-700 bg-green-100" : isClosed ? "text-red-700 bg-red-100" : "text-gray-700 bg-gray-100";
+        items.push(`<div><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${color}">${isOpen ? "🟢" : isClosed ? "🔴" : "⚪"} ${label}</span></div>`);
+      }
+
+      if (data.abierto_ahora !== undefined) {
+        const badge = data.abierto_ahora 
+          ? '<span class="text-green-700 font-semibold">✅ Abierto ahora</span>'
+          : '<span class="text-orange-600 font-semibold">🚫 Cerrado ahora</span>';
+        items.push(`<div>${badge}</div>`);
+      }
+
+      if (data.accesible !== undefined) {
+        items.push(`<div>${data.accesible ? "♿ Acceso para silla de ruedas" : "⚠️ Sin acceso confirmado para silla de ruedas"}</div>`);
+      }
+
+      if (data.horario && data.horario.length > 0) {
+        const horarioHtml = data.horario.map((h: string) => `<div class="pl-3 text-[10px]">${h}</div>`).join("");
+        items.push(`<details class="cursor-pointer"><summary class="font-semibold text-ink">🕐 Horario</summary><div class="mt-1 space-y-0.5">${horarioHtml}</div></details>`);
+      }
+
+      if (data.phone_international || data.phone) {
+        const tel = data.phone_international || data.phone;
+        items.push(`<div>📞 <a href="tel:${tel.replace(/\s/g, '')}" class="text-blue-600 underline font-semibold">${tel}</a></div>`);
+      }
+
+      if (data.website) {
+        const domain = data.website.replace(/^https?:\/\//, "").replace(/\/$/, "").substring(0, 40);
+        items.push(`<div>🌐 <a href="${data.website}" target="_blank" rel="noopener" class="text-blue-600 underline">${domain}</a></div>`);
+      }
+
+      if (data.google_maps_url) {
+        items.push(`<div>🗺️ <a href="${data.google_maps_url}" target="_blank" rel="noopener" class="text-blue-600 underline">Ver en Google Maps</a></div>`);
+      }
+
+      if (data.estado || data.municipio) {
+        const parts = [data.municipio, data.estado].filter(Boolean);
+        items.push(`<div>📌 ${parts.join(", ")}</div>`);
+      }
+
+      if (items.length > 0) {
+        content.innerHTML = items.join("");
+        container.classList.remove("hidden");
+      } else {
+        container.classList.add("hidden");
+      }
+    }
+
+    function initEditMap(lat: number, lon: number, zoom = 15) {
+      if (typeof (window as any).L === "undefined") return;
       const L = (window as any).L;
 
-      if (!salvoMiniMap) {
-        salvoMiniMap = L.map("salvo-gps-map", {
-          zoomControl: false,
-          attributionControl: false,
-          dragging: true,
-          scrollWheelZoom: false,
-        }).setView([lat, lon], 15);
+      if (!editMap) {
+        editMap = L.map("edit-gps-map", {
+          zoomControl: true,
+          attributionControl: false
+        }).setView([lat, lon], zoom);
 
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 18,
-        }).addTo(salvoMiniMap);
+        }).addTo(editMap);
 
-        salvoMiniMap.on("click", (e: any) => {
-          if (salvoLatitud) salvoLatitud.value = e.latlng.lat.toFixed(6);
-          if (salvoLongitud) salvoLongitud.value = e.latlng.lng.toFixed(6);
-          updateSalvoMarker(e.latlng.lat, e.latlng.lng);
-          if (salvoGpsStatus) {
-            salvoGpsStatus.textContent = "Ubicación ajustada en mapa.";
-            salvoGpsStatus.className = "text-xs text-blue-600 font-uber-text italic font-medium";
+        editMap.on("click", (e: any) => {
+          const clat = e.latlng.lat;
+          const clon = e.latlng.lng;
+          latEditInput.value = clat.toFixed(6);
+          lonEditInput.value = clon.toFixed(6);
+          
+          if (editMarker) {
+            editMarker.setLatLng(e.latlng);
+          } else {
+            editMarker = L.marker(e.latlng).addTo(editMap);
+          }
+
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = `Ubicación modificada: ${clat.toFixed(5)}, ${clon.toFixed(5)}`;
+            gpsEditStatus.className = "text-[11px] text-blue-600 font-uber-text italic font-medium";
           }
         });
       }
 
-      updateSalvoMarker(lat, lon);
-      salvoMiniMap.setView([lat, lon], 15);
-      setTimeout(() => { if (salvoMiniMap) salvoMiniMap.invalidateSize(); }, 150);
-    }
-
-    function updateSalvoMarker(lat: number, lon: number) {
-      if (!salvoMiniMap) return;
-      const L = (window as any).L;
-      if (salvoMarker) {
-        salvoMarker.setLatLng([lat, lon]);
+      if (editMarker) {
+        editMarker.setLatLng([lat, lon]);
       } else {
-        salvoMarker = L.marker([lat, lon]).addTo(salvoMiniMap);
+        editMarker = L.marker([lat, lon]).addTo(editMap);
       }
+      editMap.setView([lat, lon], zoom);
+      
+      setTimeout(() => {
+        editMap.invalidateSize();
+      }, 200);
     }
 
-    async function obtenerUbicacionGps() {
-      if (!salvoGpsStatus || !salvoLatitud || !salvoLongitud) return;
-      salvoGpsStatus.textContent = "Buscando ubicación GPS...";
-      salvoGpsStatus.className = "text-xs text-yellow-600 font-uber-text italic font-medium";
-      
+    const editTabBtns = document.querySelectorAll(".edit-tab-btn");
+    editTabBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        editTabBtns.forEach((b) => {
+          b.classList.remove("bg-primary", "text-white", "border-primary");
+          b.classList.add("bg-canvas-soft", "text-ink", "border-transparent");
+        });
+        btn.classList.add("bg-primary", "text-white", "border-primary");
+        btn.classList.remove("bg-canvas-soft", "text-ink", "border-transparent");
+
+        document.querySelectorAll(".edit-tab-pane").forEach((pane) => pane.classList.add("hidden"));
+        const targetId = btn.getAttribute("data-target");
+        if (targetId) {
+          document.getElementById(targetId)?.classList.remove("hidden");
+        }
+      });
+    });
+
+    const tabEditGps = document.getElementById("tab-edit-gps");
+    const tabEditGmaps = document.getElementById("tab-edit-gmaps");
+    const tabEditMap = document.getElementById("tab-edit-map");
+
+    const panelEditGps = document.getElementById("panel-edit-gps");
+    const panelEditGmaps = document.getElementById("panel-edit-gmaps");
+    const panelEditMap = document.getElementById("panel-edit-map");
+
+    function deseleccionarEditTabs() {
+      [tabEditGps, tabEditGmaps, tabEditMap].forEach(tab => {
+        tab?.classList.remove("bg-primary", "text-white");
+        tab?.classList.add("bg-transparent", "text-ink");
+      });
+      [panelEditGps, panelEditGmaps, panelEditMap].forEach(panel => panel?.classList.add("hidden"));
+    }
+
+    tabEditGps?.addEventListener("click", () => {
+      deseleccionarEditTabs();
+      tabEditGps.classList.add("bg-primary", "text-white");
+      tabEditGps.classList.remove("bg-transparent", "text-ink");
+      panelEditGps?.classList.remove("hidden");
+    });
+
+    tabEditGmaps?.addEventListener("click", () => {
+      deseleccionarEditTabs();
+      tabEditGmaps.classList.add("bg-primary", "text-white");
+      tabEditGmaps.classList.remove("bg-transparent", "text-ink");
+      panelEditGmaps?.classList.remove("hidden");
+    });
+
+    tabEditMap?.addEventListener("click", () => {
+      deseleccionarEditTabs();
+      tabEditMap.classList.add("bg-primary", "text-white");
+      tabEditMap.classList.remove("bg-transparent", "text-ink");
+      panelEditMap?.classList.remove("hidden");
+    });
+
+    btnEditGps?.addEventListener("click", () => {
       if (!navigator.geolocation) {
-        salvoGpsStatus.textContent = "GPS no compatible con tu navegador";
-        salvoGpsStatus.className = "text-xs text-red-500 font-uber-text italic";
+        alert("Geolocalización no soportada.");
         return;
+      }
+      if (gpsEditStatus) {
+        gpsEditStatus.textContent = "Detectando GPS...";
+        gpsEditStatus.className = "text-[11px] text-yellow-600 font-uber-text italic font-medium";
       }
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const lat = position.coords.latitude;
           const lon = position.coords.longitude;
-          salvoLatitud.value = lat.toString();
-          salvoLongitud.value = lon.toString();
-          salvoGpsStatus.textContent = `Ubicación GPS obtenida: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-          salvoGpsStatus.className = "text-xs text-success font-uber-text italic font-semibold";
-          initSalvoMiniMap(lat, lon);
-        },
-        (error) => {
-          let msg = "No se pudo obtener la ubicación GPS";
-          if (error.code === error.PERMISSION_DENIED) {
-            msg = "Permiso de GPS denegado";
+          latEditInput.value = lat.toFixed(6);
+          lonEditInput.value = lon.toFixed(6);
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = `Ubicación GPS: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+            gpsEditStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
           }
-          salvoGpsStatus.textContent = msg;
-          salvoGpsStatus.className = "text-xs text-red-500 font-uber-text italic";
+          initEditMap(lat, lon, 15);
         },
-        { timeout: 8000, enableHighAccuracy: true }
+        () => {
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = "No se pudo obtener ubicación.";
+            gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+          }
+        }
       );
-    }
-
-    btnSalvoGps?.addEventListener("click", obtenerUbicacionGps);
-
-    btnSalvoConfirmarCancelar?.addEventListener("click", () => {
-      personaIdConfirmar = null;
-      reporteIdConfirmar = null;
-      personaNombreConfirmar = "";
-      salvoConfirmarContainer?.classList.add("hidden");
-      formSalvoBuscar?.classList.remove("hidden");
-      if (salvoResults) salvoResults.classList.remove("hidden");
     });
 
-    btnSalvoConfirmarEnviar?.addEventListener("click", async () => {
-      if (!personaIdConfirmar && !reporteIdConfirmar) return;
-
-      const contacto = salvoContacto?.value.trim();
-      const refugio = salvoRefugio?.value.trim() || null;
-      const estadoSalud = salvoEstadoSalud?.value || "localizado";
-      const notas = salvoNotas?.value.trim() || null;
-      const fotoKey = salvoFotoKey?.value || null;
-      const lat = salvoLatitud?.value ? parseFloat(salvoLatitud.value) : null;
-      const lon = salvoLongitud?.value ? parseFloat(salvoLongitud.value) : null;
-      const confirmado = chkSalvoConfirmacion?.checked;
-
-      if (!contacto) {
-        alert("Contacto requerido para familiares.");
-        salvoContacto?.focus();
+    btnEditBuscarDireccion?.addEventListener("click", async () => {
+      const dir = inputDireccion.value.trim();
+      if (!dir) {
+        alert("Introduce una dirección.");
         return;
       }
-
-
-
-      if (!confirmado) {
-        alert("Debes confirmar que los datos son correctos.");
-        return;
+      if (gpsEditStatus) {
+        gpsEditStatus.textContent = "Buscando coordenadas...";
+        gpsEditStatus.className = "text-[11px] text-yellow-600 font-uber-text italic font-medium";
       }
-
-      btnSalvoConfirmarEnviar.disabled = true;
-      btnSalvoConfirmarEnviar.textContent = "Guardando...";
 
       try {
-        let patchResp;
-        if (personaIdConfirmar) {
-          patchResp = await fetch(`/api/personas/${personaIdConfirmar}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              accion: "reportar_localizado",
-              estado: estadoSalud,
-              contacto,
-              refugio,
-              notas,
-              foto_key: fotoKey,
-              latitud: lat,
-              longitud: lon
-            })
-          });
-        } else {
-          patchResp = await fetch(`/api/reportes/${reporteIdConfirmar}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              accion: "reportar_localizado",
-              estado_reporte: "resuelto",
-              contacto,
-              refugio,
-              notas,
-              foto_key: fotoKey,
-              latitud: lat,
-              longitud: lon
-            })
-          });
-        }
-
-        if (patchResp.ok) {
-          btnSalvoConfirmarEnviar.textContent = "✓ Guardado";
+        const resp = await fetch(`/api/maps/geocode?address=${encodeURIComponent(dir)}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          const lat = data.lat;
+          const lon = data.lng;
+          latEditInput.value = lat.toFixed(6);
+          lonEditInput.value = lon.toFixed(6);
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = `Encontrado: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+            gpsEditStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
+          }
           
-          // Mostrar panel de éxito
-          salvoConfirmarContainer?.classList.add("hidden");
-          if (btnCloseSalvo) btnCloseSalvo.classList.add("hidden"); // Forzar cerrar por botón Listo
-          salvoExitoContainer?.classList.remove("hidden");
+          if (data.formatted_address) {
+            inputDireccion.value = data.formatted_address;
+          }
+          if (data.phone && !inputContacto.value) {
+            inputContacto.value = data.phone;
+          }
+          if (data.tipo && selectTipo.value === "refugio") {
+            selectTipo.value = data.tipo;
+          }
+
+          mostrarInfoGoogleModal(data);
+          initEditMap(lat, lon, 15);
         } else {
-          const err = await patchResp.json();
-          alert(`Error: ${err.error || "intente de nuevo"}`);
-          btnSalvoConfirmarEnviar.disabled = false;
-          btnSalvoConfirmarEnviar.textContent = 'Confirmar "Localizado"';
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = "No encontrado. Intenta con más detalles.";
+            gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+          }
         }
       } catch {
-        alert("Error de conexión");
-        btnSalvoConfirmarEnviar.disabled = false;
-        btnSalvoConfirmarEnviar.textContent = 'Confirmar "Localizado"';
+        if (gpsEditStatus) {
+          gpsEditStatus.textContent = "Error al buscar dirección.";
+          gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+        }
       }
     });
 
-    // Listeners de panel de éxito
-    btnSalvoCompartir?.addEventListener("click", () => {
-      const link = `${window.location.origin}/?q=${encodeURIComponent(personaNombreConfirmar)}`;
-      const texto = `¡Hola! He confirmado que localizado en la plataforma dondeestan.org. Puedes ver mis detalles aquí: ${link}`;
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, "_blank");
-    });
+    const btnEditResolverGmaps = document.getElementById("btn-edit-resolver-gmaps");
+    const inputEditGmaps = document.getElementById("edit-gmaps-link") as HTMLInputElement;
 
-    btnSalvoCompartirCopiar?.addEventListener("click", () => {
-      const link = `${window.location.origin}/?q=${encodeURIComponent(personaNombreConfirmar)}`;
-      navigator.clipboard.writeText(link);
-      if (btnSalvoCompartirCopiar) btnSalvoCompartirCopiar.textContent = "✓ Enlace copiado";
-      setTimeout(() => {
-        if (btnSalvoCompartirCopiar) btnSalvoCompartirCopiar.textContent = "🔗 Copiar enlace de reporte";
-      }, 2000);
-    });
-
-    btnSalvoListo?.addEventListener("click", () => {
-      cerrarModalSalvo();
-      window.location.reload();
-    });
-
-    formSalvoBuscar?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const query = inputSalvoQuery.value.trim();
-      if (!query) return;
-
-      if (salvoLoader) salvoLoader.classList.remove("hidden");
-      if (salvoResults) salvoResults.innerHTML = "";
-      salvoNoResults?.classList.add("hidden");
+    btnEditResolverGmaps?.addEventListener("click", async () => {
+      const url = inputEditGmaps.value.trim();
+      if (!url) {
+        alert("Pega un enlace de Google Maps.");
+        return;
+      }
+      if (gpsEditStatus) {
+        gpsEditStatus.textContent = "Resolviendo enlace...";
+        gpsEditStatus.className = "text-[11px] text-yellow-600 font-uber-text italic font-medium";
+      }
 
       try {
-        const resp = await fetch("/api/buscar-unificado", {
+        const resp = await fetch("/api/maps/resolve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ q: query, limit: 20, offset: 0 })
+          body: JSON.stringify({ url })
         });
         if (resp.ok) {
           const data = await resp.json();
-          const resultados = data.results || data;
-          if (salvoLoader) salvoLoader.classList.add("hidden");
-          
-          if (!resultados || resultados.length === 0) {
-            if (btnSalvoRegistrar) {
-              const esVol = salvoNoResults ? salvoNoResults.getAttribute("data-es-voluntario") === "true" : false;
-              if (esVol) {
-                const esCedula = /^\d+$/.test(query.replace(/[^0-9]/g, ""));
-                if (esCedula) {
-                  btnSalvoRegistrar.href = `/registrar?cedula=${encodeURIComponent(query)}`;
-                } else {
-                  btnSalvoRegistrar.href = `/registrar?nombre=${encodeURIComponent(query)}`;
-                }
-              } else {
-                btnSalvoRegistrar.href = `/reportar`;
-              }
+          latEditInput.value = data.lat.toFixed(6);
+          lonEditInput.value = data.lng.toFixed(6);
+
+          if (data.formatted_address) {
+            inputDireccion.value = data.formatted_address;
+          }
+          if (data.phone && !inputContacto.value) {
+            inputContacto.value = data.phone;
+          }
+          if (data.tipo && selectTipo.value === "refugio") {
+            selectTipo.value = data.tipo;
+          }
+
+          mostrarInfoGoogleModal(data);
+
+          if (data.aproximado) {
+            if (gpsEditStatus) {
+              gpsEditStatus.textContent = `⚠️ Ubicación aproximada: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)} — Ajusta el pin tocando el mapa.`;
+              gpsEditStatus.className = "text-[11px] text-amber-600 font-uber-text italic font-semibold";
             }
-            salvoNoResults?.classList.remove("hidden");
+            initEditMap(data.lat, data.lng, 16);
           } else {
-            resultados.forEach((item: any) => {
-              const isPersona = item._source === "persona";
-              const nombre = isPersona ? `${item.nombre} ${item.apellido || ""}` : (item.nombre_buscado || "Persona");
-              
-              const card = document.createElement("div");
-              card.className = "p-3 bg-canvas-soft border border-canvas-soft rounded-lg flex items-center justify-between gap-3 text-sm";
-              
-              let btnHtml = "";
-              if (isPersona && item.estado === "desconocido") {
-                btnHtml = `<button class="btn btn-xs bg-success text-white px-2 py-1 rounded btn-salvo-marcar cursor-pointer">
-                             ✅ Localizado
-                           </button>`;
-              } else if (!isPersona && item.estado_reporte === "abierto") {
-                btnHtml = `<button class="btn btn-xs bg-success text-white px-2 py-1 rounded btn-salvo-reporte-marcar cursor-pointer">
-                             ✅ Encontrado
-                           </button>`;
-              } else {
-                const displayState = isPersona 
-                  ? (item.estado === "localizado" ? "Localizado" : item.estado)
-                  : (item.estado_reporte === "resuelto" ? "Resuelto" : item.estado_reporte);
-                btnHtml = `<span class="text-xs text-mute font-medium uppercase font-uber-text">${displayState}</span>`;
-              }
-
-              card.innerHTML = `
-                <div class="min-w-0 flex-grow">
-                  <div class="font-semibold text-ink truncate">${nombre}</div>
-                  <div class="text-xs text-body font-uber-text">${isPersona ? "Censo" : "Reporte"} ${item.cedula || item.cedula_buscado ? `· Doc: ${item.cedula || item.cedula_buscado}` : ""}</div>
-                </div>
-                <div class="shrink-0">${btnHtml}</div>
-              `;
-              
-              // Eventos dinámicos
-              card.querySelector(".btn-salvo-marcar")?.addEventListener("click", (ev) => {
-                personaIdConfirmar = item.id;
-                personaNombreConfirmar = nombre;
-                formSalvoBuscar?.classList.add("hidden");
-                if (salvoResults) salvoResults.classList.add("hidden");
-                salvoNoResults?.classList.add("hidden");
-
-                if (salvoContacto) salvoContacto.value = "";
-                if (salvoRefugio) salvoRefugio.value = "";
-                if (salvoNotas) salvoNotas.value = "";
-                if (salvoFotoFile) salvoFotoFile.value = "";
-                if (salvoFotoKey) salvoFotoKey.value = "";
-                if (salvoFotoStatus) {
-                  salvoFotoStatus.textContent = "";
-                  salvoFotoStatus.classList.add("hidden");
-                }
-                if (chkSalvoConfirmacion) chkSalvoConfirmacion.checked = false;
-                if (salvoLatitud) salvoLatitud.value = "";
-                if (salvoLongitud) salvoLongitud.value = "";
-
-                salvoConfirmarContainer?.classList.remove("hidden");
-                obtenerUbicacionGps();
-              });
-
-              card.querySelector(".btn-salvo-reporte-marcar")?.addEventListener("click", (ev) => {
-                reporteIdConfirmar = item.id;
-                personaNombreConfirmar = nombre;
-                formSalvoBuscar?.classList.add("hidden");
-                if (salvoResults) salvoResults.classList.add("hidden");
-                salvoNoResults?.classList.add("hidden");
-
-                if (salvoContacto) salvoContacto.value = "";
-                if (salvoRefugio) salvoRefugio.value = "";
-                if (salvoNotas) salvoNotas.value = "";
-                if (salvoFotoFile) salvoFotoFile.value = "";
-                if (salvoFotoKey) salvoFotoKey.value = "";
-                if (salvoFotoStatus) {
-                  salvoFotoStatus.textContent = "";
-                  salvoFotoStatus.classList.add("hidden");
-                }
-                if (chkSalvoConfirmacion) chkSalvoConfirmacion.checked = false;
-                if (salvoLatitud) salvoLatitud.value = "";
-                if (salvoLongitud) salvoLongitud.value = "";
-
-                salvoConfirmarContainer?.classList.remove("hidden");
-                obtenerUbicacionGps();
-              });
-
-              salvoResults?.appendChild(card);
-            });
+            if (gpsEditStatus) {
+              gpsEditStatus.textContent = `Resuelto: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
+              gpsEditStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
+            }
+            initEditMap(data.lat, data.lng, 17);
           }
         } else {
-          throw new Error();
+          const err = await resp.json();
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = `Error: ${err.error}`;
+            gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+          }
         }
       } catch {
-        if (salvoLoader) salvoLoader.classList.add("hidden");
-        alert("Error al buscar");
+        if (gpsEditStatus) {
+          gpsEditStatus.textContent = "Error de conexión.";
+          gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+        }
       }
     });
 
-    // ═══ MAPA INTERACTIVO DE LA HOME PAGE (CLÚSTERES) ═══
-    async function initHomeMap() {
-      const mapDiv = document.getElementById("home-map");
-      if (!mapDiv || typeof (window as any).L === "undefined" || typeof (window as any).L.markerClusterGroup === "undefined") return;
+    document.querySelectorAll(".btn-edit-refugio").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const el = btn as HTMLElement;
+        
+        if (inputId) inputId.value = el.dataset.id || "";
+        if (selectTipo) selectTipo.value = el.dataset.tipo || "refugio";
+        if (inputEncargado) inputEncargado.value = el.dataset.encargado || "";
+        if (inputDireccion) inputDireccion.value = el.dataset.direccion || "";
+        if (inputOcupacion) inputOcupacion.value = el.dataset.ocupacion || "0";
+        if (inputCapacidad) inputCapacidad.value = el.dataset.capacidad || "100";
 
-      const L = (window as any).L;
-      
-      // Centrar inicialmente en Caracas/Venezuela
-      const map = L.map("home-map", {
-        zoomControl: true,
-        attributionControl: true
-      }).setView([10.4806, -66.9036], 10);
+        existingFotos = [];
+        try {
+          if (el.dataset.fotos) {
+            existingFotos = JSON.parse(el.dataset.fotos);
+          }
+        } catch (err) {
+          console.error("Error al parsear fotos:", err);
+        }
+        newFilesToUpload = [];
+        if (inputFotosNuevas) inputFotosNuevas.value = "";
+        renderEditPreviews();
+        if (inputNecesidades) inputNecesidades.value = el.dataset.necesidades || "";
+        if (inputContacto) inputContacto.value = el.dataset.contacto || "";
+        if (editTitulo) editTitulo.textContent = `Actualizar: ${el.dataset.nombre}`;
+        
+        const gpiCard = document.getElementById("edit-google-place-info");
+        if (gpiCard) gpiCard.classList.add("hidden");
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 18,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      }).addTo(map);
+        if (inputNinos) inputNinos.value = el.dataset.ninos || "0";
+        if (inputBebes) inputBebes.value = el.dataset.bebes || "0";
+        if (inputMayores) inputMayores.value = el.dataset.mayores || "0";
+        if (inputProf) inputProf.value = el.dataset.prof || "0";
+        if (inputVols) inputVols.value = el.dataset.vols || "0";
 
-      const markers = L.markerClusterGroup();
+        const latRaw = el.dataset.lat || "";
+        const lngRaw = el.dataset.lng || "";
+        latEditInput.value = latRaw;
+        lonEditInput.value = lngRaw;
 
-      try {
-        const resp = await fetch("/api/heatmap");
-        if (resp.ok) {
-          const { puntos } = await resp.json();
-          puntos.forEach((p: any) => {
-            if (!p.lat || !p.lon) return;
-
-            let marker;
-            if (p.tipo === "refugio") {
-              const refugioIcon = L.divIcon({
-                className: 'custom-refugio-icon',
-                html: `<div style="background: #10B981; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">🏠</div>`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 16]
-              });
-
-              const pct = Math.min(Math.round((p.ocupacion_actual / p.capacidad_maxima) * 100), 100);
-              const necesidadesHtml = p.necesidades 
-                ? `<div style="background: #FFFBEB; border: 1px solid #FDE68A; padding: 4px 6px; border-radius: 4px; font-size: 10px; margin-top: 4px; color: #92400E; font-weight: 500;">🚨 Necesita: ${p.necesidades}</div>`
-                : '';
-
-              const popupContent = `
-                <div style="font-family: system-ui, sans-serif; min-width: 180px; padding: 2px;">
-                  <div style="font-weight: 700; font-size: 14px; margin-bottom: 2px; color: #111;">🏠 ${p.nombre}</div>
-                  <div style="font-size: 10px; color: #059669; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">Albergue / Acopio Activo</div>
-                  <div style="font-size: 11px; margin-bottom: 4px; color: #333;">
-                    Ocupación: <b>${p.ocupacion_actual} / ${p.capacidad_maxima}</b> (${pct}%)
-                  </div>
-                  ${necesidadesHtml}
-                  <a href="/refugios" style="display: block; text-align: center; margin-top: 8px; padding: 5px 10px; background: #10B981; color: white; border-radius: 6px; font-size: 11px; font-weight: bold; text-decoration: none;">
-                    Ver Directorio
-                  </a>
-                </div>
-              `;
-
-              marker = L.marker([p.lat, p.lon], { icon: refugioIcon }).bindPopup(popupContent);
-            } else {
-              const isResuelto = p.tipo === "reporte" && p.estado_reporte === "resuelto";
-              let badgeColor = "#EF4444"; // rojo por defecto
-              if (p.estado === "localizado" || isResuelto || (p.tipo === "necesidad" && p.estado === "completada")) badgeColor = "#22C55E";
-              else if (p.estado === "herido") badgeColor = "#F59E0B";
-              else if (p.tipo === "necesidad" && p.gravedad === "Media") badgeColor = "#F59E0B";
-              else if (p.tipo === "necesidad" && p.gravedad === "Baja") badgeColor = "#3B82F6";
-
-              const displayEstado = p.tipo === "reporte" ? (isResuelto ? "resuelto" : p.estado) : p.estado;
-              const tipoDisplay = p.tipo === "persona" ? "Censo" : (p.tipo === "necesidad" ? "Necesidad" : "Reporte");
-              
-              let extraContent = "";
-              if (p.tipo === "necesidad" && p.descripcion) {
-                extraContent = `<div style="font-size: 11px; color: #555; margin-bottom: 8px; line-height: 1.3;">${p.descripcion}</div>`;
-              }
-              
-              const popupContent = `
-                <div style="font-family: system-ui, sans-serif; min-width: 160px; padding: 2px;">
-                  <div style="font-weight: 700; font-size: 14px; margin-bottom: 2px; color: #111;">${p.nombre}</div>
-                  <div style="font-size: 11px; color: #666; text-transform: uppercase; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
-                    <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${badgeColor};"></span>
-                    ${tipoDisplay} · ${displayEstado}
-                  </div>
-                  ${extraContent}
-                  <button 
-                    style="width: 100%; padding: 6px 10px; background: #000; color: #fff; border: 0; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;"
-                    onclick="window.dispatchEvent(new CustomEvent('abrir-detalle-caso', {detail: {id: '${p.id}', tipo: '${p.tipo}'}}))"
-                  >
-                    Ver Detalle Completo
-                  </button>
-                </div>
-              `;
-
-              marker = L.marker([p.lat, p.lon]).bindPopup(popupContent);
-            }
-            
-            markers.addLayer(marker);
-          });
-
-          map.addLayer(markers);
-
-          // Ajustar mapa enfocando en la zona más densa
-          if (puntos.length > 0) {
-            const haversine = (lat1, lon1, lat2, lon2) => {
-              const R = 6371;
-              const dLat = (lat2 - lat1) * Math.PI / 180;
-              const dLon = (lon2 - lon1) * Math.PI / 180;
-              const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-              return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            };
-
-            const pValids = puntos.filter(p => p.lat && p.lon);
-            if (pValids.length > 0) {
-              let maxCount = -1;
-              let bestCenter = pValids[0];
-              
-              for (let i = 0; i < pValids.length; i++) {
-                let count = 0;
-                for (let j = 0; j < pValids.length; j++) {
-                  if (haversine(pValids[i].lat, pValids[i].lon, pValids[j].lat, pValids[j].lon) < 15) count++;
-                }
-                if (count > maxCount) { maxCount = count; bestCenter = pValids[i]; }
-              }
-              
-              const clusterPoints = pValids.filter(p => haversine(bestCenter.lat, bestCenter.lon, p.lat, p.lon) < 15);
-              const L = window.L;
-              const bounds = L.latLngBounds(clusterPoints.map(p => [p.lat, p.lon]));
-              
-              if (bounds.isValid()) {
-                map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
-              }
-            }
+        if (gpsEditStatus) {
+          if (latRaw && lngRaw) {
+            gpsEditStatus.textContent = `Coordenadas cargadas: ${parseFloat(latRaw).toFixed(5)}, ${parseFloat(lngRaw).toFixed(5)}`;
+            gpsEditStatus.className = "text-[11px] text-mute font-uber-text italic";
+          } else {
+            gpsEditStatus.textContent = "Ubicación no establecida.";
+            gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
           }
         }
-      } catch (err) {
-        console.error("Error al cargar mapa interactivo:", err);
-      }
+
+        deseleccionarEditTabs();
+        tabEditGps?.classList.add("bg-primary", "text-white");
+        panelEditGps?.classList.remove("hidden");
+        if (inputEditGmaps) inputEditGmaps.value = "";
+
+        const lat = latRaw ? parseFloat(latRaw) : 10.4806;
+        const lon = lngRaw ? parseFloat(lngRaw) : -66.9036;
+        const zoom = latRaw && lngRaw ? 15 : 12;
+        initEditMap(lat, lon, zoom);
+
+        let inventarioObj: Record<string, string> = {};
+        try {
+          if (el.dataset.inventario) {
+            inventarioObj = JSON.parse(el.dataset.inventario);
+          }
+        } catch (err) {
+          console.error("Error al parsear dataset de inventario:", err);
+        }
+
+        const radios = form.querySelectorAll('input[type="radio"]');
+        radios.forEach((r: any) => {
+          r.checked = false;
+          if (r.name.startsWith("edit-inv-")) {
+            const itemId = r.name.replace("edit-inv-", "");
+            const valorEsperado = inventarioObj[itemId] || "Estable";
+            if (r.value === valorEsperado) {
+              r.checked = true;
+            }
+          }
+        });
+
+        if (errorDiv) {
+          errorDiv.textContent = "";
+          errorDiv.classList.add("hidden");
+        }
+
+        modal?.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+      });
+    });
+
+    function cerrarModal() {
+      modal?.classList.add("hidden");
+      document.body.style.overflow = "";
     }
 
-    // Inicializar mapa de la Home
-    initHomeMap();
-  }
+    closeBtn?.addEventListener("click", cerrarModal);
+    modal?.addEventListener("click", (e) => {
+      if (e.target === modal) cerrarModal();
+    });
 
-  // Escuchar evento de carga de página de Astro ClientRouter
-  document.addEventListener("astro:page-load", initHome);
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = inputId.value;
+      const tipo = selectTipo.value;
+      const encargado = inputEncargado.value.trim();
+      const direccion = inputDireccion.value.trim();
+      const ocupacion = parseInt(inputOcupacion.value);
+      const capacidad = parseInt(inputCapacidad.value);
+      const necesidades = inputNecesidades.value.trim();
+      const contacto = inputContacto.value.trim();
+      const lat = latEditInput.value;
+      const lon = lonEditInput.value;
+
+      const ninos = parseInt(inputNinos.value) || 0;
+      const bebes = parseInt(inputBebes.value) || 0;
+      const mayores = parseInt(inputMayores.value) || 0;
+      const prof = parseInt(inputProf.value) || 0;
+      const vols = parseInt(inputVols.value) || 0;
+
+      const sumaSubgrupos = ninos + bebes + mayores + prof + vols;
+      const demografiaWarning = document.getElementById("edit-demografia-warning");
+
+      if (ocupacion < sumaSubgrupos) {
+        if (demografiaWarning) demografiaWarning.classList.remove("hidden");
+        if (errorDiv) {
+          errorDiv.textContent = "Error: La Población Total no puede ser menor a la suma de niños, bebés, adultos mayores, profesionales y voluntarios.";
+          errorDiv.classList.remove("hidden");
+        }
+        return;
+      } else {
+        if (demografiaWarning) demografiaWarning.classList.add("hidden");
+      }
+
+      if (isNaN(ocupacion) || ocupacion < 0) {
+        alert("Ocupación inválida");
+        return;
+      }
+      if (isNaN(capacidad) || capacidad <= 0) {
+        alert("Capacidad inválida");
+        return;
+      }
+
+      if (errorDiv) errorDiv.classList.add("hidden");
+
+      const btnSubmit = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = "Subiendo imágenes...";
+      }
+
+      const fotosKeys = [...existingFotos];
+      if (newFilesToUpload.length > 0) {
+        for (const file of newFilesToUpload) {
+          const formData = new FormData();
+          formData.append("foto", file);
+          try {
+            const uploadResp = await fetch("/api/upload", {
+              method: "POST",
+              body: formData,
+            });
+            if (uploadResp.ok) {
+              const data = await uploadResp.json();
+              if (data.key) {
+                fotosKeys.push(data.key);
+              }
+            }
+          } catch (uploadErr) {
+            console.error("Error al subir imagen nueva:", uploadErr);
+          }
+        }
+      }
+
+      if (btnSubmit) {
+        btnSubmit.textContent = "Guardando cambios...";
+      }
+
+      const inventario: Record<string, string> = {};
+      const radios = form.querySelectorAll('input[type="radio"]:checked');
+      radios.forEach((radio: any) => {
+        if (radio.name.startsWith("edit-inv-")) {
+          const itemId = radio.name.replace("edit-inv-", "");
+          inventario[itemId] = radio.value;
+        }
+      });
+
+      try {
+        const resp = await fetch(`/api/refugios/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ocupacion_actual: ocupacion,
+            capacidad_maxima: capacidad,
+            necesidades,
+            contacto,
+            tipo,
+            encargado,
+            direccion,
+            latitud: lat,
+            longitud: lon,
+            ninos,
+            bebes_lactantes: bebes,
+            adultos_mayores: mayores,
+            personal_profesional: prof,
+            voluntarios: vols,
+            inventario,
+            fotos: fotosKeys
+          })
+        });
+
+        if (resp.ok) {
+          cerrarModal();
+          window.location.reload();
+        } else {
+          const err = await resp.json();
+          if (errorDiv) {
+            errorDiv.textContent = `Error: ${err.error || "no se pudo actualizar"}`;
+            errorDiv.classList.remove("hidden");
+          }
+        }
+      } catch {
+        if (errorDiv) {
+          errorDiv.textContent = "Error de conexión con el servidor.";
+          errorDiv.classList.remove("hidden");
+        }
+      }
+    });
+  });
 </script>
