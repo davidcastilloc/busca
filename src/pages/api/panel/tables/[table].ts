@@ -10,6 +10,8 @@ const ALLOWED_TABLES = [
   'flyers',
   'push_subscriptions',
   'refugios',
+  'centros_acopio',
+  'hospitales',
   'telegram_sessions',
   'voluntarios',
   'sesiones_voluntarios',
@@ -37,6 +39,22 @@ export const GET: APIRoute = async ({ params, request }) => {
       queryStr = `
         SELECT t.*, v.nombre as creador_nombre 
         FROM refugios t 
+        LEFT JOIN voluntarios v ON t.created_by = v.id 
+        ORDER BY t.rowid DESC 
+        LIMIT ? OFFSET ?
+      `;
+    } else if (table === 'centros_acopio') {
+      queryStr = `
+        SELECT t.*, v.nombre as creador_nombre 
+        FROM centros_acopio t 
+        LEFT JOIN voluntarios v ON t.created_by = v.id 
+        ORDER BY t.rowid DESC 
+        LIMIT ? OFFSET ?
+      `;
+    } else if (table === 'hospitales') {
+      queryStr = `
+        SELECT t.*, v.nombre as creador_nombre 
+        FROM hospitales t 
         LEFT JOIN voluntarios v ON t.created_by = v.id 
         ORDER BY t.rowid DESC 
         LIMIT ? OFFSET ?
@@ -81,7 +99,7 @@ export const GET: APIRoute = async ({ params, request }) => {
         ...columns,
         { name: 'voluntario_nombre', type: 'TEXT' }
       ];
-    } else if (['refugios', 'reportes', 'personas'].includes(table)) {
+    } else if (['refugios', 'reportes', 'personas', 'centros_acopio', 'hospitales'].includes(table)) {
       columns = [
         ...columns,
         { name: 'creador_nombre', type: 'TEXT' }

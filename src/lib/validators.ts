@@ -15,6 +15,9 @@ export const PersonaSchema = z.object({
   notas: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
   foto_key: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
   fuente: z.string().default("web"),
+  refugio_id: z.coerce.number().int().nullable().optional(),
+  hospital_id: z.coerce.number().int().nullable().optional(),
+  centro_acopio_id: z.coerce.number().int().nullable().optional(),
   created_by: z.number().nullable().optional()
 });
 
@@ -30,6 +33,8 @@ export const ReporteSchema = z.object({
   longitud: z.coerce.number().min(-180).max(180).nullable().optional(),
   foto_key: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
   refugio_id: z.coerce.number().int().nullable().optional(),
+  hospital_id: z.coerce.number().int().nullable().optional(),
+  centro_acopio_id: z.coerce.number().int().nullable().optional(),
   created_by: z.number().nullable().optional()
 });
 
@@ -47,6 +52,8 @@ export const NecesidadSchema = z.object({
   telefono: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
   foto_key: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
   refugio_id: z.coerce.number().int().nullable().optional(),
+  centro_acopio_id: z.coerce.number().int().nullable().optional(),
+  hospital_id: z.coerce.number().int().nullable().optional(),
   reportante_nombre: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
   reportante_contacto: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
   estado: z.enum(["abierta", "atendida", "cancelada"]).default("abierta")

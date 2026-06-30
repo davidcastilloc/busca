@@ -16,6 +16,8 @@ export interface PersonaData {
   foto_key?: string | null;
   fuente?: string;
   refugio_id?: number | null;
+  hospital_id?: number | null;
+  centro_acopio_id?: number | null;
   created_by?: number | null;
 }
 
@@ -31,6 +33,8 @@ export interface ReporteData {
   longitud?: number | null;
   foto_key?: string | null;
   refugio_id?: number | null;
+  hospital_id?: number | null;
+  centro_acopio_id?: number | null;
   created_by?: number | null;
 }
 
@@ -43,9 +47,9 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
       INSERT INTO personas (
         cedula, nombre, apellido, edad, sexo, estado, 
         ubicacion_nombre, latitud, longitud, refugio, 
-        contacto, notas, foto_key, fuente, refugio_id, created_by, created_at, updated_at
+        contacto, notas, foto_key, fuente, refugio_id, hospital_id, centro_acopio_id, created_by, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
       ON CONFLICT(cedula) DO UPDATE SET
         nombre = excluded.nombre,
         apellido = excluded.apellido,
@@ -61,6 +65,8 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
         foto_key = excluded.foto_key,
         fuente = excluded.fuente,
         refugio_id = excluded.refugio_id,
+        hospital_id = excluded.hospital_id,
+        centro_acopio_id = excluded.centro_acopio_id,
         created_by = COALESCE(personas.created_by, excluded.created_by),
         updated_at = datetime('now', '-4 hours')
     `).bind(
@@ -79,6 +85,8 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
       data.foto_key || null,
       data.fuente || "web",
       data.refugio_id || null,
+      data.hospital_id || null,
+      data.centro_acopio_id || null,
       data.created_by || null
     ).run();
   } else {
@@ -86,9 +94,9 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
       INSERT INTO personas (
         nombre, apellido, edad, sexo, estado, 
         ubicacion_nombre, latitud, longitud, refugio, 
-        contacto, notas, foto_key, fuente, refugio_id, created_by, created_at, updated_at
+        contacto, notas, foto_key, fuente, refugio_id, hospital_id, centro_acopio_id, created_by, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
     `).bind(
       data.nombre,
       data.apellido || null,
@@ -104,6 +112,8 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
       data.foto_key || null,
       data.fuente || "web",
       data.refugio_id || null,
+      data.hospital_id || null,
+      data.centro_acopio_id || null,
       data.created_by || null
     ).run();
   }
@@ -117,9 +127,9 @@ export async function insertReporte(db: D1Database, data: ReporteData): Promise<
     INSERT INTO reportes (
       tipo, nombre_buscado, cedula_buscado, descripcion, 
       reportante_nombre, reportante_contacto, ubicacion_nombre, 
-      latitud, longitud, foto_key, refugio_id, created_by, created_at, updated_at
+      latitud, longitud, foto_key, refugio_id, hospital_id, centro_acopio_id, created_by, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
     RETURNING id
   `).bind(
     data.tipo,
@@ -133,6 +143,8 @@ export async function insertReporte(db: D1Database, data: ReporteData): Promise<
     data.longitud || null,
     data.foto_key || null,
     data.refugio_id || null,
+    data.hospital_id || null,
+    data.centro_acopio_id || null,
     data.created_by || null
   ).first<{ id: number }>();
 
@@ -195,6 +207,8 @@ export async function procesarCensoBatch(
   refugio: string | null,
   contacto: string | null,
   refugioId: number | null,
+  hospitalId: number | null = null,
+  centroAcopioId: number | null = null,
   voluntarioId: number | null = null
 ): Promise<{ matchesCount: number; results: { nombre: string; matches: any[]; personaId: number }[] }> {
   if (personas.length === 0) return { matchesCount: 0, results: [] };
@@ -227,8 +241,8 @@ export async function procesarCensoBatch(
     const finalContacto = [p.telefono, contacto].filter(Boolean).join(" - ") || null;
 
     return db.prepare(`
-      INSERT INTO personas (nombre, apellido, estado, refugio, contacto, cedula, edad, fuente, refugio_id, created_by, updated_at, created_at)
-      VALUES (?, ?, 'localizado', ?, ?, ?, ?, 'escaner_ia', ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+      INSERT INTO personas (nombre, apellido, estado, refugio, contacto, cedula, edad, fuente, refugio_id, hospital_id, centro_acopio_id, created_by, updated_at, created_at)
+      VALUES (?, ?, 'localizado', ?, ?, ?, ?, 'escaner_ia', ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
       RETURNING id
     `).bind(
       nombre,
@@ -238,6 +252,8 @@ export async function procesarCensoBatch(
       p.cedula ? String(p.cedula) : null,
       p.edad,
       refugioId,
+      hospitalId,
+      centroAcopioId,
       voluntarioId
     );
   });

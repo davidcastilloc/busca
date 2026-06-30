@@ -23,12 +23,16 @@ export const GET: APIRoute = async ({ request }) => {
       WHERE a.refugio_id = ? AND a.estatus = 'en_ruta'
     `).bind(refugio_id).all();
 
-    // 2. Obtener Salidas: Necesidades críticas de otros refugios
+    // 2. Obtener Salidas: Necesidades críticas de otros refugios/acopios/hospitales
     // Solo las activas.
     const salidasRes = await DB.prepare(`
-      SELECT n.id, n.categoria, n.gravedad, n.descripcion, n.estado, r.nombre as refugio_nombre, r.id as refugio_destino_id
+      SELECT n.id, n.categoria, n.gravedad, n.descripcion, n.estado, 
+             COALESCE(r.nombre, c.nombre, h.nombre) as refugio_nombre,
+             COALESCE(n.refugio_id, n.centro_acopio_id, n.hospital_id) as refugio_destino_id
       FROM necesidades n
       LEFT JOIN refugios r ON n.refugio_id = r.id
+      LEFT JOIN centros_acopio c ON n.centro_acopio_id = c.id
+      LEFT JOIN hospitales h ON n.hospital_id = h.id
       WHERE n.estado = 'activa' 
         AND (n.refugio_id IS NULL OR n.refugio_id != ?)
       ORDER BY 
@@ -41,9 +45,13 @@ export const GET: APIRoute = async ({ request }) => {
       LIMIT 50
     `).bind(refugio_id).all();
 
-    // 3. Inventario actual del refugio (para tener a la mano qué se puede despachar)
+    // 3. Inventario actual del refugio/acopio (para tener a la mano qué se puede despachar)
     const refugioRes = await DB.prepare(`
-      SELECT nombre, inventario FROM refugios WHERE id = ?
+      SELECT nombre, inventario FROM (
+        SELECT id, nombre, inventario FROM refugios
+        UNION ALL
+        SELECT id, nombre, inventario FROM centros_acopio
+      ) WHERE id = ?
     `).bind(refugio_id).first<any>();
 
     let inventarioLimpio: any[] = [];

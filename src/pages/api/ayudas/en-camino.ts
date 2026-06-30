@@ -11,9 +11,11 @@ export const POST: APIRoute = async (context) => {
     const body = await context.request.json();
     const necesidadId = body.necesidad_id ? Number(body.necesidad_id) : null;
     const refugioId = body.refugio_id ? Number(body.refugio_id) : null;
+    const hospitalId = body.hospital_id ? Number(body.hospital_id) : null;
+    const centroAcopioId = body.centro_acopio_id ? Number(body.centro_acopio_id) : null;
 
-    if (!necesidadId && !refugioId) {
-      return new Response(JSON.stringify({ error: "Debe proveer necesidad_id o refugio_id" }), {
+    if (!necesidadId && !refugioId && !hospitalId && !centroAcopioId) {
+      return new Response(JSON.stringify({ error: "Debe proveer necesidad_id, refugio_id, hospital_id o centro_acopio_id" }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
       });
@@ -23,11 +25,13 @@ export const POST: APIRoute = async (context) => {
     const timestamp = Math.floor(Date.now() / 1000);
 
     await DB.prepare(`
-      INSERT INTO ayudas_en_camino (id, refugio_id, necesidad_id, voluntarios_count, estatus, created_at)
-      VALUES (?, ?, ?, 1, 'en_ruta', ?)
+      INSERT INTO ayudas_en_camino (id, refugio_id, centro_acopio_id, hospital_id, necesidad_id, voluntarios_count, estatus, created_at)
+      VALUES (?, ?, ?, ?, ?, 1, 'en_ruta', ?)
     `).bind(
       uuid,
       refugioId,
+      centroAcopioId,
+      hospitalId,
       necesidadId,
       timestamp
     ).run();

@@ -22,7 +22,14 @@ export async function handleLocation(
   userLon: number
 ): Promise<void> {
   try {
-    const res = await db.prepare("SELECT * FROM refugios").all<any>();
+        const query = `
+      SELECT id, nombre, direccion, latitud, longitud, contacto, necesidades, 'refugio' as tipo, inventario FROM refugios
+      UNION ALL
+      SELECT id, nombre, direccion, latitud, longitud, contacto, necesidades, 'centro_acopio' as tipo, inventario FROM centros_acopio
+      UNION ALL
+      SELECT id, nombre, direccion, latitud, longitud, contacto, necesidades, 'hospital' as tipo, NULL as inventario FROM hospitales
+    `;
+    const res = await db.prepare(query).all<any>();
     const refugios = res.results || [];
 
     if (refugios.length === 0) {

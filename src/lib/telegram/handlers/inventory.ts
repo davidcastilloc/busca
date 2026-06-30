@@ -36,15 +36,24 @@ export async function handleInventory(
   try {
     let refugios: any[] = [];
     if (query) {
-      const res = await db
-        .prepare("SELECT id, nombre FROM refugios WHERE nombre LIKE ? LIMIT 5")
-        .bind(`%${query}%`)
-        .all();
+      const sql = `
+        SELECT id, nombre FROM (
+          SELECT id, nombre FROM refugios
+          UNION ALL
+          SELECT id, nombre FROM centros_acopio
+        ) WHERE nombre LIKE ? LIMIT 5
+      `;
+      const res = await db.prepare(sql).bind(`%${query}%`).all();
       refugios = res.results || [];
     } else {
-      const res = await db
-        .prepare("SELECT id, nombre FROM refugios ORDER BY nombre LIMIT 5")
-        .all();
+      const sql = `
+        SELECT id, nombre FROM (
+          SELECT id, nombre FROM refugios
+          UNION ALL
+          SELECT id, nombre FROM centros_acopio
+        ) ORDER BY nombre LIMIT 5
+      `;
+      const res = await db.prepare(sql).all();
       refugios = res.results || [];
     }
 
@@ -135,10 +144,14 @@ export async function sendCategoryItems(
   // Cargar estado actual de inventario para mostrarlo en el botón
   let currentInv: Record<string, string> = {};
   try {
-    const res = await db
-      .prepare("SELECT inventario, nombre FROM refugios WHERE id = ?")
-      .bind(refugioId)
-      .first<any>();
+    const query = `
+      SELECT inventario, nombre FROM (
+        SELECT id, nombre, inventario FROM refugios
+        UNION ALL
+        SELECT id, nombre, inventario FROM centros_acopio
+      ) WHERE id = ?
+    `;
+    const res = await db.prepare(query).bind(refugioId).first<any>();
 
     if (res && res.inventario) {
       currentInv = typeof res.inventario === "string" ? JSON.parse(res.inventario) : res.inventario;
@@ -197,10 +210,14 @@ export async function sendItemStatusOptions(
   let refugioNombre = "";
   let currentStatus = "Estable";
   try {
-    const res = await db
-      .prepare("SELECT nombre, inventario FROM refugios WHERE id = ?")
-      .bind(refugioId)
-      .first<any>();
+    const query = `
+      SELECT nombre, inventario FROM (
+        SELECT id, nombre, inventario FROM refugios
+        UNION ALL
+        SELECT id, nombre, inventario FROM centros_acopio
+      ) WHERE id = ?
+    `;
+    const res = await db.prepare(query).bind(refugioId).first<any>();
     if (res) {
       refugioNombre = res.nombre;
       if (res.inventario) {
@@ -252,14 +269,18 @@ export async function setItemStatus(
   if (!item || !statusName) return;
 
   try {
-    // 1. Obtener refugio e inventario actual
-    const res = await db
-      .prepare("SELECT nombre, inventario FROM refugios WHERE id = ?")
-      .bind(refugioId)
-      .first<any>();
+    const table = await getTableForCenter(db, refugioId);
+    if (!table) {
+      await client.sendMessage(chatId, "❌ Centro no encontrado.");
+      return;
+    }
+
+    // 1. Obtener centro e inventario actual
+    const query = `SELECT nombre, inventario FROM ${table} WHERE id = ?`;
+    const res = await db.prepare(query).bind(refugioId).first<any>();
 
     if (!res) {
-      await client.sendMessage(chatId, "❌ Refugio no encontrado.");
+      await client.sendMessage(chatId, "❌ Centro no encontrado.");
       return;
     }
 
@@ -276,10 +297,8 @@ export async function setItemStatus(
     inv[itemId] = statusName;
 
     // 3. Guardar en BD
-    await db
-      .prepare("UPDATE refugios SET inventario = ?, updated_at = datetime('now', '-4 hours') WHERE id = ?")
-      .bind(JSON.stringify(inv), refugioId)
-      .run();
+    const updateQuery = `UPDATE ${table} SET inventario = ?, updated_at = datetime('now', '-4 hours') WHERE id = ?`;
+    await db.prepare(updateQuery).bind(JSON.stringify(inv), refugioId).run();
 
     // 4. Confirmar y volver a la categoría
     const catIdx = CATEGORIAS_INVENTARIO.findIndex((cat) =>
@@ -312,9 +331,14 @@ export async function handleRefugioList(
   db: D1Database
 ): Promise<void> {
   try {
-    const res = await db
-      .prepare("SELECT id, nombre FROM refugios ORDER BY nombre LIMIT 5")
-      .all();
+    const query = `
+      SELECT id, nombre FROM (
+        SELECT id, nombre FROM refugios
+        UNION ALL
+        SELECT id, nombre FROM centros_acopio
+      ) ORDER BY nombre LIMIT 5
+    `;
+    const res = await db.prepare(query).all();
     const refugios = res.results || [];
 
     const keyboard = refugios.map((r) => [
@@ -332,4 +356,12 @@ export async function handleRefugioList(
   } catch (error) {
     console.error(error);
   }
+}
+
+async function getTableForCenter(db: D1Database, id: number | string): Promise<string | null> {
+  const isRefugio = await db.prepare("SELECT id FROM refugios WHERE id = ?").bind(id).first();
+  if (isRefugio) return "refugios";
+  const isAcopio = await db.prepare("SELECT id FROM centros_acopio WHERE id = ?").bind(id).first();
+  if (isAcopio) return "centros_acopio";
+  return null;
 }

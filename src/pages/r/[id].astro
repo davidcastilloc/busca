@@ -15,7 +15,14 @@ let r: any = {};
 try {
   const { DB } = env;
   if (DB && id) {
-    const query = await DB.prepare("SELECT * FROM refugios WHERE id = ?").bind(id).first();
+    let query = await DB.prepare("SELECT *, 'refugio' as tipo FROM refugios WHERE id = ?").bind(id).first();
+    if (!query) {
+      query = await DB.prepare("SELECT *, 'centro_acopio' as tipo FROM centros_acopio WHERE id = ?").bind(id).first();
+    }
+    if (!query) {
+      query = await DB.prepare("SELECT *, 'hospital' as tipo FROM hospitales WHERE id = ?").bind(id).first();
+    }
+
     if (query) {
       r = query;
     } else {
@@ -129,11 +136,13 @@ const descripcion = `${tipoLabel} en ${r.direccion || "Venezuela"}. Ayuda a difu
             <h1 class="font-uber-display text-3xl text-ink font-semibold">{r.nombre}</h1>
             {r.direccion && <p class="text-base text-body font-uber-text mt-2">📍 {r.direccion}</p>}
           </div>
-          <div class="text-right shrink-0">
-            <span class="text-sm font-semibold text-ink font-uber-text bg-canvas-soft px-4 py-2 rounded-full border border-canvas-soft shadow-sm">
-              {ocupacion} / {capacidad} personas
-            </span>
-          </div>
+          {r.tipo === "refugio" && (
+            <div class="text-right shrink-0">
+              <span class="text-sm font-semibold text-ink font-uber-text bg-canvas-soft px-4 py-2 rounded-full border border-canvas-soft shadow-sm">
+                {ocupacion} / {capacidad} personas
+              </span>
+            </div>
+          )}
         </div>
 
         {(r.encargado || fechaFormateada) && (
@@ -143,23 +152,27 @@ const descripcion = `${tipoLabel} en ${r.direccion || "Venezuela"}. Ayuda a difu
           </div>
         )}
 
-        <div class="space-y-2 pt-2">
-          <div class="flex justify-between text-sm font-uber-text font-medium text-mute">
-            <span>Capacidad ocupada</span>
-            <span>{pct}%</span>
+        {r.tipo === "refugio" && (
+          <div class="space-y-2 pt-2">
+            <div class="flex justify-between text-sm font-uber-text font-medium text-mute">
+              <span>Capacidad ocupada</span>
+              <span>{pct}%</span>
+            </div>
+            <div class="w-full bg-canvas-soft h-3 rounded-full overflow-hidden border border-canvas-soft">
+              <div class={`h-full ${colorBar}`} style={`width: ${pct}%`}></div>
+            </div>
           </div>
-          <div class="w-full bg-canvas-soft h-3 rounded-full overflow-hidden border border-canvas-soft">
-            <div class={`h-full ${colorBar}`} style={`width: ${pct}%`}></div>
-          </div>
-        </div>
+        )}
 
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm font-uber-text bg-canvas-soft p-4 rounded-xl border border-canvas-soft mt-4">
-          <div class="text-center">👶 Niños<br/><strong class="text-ink text-xl">{r.ninos || 0}</strong></div>
-          <div class="text-center">🍼 Lactantes<br/><strong class="text-ink text-xl">{r.bebes_lactantes || 0}</strong></div>
-          <div class="text-center">👵 Mayores<br/><strong class="text-ink text-xl">{r.adultos_mayores || 0}</strong></div>
-          <div class="text-center">🩺 Personal<br/><strong class="text-ink text-xl">{r.personal_profesional || 0}</strong></div>
-          <div class="text-center">🤝 Vols<br/><strong class="text-ink text-xl">{r.voluntarios || 0}</strong></div>
-        </div>
+        {r.tipo === "refugio" && (
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm font-uber-text bg-canvas-soft p-4 rounded-xl border border-canvas-soft mt-4">
+            <div class="text-center">👶 Niños<br/><strong class="text-ink text-xl">{r.ninos || 0}</strong></div>
+            <div class="text-center">🍼 Lactantes<br/><strong class="text-ink text-xl">{r.bebes_lactantes || 0}</strong></div>
+            <div class="text-center">👵 Mayores<br/><strong class="text-ink text-xl">{r.adultos_mayores || 0}</strong></div>
+            <div class="text-center">🩺 Personal<br/><strong class="text-ink text-xl">{r.personal_profesional || 0}</strong></div>
+            <div class="text-center">🤝 Vols<br/><strong class="text-ink text-xl">{r.voluntarios || 0}</strong></div>
+          </div>
+        )}
 
         {(itemsCriticos.length > 0 || itemsAlerta.length > 0) && (
           <div class="space-y-3 bg-canvas-soft/50 border border-canvas-soft p-5 rounded-xl mt-4">

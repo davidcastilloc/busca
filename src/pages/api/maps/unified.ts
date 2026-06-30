@@ -30,6 +30,8 @@ interface NecesidadRaw {
   longitud: number | null;
   estado: string;
   refugio_id: number | null;
+  hospital_id: number | null;
+  centro_acopio_id: number | null;
   reportante_nombre: string | null;
   reportante_contacto: string | null;
   en_camino: number;
@@ -55,9 +57,23 @@ export const GET: APIRoute = async () => {
     const refugiosRes = await DB.prepare(`
       SELECT id, nombre, direccion, latitud, longitud, 
              capacidad_maxima, ocupacion_actual, necesidades, 
-             contacto, tipo, encargado, inventario, fotos,
+             contacto, 'refugio' as tipo, encargado, inventario, fotos,
              COALESCE((SELECT SUM(voluntarios_count) FROM ayudas_en_camino WHERE refugio_id = refugios.id AND estatus = 'en_ruta'), 0) as en_camino
       FROM refugios
+      WHERE latitud IS NOT NULL AND longitud IS NOT NULL
+      UNION ALL
+      SELECT id, nombre, direccion, latitud, longitud, 
+             NULL as capacidad_maxima, NULL as ocupacion_actual, necesidades, 
+             contacto, 'centro_acopio' as tipo, encargado, inventario, fotos,
+             COALESCE((SELECT SUM(voluntarios_count) FROM ayudas_en_camino WHERE centro_acopio_id = centros_acopio.id AND estatus = 'en_ruta'), 0) as en_camino
+      FROM centros_acopio
+      WHERE latitud IS NOT NULL AND longitud IS NOT NULL
+      UNION ALL
+      SELECT id, nombre, direccion, latitud, longitud, 
+             NULL as capacidad_maxima, NULL as ocupacion_actual, necesidades, 
+             contacto, 'hospital' as tipo, encargado, NULL as inventario, NULL as fotos,
+             COALESCE((SELECT SUM(voluntarios_count) FROM ayudas_en_camino WHERE hospital_id = hospitales.id AND estatus = 'en_ruta'), 0) as en_camino
+      FROM hospitales
       WHERE latitud IS NOT NULL AND longitud IS NOT NULL
     `).all<RefugioRaw>();
 
@@ -109,14 +125,18 @@ export const GET: APIRoute = async () => {
     // 2. Obtener necesidades con coords o asociadas a refugios, incluyendo voluntarios en camino
     const necesidadesRes = await DB.prepare(`
       SELECT n.id, n.categoria, n.gravedad, n.descripcion,
-             COALESCE(n.latitud, ref.latitud) as latitud,
-             COALESCE(n.longitud, ref.longitud) as longitud,
+             COALESCE(n.latitud, ref.latitud, hosp.latitud, acop.latitud) as latitud,
+             COALESCE(n.longitud, ref.longitud, hosp.longitud, acop.longitud) as longitud,
              n.estado, n.refugio_id, n.reportante_nombre, n.reportante_contacto,
              COALESCE((SELECT SUM(voluntarios_count) FROM ayudas_en_camino WHERE necesidad_id = n.id AND estatus = 'en_ruta'), 0) as en_camino
       FROM necesidades n
       LEFT JOIN refugios ref ON n.refugio_id = ref.id
+      LEFT JOIN hospitales hosp ON n.hospital_id = hosp.id
+      LEFT JOIN centros_acopio acop ON n.centro_acopio_id = acop.id
       WHERE (n.latitud IS NOT NULL AND n.longitud IS NOT NULL)
          OR (n.refugio_id IS NOT NULL AND ref.latitud IS NOT NULL AND ref.longitud IS NOT NULL)
+         OR (n.hospital_id IS NOT NULL AND hosp.latitud IS NOT NULL AND hosp.longitud IS NOT NULL)
+         OR (n.centro_acopio_id IS NOT NULL AND acop.latitud IS NOT NULL AND acop.longitud IS NOT NULL)
     `).all<NecesidadRaw>();
 
     const necesidades = (necesidadesRes.results || []).map((n) => ({
@@ -128,6 +148,8 @@ export const GET: APIRoute = async () => {
       lng: n.longitud,
       estado: n.estado,
       refugio_id: n.refugio_id,
+      hospital_id: n.hospital_id,
+      centro_acopio_id: n.centro_acopio_id,
       reportante: n.reportante_nombre || "Anónimo",
       contacto: n.reportante_contacto || "",
       en_camino: n.en_camino || 0
@@ -136,12 +158,17 @@ export const GET: APIRoute = async () => {
     // 3. Obtener personas con coords o asociadas a refugios
     const personasRes = await DB.prepare(`
       SELECT p.id, p.nombre, p.apellido, 
-             COALESCE(p.latitud, ref.latitud) as latitud, 
-             COALESCE(p.longitud, ref.longitud) as longitud, 
+             COALESCE(p.latitud, ref.latitud, hosp.latitud, acop.latitud) as latitud, 
+             COALESCE(p.longitud, ref.longitud, hosp.longitud, acop.longitud) as longitud, 
              p.estado, p.refugio, p.contacto, p.notas
       FROM personas p
-      LEFT JOIN refugios ref ON p.refugio = ref.nombre
+      LEFT JOIN refugios ref ON p.refugio_id = ref.id OR p.refugio = ref.nombre
+      LEFT JOIN hospitales hosp ON p.hospital_id = hosp.id
+      LEFT JOIN centros_acopio acop ON p.centro_acopio_id = acop.id
       WHERE (p.latitud IS NOT NULL AND p.longitud IS NOT NULL)
+         OR (p.refugio_id IS NOT NULL AND ref.latitud IS NOT NULL AND ref.longitud IS NOT NULL)
+         OR (p.hospital_id IS NOT NULL AND hosp.latitud IS NOT NULL AND hosp.longitud IS NOT NULL)
+         OR (p.centro_acopio_id IS NOT NULL AND acop.latitud IS NOT NULL AND acop.longitud IS NOT NULL)
          OR (p.refugio IS NOT NULL AND ref.latitud IS NOT NULL AND ref.longitud IS NOT NULL)
     `).all<PersonaRaw>();
 

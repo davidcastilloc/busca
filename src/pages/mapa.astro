@@ -1077,7 +1077,7 @@ export const prerender = false;
             <div class="bg-blue-50 border border-blue-100 p-3 rounded-xl flex flex-col gap-2">
               <div class="flex justify-between items-center text-xs">
                 <span class="text-blue-800 font-medium">👥 ${n.en_camino} en camino</span>
-                <button onclick="window._voyEnCamino(${n.id}, ${n.refugio_id || 'null'})" class="btn btn-xs bg-primary text-white border-none hover:bg-black-elevated font-uber-text font-bold cursor-pointer">🚗 Voy en camino</button>
+                <button onclick="window._voyEnCamino(${n.id}, ${n.refugio_id || 'null'}, ${n.centro_acopio_id || 'null'}, ${n.hospital_id || 'null'})" class="btn btn-xs bg-primary text-white border-none hover:bg-black-elevated font-uber-text font-bold cursor-pointer">🚗 Voy en camino</button>
               </div>
             </div>
           ` : ""}
@@ -1428,13 +1428,23 @@ export const prerender = false;
       }
     };
 
-    (window as any)._voyEnCamino = async (necesidadId: number, refugioId: number | null) => {
+    (window as any)._voyEnCamino = async (
+      necesidadId: number,
+      refugioId: number | null,
+      centroAcopioId: number | null = null,
+      hospitalId: number | null = null
+    ) => {
       if (!confirm("¿Confirmas que vas en camino a ayudar con esta necesidad?")) return;
       try {
         const resp = await fetch("/api/ayudas/en-camino", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ necesidad_id: necesidadId, refugio_id: refugioId })
+          body: JSON.stringify({
+            necesidad_id: necesidadId,
+            refugio_id: refugioId,
+            centro_acopio_id: centroAcopioId,
+            hospital_id: hospitalId
+          })
         });
         if (resp.ok) {
           alert("¡Gracias! Tu apoyo en camino ha sido registrado.");
