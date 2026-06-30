@@ -15,10 +15,17 @@ export const GET: APIRoute = async ({ params, request }) => {
       return new Response("Base de datos no disponible", { status: 500 });
     }
 
-    // 1. Obtener datos del refugio
-    const refugio = await DB.prepare("SELECT * FROM refugios WHERE id = ?").bind(id).first<any>();
+    // 1. Obtener datos del refugio/acopio/hospital
+    let refugio = await DB.prepare("SELECT *, 'refugio' as tipo FROM refugios WHERE id = ?").bind(id).first<any>();
     if (!refugio) {
-      return new Response("Refugio no encontrado", { status: 404 });
+      refugio = await DB.prepare("SELECT *, 'centro_acopio' as tipo FROM centros_acopio WHERE id = ?").bind(id).first<any>();
+    }
+    if (!refugio) {
+      refugio = await DB.prepare("SELECT *, 'hospital' as tipo FROM hospitales WHERE id = ?").bind(id).first<any>();
+    }
+
+    if (!refugio) {
+      return new Response("Centro no encontrado", { status: 404 });
     }
 
     // 2. Procesar inventario para Semáforo
@@ -112,12 +119,14 @@ export const GET: APIRoute = async ({ params, request }) => {
       });
     }
 
-    descriptionChildren.push({
-      type: "div", props: { style: fieldStyle, children: [
-        { type: "span", props: { style: labelStyle, children: "👥 Capacidad" } },
-        { type: "span", props: { style: valueStyle, children: `${refugio.ocupacion_actual || 0} de ${refugio.capacidad_maxima || '?'} personas` } }
-      ]}
-    });
+    if (refugio.tipo === "refugio") {
+      descriptionChildren.push({
+        type: "div", props: { style: fieldStyle, children: [
+          { type: "span", props: { style: labelStyle, children: "👥 Capacidad" } },
+          { type: "span", props: { style: valueStyle, children: `${refugio.ocupacion_actual || 0} de ${refugio.capacidad_maxima || '?'} personas` } }
+        ]}
+      });
+    }
 
     if (itemsCriticos.length > 0) {
       descriptionChildren.push({
@@ -145,7 +154,7 @@ export const GET: APIRoute = async ({ params, request }) => {
       });
     }
 
-    const tipoText = refugio.tipo === "acopio" ? "CENTRO DE ACOPIO" : "REFUGIO";
+    const tipoText = refugio.tipo === "centro_acopio" ? "CENTRO DE ACOPIO" : refugio.tipo === "hospital" ? "HOSPITAL / SALUD" : "REFUGIO";
 
     // 8. Generar diseño HTML/CSS para ImageResponse
     return ImageResponse.create(

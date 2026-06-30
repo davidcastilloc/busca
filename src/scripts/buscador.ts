@@ -759,7 +759,7 @@ function abrirReporteRapido() {
   if (fotoKey) fotoKey.value = "";
   
   if (globalRefugioSelect) {
-    globalRefugioSelect.innerHTML = `<option value="">-- Seleccionar Refugio --</option><option value="otro">Otro albergue o dirección...</option>`;
+    globalRefugioSelect.innerHTML = `<option value="">-- Seleccionar Ubicación --</option><option value="otro">Otro albergue o dirección...</option>`;
   }
   if (globalRefugioOtroWrap) globalRefugioOtroWrap.classList.add("hidden");
   if (globalRefugioOtroInput) globalRefugioOtroInput.value = "";
@@ -769,11 +769,15 @@ function abrirReporteRapido() {
     .then(r => r.json())
     .then(data => {
       if (data.refugios && globalRefugioSelect) {
-        const options = data.refugios.map((ref: any) => `<option value="${ref.nombre.replace(/"/g, '&quot;')}">${ref.nombre}</option>`).join("");
-        globalRefugioSelect.innerHTML = `<option value="">-- Seleccionar Refugio --</option>${options}<option value="otro">Otro albergue o dirección...</option>`;
+        const options = data.refugios.map((ref: any) => {
+          const prefix = ref.tipo === "hospital" ? "🏥 [Salud] " : ref.tipo === "centro_acopio" ? "📦 [Acopio] " : "🏠 [Refugio] ";
+          const optionVal = `${ref.tipo}:${ref.id}|${ref.nombre}`;
+          return `<option value="${optionVal.replace(/"/g, '&quot;')}">${prefix}${ref.nombre}</option>`;
+        }).join("");
+        globalRefugioSelect.innerHTML = `<option value="">-- Seleccionar Ubicación --</option>${options}<option value="otro">Otro albergue o dirección...</option>`;
       }
     })
-    .catch(err => console.error("Error al cargar refugios:", err));
+    .catch(err => console.error("Error al cargar refugios/ubicaciones:", err));
 
   if (fotoStatus) {
     fotoStatus.textContent = "";
@@ -865,7 +869,20 @@ function abrirReporteRapido() {
 
     const refugioSelectVal = globalRefugioSelect?.value || "";
     const refugioOtroVal = globalRefugioOtroInput?.value.trim() || "";
-    const refugioFinal = refugioSelectVal === "otro" ? refugioOtroVal : refugioSelectVal;
+    const refugioFinal = refugioSelectVal === "otro" ? refugioOtroVal : (refugioSelectVal.includes("|") ? refugioSelectVal.split("|")[1] : refugioSelectVal);
+
+    let refugioId: number | null = null;
+    let centroAcopioId: number | null = null;
+    let hospitalId: number | null = null;
+
+    if (refugioSelectVal !== "otro" && refugioSelectVal.includes("|")) {
+      const [tipoId, _] = refugioSelectVal.split("|");
+      const [tipo, idStr] = tipoId.split(":");
+      const parsedId = parseInt(idStr, 10);
+      if (tipo === "refugio") refugioId = parsedId;
+      else if (tipo === "centro_acopio") centroAcopioId = parsedId;
+      else if (tipo === "hospital") hospitalId = parsedId;
+    }
 
     // Validar descripcion
     if (!descripcion || descripcion.length < 10) {
@@ -932,6 +949,9 @@ function abrirReporteRapido() {
             estado: "localizado",
             contacto: reportante_contacto,
             refugio: refugioFinal,
+            refugio_id: refugioId,
+            centro_acopio_id: centroAcopioId,
+            hospital_id: hospitalId,
             notas: descripcion,
             foto_key: keyFoto,
             latitud: lat,
@@ -947,6 +967,9 @@ function abrirReporteRapido() {
             estado_reporte: "resuelto",
             contacto: reportante_contacto,
             refugio: refugioFinal,
+            refugio_id: refugioId,
+            centro_acopio_id: centroAcopioId,
+            hospital_id: hospitalId,
             notas: descripcion,
             foto_key: keyFoto,
             latitud: lat,
