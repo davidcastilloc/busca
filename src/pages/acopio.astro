@@ -1,12 +1,21 @@
 ---
+export const prerender = false;
+
 import Layout from "../layouts/Layout.astro";
 import Navbar from "../components/Navbar.astro";
 import { env } from "cloudflare:workers";
 
 const { DB } = env;
 
-const refugiosRes = await DB.prepare("SELECT id, nombre FROM refugios ORDER BY nombre").all();
-const refugios = refugiosRes.results || [];
+let refugios = [];
+if (DB) {
+  try {
+    const refugiosRes = await DB.prepare("SELECT id, nombre FROM refugios ORDER BY nombre").all();
+    refugios = refugiosRes.results || [];
+  } catch (err) {
+    console.error("Error cargando refugios en SSR:", err);
+  }
+}
 ---
 
 <Layout title="Dashboard de Acopio - DondeEstan.org" description="Panel de control logístico para centros de acopio y refugios.">
