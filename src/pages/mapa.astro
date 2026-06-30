@@ -325,6 +325,7 @@ export const prerender = false;
   let selectedEntity: { id: string; tipo: string } | null = null;
   let refreshInterval: any = null;
   let isPopupOpen = false;
+  let lastUpdateTimestamp: string | null = null;
 
   // Haversine
   function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -482,6 +483,21 @@ export const prerender = false;
 
   async function fetchUnifiedData() {
     try {
+      // 1. Consultar si hay cambios en la base de datos
+      const updateResp = await fetch("/api/maps/last-update?t=" + Date.now());
+      if (updateResp.ok) {
+        const updatePayload = await updateResp.json();
+        if (updatePayload.success) {
+          const currentUpdate = updatePayload.last_update;
+          // Si el timestamp es idéntico al que ya tenemos, omitir descarga y renderizado
+          if (lastUpdateTimestamp && currentUpdate === lastUpdateTimestamp) {
+            return;
+          }
+          lastUpdateTimestamp = currentUpdate;
+        }
+      }
+
+      // 2. Descargar datos unificados si hay cambios o es la primera carga
       const resp = await fetch("/api/maps/unified?t=" + Date.now());
       if (!resp.ok) throw new Error("Error en servidor");
       const payload = await resp.json();
