@@ -9,6 +9,13 @@ const STATUS_MAP: Record<string, string> = {
   exc: "Exceso",
 };
 
+const ESTADO_VALORES: Record<string, number> = {
+  cri: -2.0, // Crítico
+  baj: -1.0, // Bajo
+  est: 1.0,  // Estable
+  exc: 2.0   // Exceso
+};
+
 const EMOJI_MAP: Record<string, string> = {
   est: "🟢 Estable",
   baj: "🟡 Bajo",
@@ -262,7 +269,9 @@ export async function setItemStatus(
   itemId: string,
   statusCode: string,
   messageId: number,
-  db: D1Database
+  db: D1Database,
+  telegramId?: string | number,
+  messageDate?: number
 ): Promise<void> {
   const item = TODOS_LOS_ITEMS.find((i) => i.id === itemId);
   const statusName = STATUS_MAP[statusCode];
@@ -274,6 +283,7 @@ export async function setItemStatus(
       await client.sendMessage(chatId, "❌ Centro no encontrado.");
       return;
     }
+    const centroTipo = table === "refugios" ? "refugio" : "centro_acopio";
 
     // 1. Obtener centro e inventario actual
     const query = `SELECT nombre, inventario FROM ${table} WHERE id = ?`;
@@ -284,6 +294,57 @@ export async function setItemStatus(
       return;
     }
 
+    // Obtener voluntario de la base de datos si existe
+    let voluntarioId: number | null = null;
+    if (telegramId) {
+      try {
+        const v = await db.prepare("SELECT id FROM voluntarios WHERE telegram_id = ?").bind(String(telegramId)).first<{ id: number }>();
+        if (v) voluntarioId = v.id;
+      } catch (e) {
+        // ignorar
+      }
+    }
+
+    const valor = ESTADO_VALORES[statusCode];
+    if (valor === undefined) return;
+
+    const timestamp = messageDate || Math.floor(Date.now() / 1000);
+
+    // 1. Insertar el reporte transaccional
+    await db.prepare(`
+      INSERT INTO inventario_reportes (centro_id, centro_tipo, item_id, estado_valor, voluntario_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(refugioId, centroTipo, itemId, valor, voluntarioId, timestamp).run();
+
+    // 2. Calcular el nuevo consenso ponderado al vuelo para actualizar la vista rápida de la web
+    const queryConsenso = `
+      WITH reportes_recientes AS (
+        SELECT 
+          estado_valor,
+          MAX(0.0, 1.0 - (?4 - created_at) / 14400.0) as peso
+        FROM inventario_reportes
+        WHERE centro_id = ?1 AND centro_tipo = ?2 AND item_id = ?3
+          AND created_at >= (?4 - 14400)
+      )
+      SELECT 
+        SUM(estado_valor * peso) as sum_ponderada,
+        SUM(peso) as sum_pesos
+      FROM reportes_recientes;
+    `;
+
+    const now = Math.floor(Date.now() / 1000);
+    const consensusResult = await db.prepare(queryConsenso).bind(refugioId, centroTipo, itemId, now).first<any>();
+
+    let estadoConsolidado = "desconocido";
+    if (consensusResult && consensusResult.sum_pesos > 0) {
+      const promedio = consensusResult.sum_ponderada / consensusResult.sum_pesos;
+      if (promedio <= -1.5) estadoConsolidado = "cri";
+      else if (promedio <= -0.2) estadoConsolidado = "baj";
+      else if (promedio <= 1.2) estadoConsolidado = "est";
+      else estadoConsolidado = "exc";
+    }
+
+    // 3. Cachear en la columna JSON de refugios/centros de acopio
     let inv: Record<string, string> = {};
     if (res.inventario) {
       try {
@@ -293,10 +354,10 @@ export async function setItemStatus(
       }
     }
 
-    // 2. Modificar el estado del item
-    inv[itemId] = statusName;
+    // El estado consolidado se guarda mapeado a su nombre legible (ej. "Crítico", "Estable", "Bajo")
+    const statusConsolidatedName = STATUS_MAP[estadoConsolidado] || "Desconocido";
+    inv[itemId] = statusConsolidatedName;
 
-    // 3. Guardar en BD
     const updateQuery = `UPDATE ${table} SET inventario = ?, updated_at = datetime('now', '-4 hours') WHERE id = ?`;
     await db.prepare(updateQuery).bind(JSON.stringify(inv), refugioId).run();
 
@@ -308,7 +369,7 @@ export async function setItemStatus(
     // Mensaje de éxito flash
     await client.sendMessage(
       chatId,
-      `✅ Actualizado: <b>${item.nombre}</b> ahora está <b>${statusName}</b> en <i>${res.nombre}</i>.`
+      `✅ Actualizado: <b>${item.nombre}</b> ahora está consolidado como <b>${statusConsolidatedName}</b> en <i>${res.nombre}</i>.`
     );
 
     // Redirigir la interfaz inline de vuelta a los items de la categoría

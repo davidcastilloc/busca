@@ -102,7 +102,7 @@ export async function processTelegramUpdate(
         await sendItemStatusOptions(client, chatId, refugioId, itemId, messageId, db);
       } else if (data.startsWith("s:")) {
         const [, refugioId, itemId, statusCode] = data.split(":");
-        await setItemStatus(client, chatId, refugioId, itemId, statusCode, messageId, db);
+        await setItemStatus(client, chatId, refugioId, itemId, statusCode, messageId, db, telegramId, cb.message?.date);
       } else if (data.startsWith("back_to_cat:")) {
         const [, refugioId, itemId] = data.split(":");
         const catIdx = CATEGORIAS_INVENTARIO.findIndex((cat) =>
