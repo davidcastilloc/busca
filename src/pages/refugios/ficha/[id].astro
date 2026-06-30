@@ -1,24 +1,23 @@
 ---
 import Layout from "../../../layouts/Layout.astro";
 import Navbar from "../../../components/Navbar.astro";
+import ShareButton from "../../../components/ShareButton.astro";
 import { env } from "cloudflare:workers";
+import { CATEGORIAS_INVENTARIO } from "../../../lib/items";
 
 export const prerender = false;
 
 const { id } = Astro.params;
 
-let nombre = "Refugio";
-let descripcion = "Ficha de información del refugio o centro de acopio.";
 let notFound = false;
+let r: any = {};
 
 try {
   const { DB } = env;
   if (DB && id) {
-    const query = await DB.prepare("SELECT nombre, direccion, tipo FROM refugios WHERE id = ?").bind(id).first();
+    const query = await DB.prepare("SELECT * FROM refugios WHERE id = ?").bind(id).first();
     if (query) {
-      nombre = query.nombre as string;
-      const tipo = query.tipo === "centro_acopio" ? "Centro de Acopio" : query.tipo === "hospital" ? "Hospital" : "Refugio";
-      descripcion = `${tipo} en ${query.direccion || "Venezuela"}. Ayuda a difundir y organizar la ayuda.`;
+      r = query;
     } else {
       notFound = true;
     }
@@ -31,99 +30,198 @@ if (notFound) {
   return Astro.redirect("/404");
 }
 
+const ocupacion = r.ocupacion_actual || 0;
+const capacidad = r.capacidad_maxima || 100;
+const pct = Math.min(Math.round((ocupacion / capacidad) * 100), 100);
+
+let colorBar = "bg-success"; // Verde
+if (pct >= 90) colorBar = "bg-error"; // Rojo
+else if (pct >= 70) colorBar = "bg-warning"; // Amarillo/Naranja
+
+let tipoLabel = "Refugio / Albergue";
+let tipoColor = "bg-blue-100 text-blue-800 border-blue-200";
+if (r.tipo === "hospital") {
+  tipoLabel = "Hospital / Salud";
+  tipoColor = "bg-red-100 text-red-800 border-red-200";
+} else if (r.tipo === "centro_acopio") {
+  tipoLabel = "Centro de Acopio";
+  tipoColor = "bg-yellow-100 text-yellow-800 border-yellow-200";
+}
+
+let itemsCriticos: string[] = [];
+let itemsAlerta: string[] = [];
+if (r.inventario) {
+  try {
+    const inv = typeof r.inventario === 'string' ? JSON.parse(r.inventario) : r.inventario;
+    for (const [itemId, estado] of Object.entries(inv)) {
+      const itemObj = CATEGORIAS_INVENTARIO.flatMap(c => c.items).find(i => i.id === itemId);
+      if (itemObj) {
+        if (estado === "Crítico") {
+          itemsCriticos.push(itemObj.nombre);
+        } else if (estado === "Alerta") {
+          itemsAlerta.push(itemObj.nombre);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error al parsear inventario:", e);
+  }
+}
+
+let fechaFormateada = "";
+if (r.fecha_registro) {
+  try {
+    fechaFormateada = new Date(r.fecha_registro).toLocaleString('es-VE', {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    });
+  } catch {
+    fechaFormateada = r.fecha_registro;
+  }
+}
+
+let fotosArray: string[] = [];
+if (r.fotos) {
+  try {
+    fotosArray = typeof r.fotos === 'string' ? JSON.parse(r.fotos) : r.fotos;
+  } catch (e) {
+    console.error("Error al parsear fotos:", e);
+  }
+}
+
 const flyerUrl = `https://dondeestan.org/refugios/flyer/${id}.png`;
-const currentUrl = Astro.url.href;
+const descripcion = `${tipoLabel} en ${r.direccion || "Venezuela"}. Ayuda a difundir y organizar la ayuda.`;
 ---
 
 <Layout 
-  title={`Ficha: ${nombre} - dondeestan.org`}
+  title={`Ficha: ${r.nombre} - dondeestan.org`}
   description={descripcion}
   ogImage={flyerUrl}
 >
   <Navbar />
   
-  <main class="flex-grow flex flex-col items-center py-8 px-4 bg-canvas min-h-[80vh]">
-    <div class="max-w-md w-full space-y-6">
-      <div class="text-center space-y-2">
-        <a href="/" class="text-primary hover:underline text-sm font-semibold font-uber-text">← Volver al mapa y listado</a>
-        <h1 class="font-uber-display text-2xl sm:text-3xl text-ink tracking-tight">Ficha del Centro</h1>
-        <p class="text-sm text-body font-uber-text">{nombre}</p>
+  <main class="flex-grow flex justify-center py-8 px-4 bg-canvas-soft min-h-[80vh]">
+    <div class="max-w-2xl w-full">
+      <div class="mb-4">
+        <a href="/" class="text-primary hover:underline text-sm font-semibold font-uber-text inline-flex items-center gap-2">
+          ← Volver al mapa general
+        </a>
       </div>
+      
+      <div class="refugio-card bg-canvas border border-canvas-soft p-5 sm:p-8 rounded-2xl shadow-md space-y-6">
+        {fotosArray && fotosArray.length > 0 && (
+          <div class="w-full h-48 sm:h-72 rounded-xl overflow-hidden border border-canvas-soft bg-surface-pressed mb-2">
+            <img 
+              src={`/api/upload?key=${fotosArray[0]}`} 
+              alt={`Foto de ${r.nombre}`} 
+              class="w-full h-full object-cover"
+              loading="eager"
+            />
+          </div>
+        )}
+        
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+          <div>
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span class={`text-xs font-bold px-2.5 py-1 rounded-full border ${tipoColor} font-uber-text`}>
+                {tipoLabel}
+              </span>
+            </div>
+            <h1 class="font-uber-display text-3xl text-ink font-semibold">{r.nombre}</h1>
+            {r.direccion && <p class="text-base text-body font-uber-text mt-2">📍 {r.direccion}</p>}
+          </div>
+          <div class="text-right shrink-0">
+            <span class="text-sm font-semibold text-ink font-uber-text bg-canvas-soft px-4 py-2 rounded-full border border-canvas-soft shadow-sm">
+              {ocupacion} / {capacidad} personas
+            </span>
+          </div>
+        </div>
 
-      <div class="bg-canvas border border-canvas-soft rounded-2xl shadow-sm overflow-hidden p-2 flex justify-center">
-        <img 
-          src={flyerUrl} 
-          alt={`Ficha de ${nombre}`} 
-          class="max-w-full h-auto rounded-xl border border-canvas-soft"
-          loading="eager"
-        />
-      </div>
+        {(r.encargado || fechaFormateada) && (
+          <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm font-uber-text text-body border-t border-canvas-soft pt-4">
+            {r.encargado && <span>👤 Encargado: <strong class="text-ink">{r.encargado}</strong></span>}
+            {fechaFormateada && <span>📅 Reportado: <strong class="text-ink">{fechaFormateada}</strong></span>}
+          </div>
+        )}
 
-      <div class="flex flex-col gap-3">
-        <button 
-          id="btn-descargar"
-          class="btn bg-primary text-white hover:bg-black-elevated font-uber-text font-semibold py-3 rounded-xl shadow-sm w-full cursor-pointer flex items-center justify-center gap-2"
-        >
-          ⬇️ Descargar Imagen
-        </button>
-        <button 
-          id="btn-compartir"
-          class="btn bg-canvas-soft text-ink hover:bg-surface-pressed border border-canvas-soft font-uber-text font-semibold py-3 rounded-xl shadow-sm w-full cursor-pointer flex items-center justify-center gap-2"
-        >
-          📤 Compartir Link Nativamente
-        </button>
+        <div class="space-y-2 pt-2">
+          <div class="flex justify-between text-sm font-uber-text font-medium text-mute">
+            <span>Capacidad ocupada</span>
+            <span>{pct}%</span>
+          </div>
+          <div class="w-full bg-canvas-soft h-3 rounded-full overflow-hidden border border-canvas-soft">
+            <div class={`h-full ${colorBar}`} style={`width: ${pct}%`}></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm font-uber-text bg-canvas-soft p-4 rounded-xl border border-canvas-soft mt-4">
+          <div class="text-center">👶 Niños<br/><strong class="text-ink text-xl">{r.ninos || 0}</strong></div>
+          <div class="text-center">🍼 Lactantes<br/><strong class="text-ink text-xl">{r.bebes_lactantes || 0}</strong></div>
+          <div class="text-center">👵 Mayores<br/><strong class="text-ink text-xl">{r.adultos_mayores || 0}</strong></div>
+          <div class="text-center">🩺 Personal<br/><strong class="text-ink text-xl">{r.personal_profesional || 0}</strong></div>
+          <div class="text-center">🤝 Vols<br/><strong class="text-ink text-xl">{r.voluntarios || 0}</strong></div>
+        </div>
+
+        {(itemsCriticos.length > 0 || itemsAlerta.length > 0) && (
+          <div class="space-y-3 bg-canvas-soft/50 border border-canvas-soft p-5 rounded-xl mt-4">
+            {itemsCriticos.length > 0 && (
+              <div class="flex flex-wrap gap-2 items-center">
+                <span class="text-xs font-bold text-red-700 uppercase tracking-wider font-uber-text mr-1">Crítico:</span>
+                {itemsCriticos.map(item => (
+                  <span class="text-xs bg-red-500/10 text-red-700 font-semibold px-3 py-1.5 rounded-full border border-red-500/20">{item}</span>
+                ))}
+              </div>
+            )}
+            {itemsAlerta.length > 0 && (
+              <div class="flex flex-wrap gap-2 items-center mt-3">
+                <span class="text-xs font-bold text-amber-700 uppercase tracking-wider font-uber-text mr-1">Alerta:</span>
+                {itemsAlerta.map(item => (
+                  <span class="text-xs bg-amber-500/10 text-amber-700 font-semibold px-3 py-1.5 rounded-full border border-amber-500/20">{item}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {r.necesidades && (
+          <div class="pt-5 border-t border-canvas-soft mt-4">
+            <h4 class="font-uber-text font-bold text-base text-ink mb-2">📝 Notas y Necesidades Adicionales</h4>
+            <p class="text-base font-uber-text text-body whitespace-pre-wrap">{r.necesidades}</p>
+          </div>
+        )}
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-5 border-t border-canvas-soft mt-4">
+          <a 
+            href={r.latitud && r.longitud ? `https://www.google.com/maps/dir/?api=1&destination=${r.latitud},${r.longitud}` : "/"}
+            target="_blank"
+            class="btn bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-ink font-semibold flex items-center justify-center w-full"
+          >
+            🗺️ Cómo llegar
+          </a>
+          {r.contacto && (
+            <a 
+              href={`tel:${r.contacto}`} 
+              class="btn bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-ink font-semibold flex items-center justify-center w-full"
+            >
+              📞 Llamar
+            </a>
+          )}
+          <div class="w-full">
+            <ShareButton 
+              buttonText="Compartir Ficha"
+              url={`https://dondeestan.org/refugios/ficha/${r.id}`}
+              text={`Ficha del Refugio ${r.nombre} en dondeestan.org`}
+            />
+          </div>
+        </div>
+        
+        <div class="pt-4">
+           <a href={`/refugios/flyer/${r.id}.png`} target="_blank" download class="btn bg-primary text-white hover:bg-black-elevated font-semibold flex items-center justify-center gap-2 w-full">
+             ⬇️ Descargar Imagen (Flyer)
+           </a>
+        </div>
       </div>
+      
     </div>
   </main>
 </Layout>
-
-<script define:vars={{ flyerUrl, nombre, id }}>
-  // Redirección inmediata para humanos al Home con el ID del refugio seleccionado.
-  // Los bots de WhatsApp, Telegram, etc., no ejecutan JS y leerán las etiquetas OpenGraph para la previsualización.
-  if (!navigator.userAgent.includes("WhatsApp") && !navigator.userAgent.includes("facebookexternalhit") && !navigator.userAgent.includes("Twitterbot")) {
-    window.location.replace(`/#refugio-${id}`);
-  }
-
-  const btnDescargar = document.getElementById('btn-descargar');
-  btnDescargar?.addEventListener('click', async () => {
-    try {
-      btnDescargar.textContent = "⏳ Descargando...";
-      const resp = await fetch(flyerUrl);
-      const blob = await resp.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = `ficha_${nombre.replace(/\s+/g, '_')}.png`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      btnDescargar.textContent = "✅ ¡Descargado!";
-      setTimeout(() => btnDescargar.textContent = "⬇️ Descargar Imagen", 3000);
-    } catch(e) {
-      console.error(e);
-      window.open(flyerUrl, '_blank');
-      btnDescargar.textContent = "⬇️ Descargar Imagen";
-    }
-  });
-
-  const btnCompartir = document.getElementById('btn-compartir');
-  btnCompartir?.addEventListener('click', async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Ficha: ${nombre}`,
-          text: `Información de ${nombre} en dondeestan.org`,
-          url: window.location.href,
-        });
-      } catch(e) {
-        console.error("Error al compartir", e);
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        alert("Enlace copiado al portapapeles.");
-      } catch(e) {}
-    }
-  });
-</script>
