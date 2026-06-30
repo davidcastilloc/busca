@@ -189,35 +189,36 @@ const descripcion = `${tipoLabel} en ${r.direccion || "Venezuela"}. Ayuda a difu
           </div>
         )}
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-5 border-t border-canvas-soft mt-4">
+        <div class="grid grid-cols-2 gap-3 pt-5 border-t border-canvas-soft mt-4">
           <a 
             href={r.latitud && r.longitud ? `https://www.google.com/maps/dir/?api=1&destination=${r.latitud},${r.longitud}` : "/"}
             target="_blank"
-            class="btn bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-ink font-semibold flex items-center justify-center w-full"
+            class="btn bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-ink font-semibold flex items-center justify-center w-full h-[3rem]"
           >
             🗺️ Cómo llegar
           </a>
-          {r.contacto && (
+          {r.contacto ? (
             <a 
               href={`tel:${r.contacto}`} 
-              class="btn bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-ink font-semibold flex items-center justify-center w-full"
+              class="btn bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-ink font-semibold flex items-center justify-center w-full h-[3rem]"
             >
               📞 Llamar
             </a>
+          ) : (
+            <div class="btn bg-canvas-soft/50 border border-canvas-soft text-mute font-semibold flex items-center justify-center w-full cursor-not-allowed opacity-50 h-[3rem]">
+              📞 Sin número
+            </div>
           )}
-          <div class="w-full">
+          <div class="w-full [&_.dropdown]:w-full [&_.dropdown>div[role='button']]:w-full [&_.dropdown>div[role='button']]:h-[3rem] [&_.dropdown>div[role='button']]:text-sm">
             <ShareButton 
-              buttonText="Compartir Ficha"
+              buttonText="Compartir"
               url={`https://dondeestan.org/r/${r.id}`}
               text={`📍 Ayuda en ${r.nombre}:`}
             />
           </div>
-        </div>
-        
-        <div class="pt-4">
-           <a href={`/refugios/flyer/${r.id}.png`} target="_blank" download class="btn bg-primary text-white hover:bg-black-elevated font-semibold flex items-center justify-center gap-2 w-full">
-             ⬇️ Descargar Imagen (Flyer)
-           </a>
+          <a href={`/refugios/flyer/${r.id}.png`} target="_blank" download class="btn bg-primary text-white hover:bg-black-elevated font-semibold flex items-center justify-center gap-2 w-full h-[3rem] text-sm">
+             ⬇️ Flyer
+          </a>
         </div>
       </div>
       
