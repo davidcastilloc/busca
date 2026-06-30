@@ -349,7 +349,7 @@ try {
                     )}
                     <ShareButton 
                       buttonText="Compartir Ficha"
-                      url={`https://dondeestan.org/refugios/flyer/${r.id}.png`}
+                      url={`https://dondeestan.org/refugios/ficha/${r.id}`}
                       text={`Ficha del Refugio ${r.nombre} en dondeestan.org`}
                     />
                   </div>
@@ -1026,7 +1026,7 @@ try {
               <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-primary text-primary-content text-center py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 no-underline">
                 🚗 Cómo llegar
               </a>
-              <div class="share-dropdown-container inline-block" data-url="https://dondeestan.org/refugios/flyer/${id}.png" data-text="Ficha del Refugio ${nombre} en dondeestan.org">
+              <div class="share-dropdown-container inline-block" data-url="https://dondeestan.org/refugios/ficha/${id}" data-text="Ficha del Refugio ${nombre} en dondeestan.org">
                 <button type="button" class="btn-share-toggle btn btn-xs bg-canvas-soft text-ink hover:bg-surface-pressed border border-canvas-soft text-center py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 w-full cursor-pointer">
                   📤 Compartir Ficha
                 </button>
