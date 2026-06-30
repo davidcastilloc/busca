@@ -165,8 +165,16 @@ export async function handleLoginState(
         { command: "alerta", description: "Suscribirse a alertas GPS (radio 10km)" },
         { command: "acopio", description: "Abrir Dashboard del Centro de Acopio" }
       ], { type: "chat", chat_id: chatId });
+
+      await client.setChatMenuButton(chatId, {
+        type: "web_app",
+        text: "🗺️ Mapa Voluntarios",
+        web_app: {
+          url: "https://dondeestan.org/mapa"
+        }
+      });
     } catch (cmdErr) {
-      console.error("Error al setear comandos personalizados:", cmdErr);
+      console.error("Error al setear comandos o botón personalizado:", cmdErr);
     }
   } catch (err) {
     console.error("Error al procesar login de contacto:", err);
