@@ -91,6 +91,35 @@ const {
     <!-- Toast de actualización del Service Worker -->
     <UpdateToast />
 
+    <!-- Toast de Modo Offline -->
+    <div id="offline-toast" class="fixed top-20 left-1/2 -translate-x-1/2 z-[99999] hidden animate-slide-down w-[calc(100%-2rem)] max-w-sm pointer-events-none">
+      <div class="bg-amber-500 text-ink rounded-2xl px-4 py-3 shadow-2xl flex items-center gap-3 border border-amber-600/20">
+        <span class="text-lg flex-shrink-0">⚠️</span>
+        <div class="flex-grow min-w-0">
+          <p class="font-uber-text uber-body-sm-strong leading-tight">Sin conexión a Internet</p>
+          <p class="font-uber-text text-[11px] text-ink/70 leading-tight">Estás navegando en modo offline.</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function checkConnection() {
+        const toast = document.getElementById('offline-toast');
+        if (!toast) return;
+        if (navigator.onLine) {
+          toast.classList.add('hidden');
+        } else {
+          toast.classList.remove('hidden');
+        }
+      }
+      
+      window.addEventListener('online', checkConnection);
+      window.addEventListener('offline', checkConnection);
+      
+      document.addEventListener('astro:page-load', checkConnection);
+      if (typeof navigator !== 'undefined') checkConnection();
+    </script>
+
     <!-- Registro de Service Worker para PWA -->
     <script>
       if ("serviceWorker" in navigator && !import.meta.env.DEV) {
