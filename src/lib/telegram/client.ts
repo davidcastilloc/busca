@@ -108,6 +108,13 @@ export class TelegramClient {
     });
   }
 
+  async setMyCommands(commands: Array<{command: string, description: string}>, scope: any = { type: "default" }): Promise<any> {
+    return this.call("setMyCommands", {
+      commands,
+      scope,
+    });
+  }
+
   async getFile(fileId: string): Promise<any> {
     return this.call("getFile", { file_id: fileId });
   }
