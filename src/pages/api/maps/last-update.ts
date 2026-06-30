@@ -8,25 +8,31 @@ export const GET: APIRoute = async () => {
     const { DB } = env;
     if (!DB) throw new Error("Base de datos no disponible");
 
-    // Consultar el timestamp más reciente de modificación de todas las tablas clave
-    const result = await DB.prepare(`
-      SELECT MAX(val) as last_update FROM (
-        SELECT MAX(updated_at) as val FROM refugios
-        UNION ALL
-        SELECT MAX(updated_at) as val FROM centros_acopio
-        UNION ALL
-        SELECT MAX(updated_at) as val FROM hospitales
-        UNION ALL
-        SELECT MAX(updated_at) as val FROM necesidades
-        UNION ALL
-        SELECT MAX(updated_at) as val FROM personas
-        UNION ALL
-        SELECT MAX(created_at) as val FROM zonas_peligro
-      )
-    `).first<{ last_update: string }>();
+    // Ejecutar consultas en batch para evitar errores de UNION ALL / compound SELECT en D1
+    const statements = [
+      DB.prepare("SELECT MAX(updated_at) as val FROM refugios"),
+      DB.prepare("SELECT MAX(updated_at) as val FROM centros_acopio"),
+      DB.prepare("SELECT MAX(updated_at) as val FROM hospitales"),
+      DB.prepare("SELECT MAX(updated_at) as val FROM necesidades"),
+      DB.prepare("SELECT MAX(updated_at) as val FROM personas"),
+      DB.prepare("SELECT MAX(created_at) as val FROM zonas_peligro")
+    ];
+
+    const results = await DB.batch<{ val: string }>(statements);
+    
+    // Obtener la fecha más alta en JS
+    let maxDate = "";
+    for (const res of results) {
+      if (res.results && res.results[0]) {
+        const val = res.results[0].val;
+        if (val && val > maxDate) {
+          maxDate = val;
+        }
+      }
+    }
 
     return new Response(
-      JSON.stringify({ success: true, last_update: result?.last_update || "" }),
+      JSON.stringify({ success: true, last_update: maxDate }),
       {
         status: 200,
         headers: {
