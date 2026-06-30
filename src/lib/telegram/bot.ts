@@ -119,6 +119,19 @@ export async function processTelegramUpdate(
         await handleShelterStatusUpdate(client, db, chatId, telegramId, refugioId, parseInt(porcentaje), messageId);
       } else if (data === "ref_list") {
         await handleRefugioList(client, chatId, messageId, db);
+      } else if (data.startsWith("cub:")) {
+        const [, necesidadId] = data.split(":");
+        try {
+          const res = await db.prepare("UPDATE necesidades SET estado = 'atendida', updated_at = datetime('now', '-4 hours') WHERE id = ?").bind(necesidadId).run();
+          if (res.meta.changes > 0) {
+            await client.sendMessage(chatId, `✅ <b>¡Necesidad #${necesidadId} marcada como satisfecha!</b>`);
+            await client.editMessageReplyMarkup(chatId, messageId, { inline_keyboard: [] });
+          } else {
+            await client.sendMessage(chatId, `❌ No se encontró la necesidad o ya estaba marcada.`);
+          }
+        } catch (e) {
+          await client.sendMessage(chatId, "❌ Ocurrió un error al actualizar la base de datos.");
+        }
       }
 
       await client.answerCallbackQuery(cb.id);
@@ -212,6 +225,47 @@ export async function processTelegramUpdate(
       }
 
       // Comandos de Voluntarios (requieren isAuthorized)
+      if (lowerText === "/misnecesidades" || lowerText === "/necesidades") {
+        if (!isAuthorized) {
+          await client.sendMessage(chatId, "🚷 Acceso denegado. Inicia sesión con /login.");
+          return;
+        }
+        
+        const q = `
+          SELECT n.id, n.categoria, n.descripcion, n.gravedad, 
+                 COALESCE(r.nombre, a.nombre, h.nombre, n.ubicacion_nombre) as ubicacion
+          FROM necesidades n
+          LEFT JOIN refugios r ON n.refugio_id = r.id
+          LEFT JOIN centros_acopio a ON n.centro_acopio_id = a.id
+          LEFT JOIN hospitales h ON n.hospital_id = h.id
+          WHERE n.estado = 'abierta'
+          ORDER BY n.created_at DESC
+          LIMIT 10
+        `;
+        const { results } = await db.prepare(q).all<any>();
+        
+        if (!results || results.length === 0) {
+          await client.sendMessage(chatId, "✅ No hay necesidades urgentes abiertas en este momento.");
+          return;
+        }
+        
+        await client.sendMessage(chatId, "📋 <b>Necesidades Abiertas:</b>\nSelecciona el botón de abajo si la necesidad ya fue satisfecha.");
+        
+        for (const n of results) {
+          const gravEmoji = n.gravedad.toLowerCase().includes("alta") ? "🔴" : n.gravedad.toLowerCase().includes("media") ? "🟡" : "🔵";
+          let textMsg = `${gravEmoji} <b>[${n.categoria}]</b> en <b>${n.ubicacion || 'Zona desconocida'}</b>\n📝 <i>"${n.descripcion}"</i>`;
+          
+          await client.sendMessage(chatId, textMsg, {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "✅ Marcar como Satisfecha", callback_data: `cub:${n.id}` }]
+              ]
+            }
+          });
+        }
+        return;
+      }
+
       if (lowerText.startsWith("/inventario")) {
         if (!isAuthorized) {
           await client.sendMessage(
@@ -403,6 +457,7 @@ async function sendWelcomeMessage(
     helpText += `⛺ /refugio - Actualizar capacidad de un refugio.\n`;
     helpText += `🆘 /urgencia [insumo] - Alerta crítica de necesidad en terreno.\n`;
     helpText += `✅ /cubierta [ID] - Marcar una necesidad como cubierta.\n`;
+    helpText += `📋 /misnecesidades - Listar necesidades abiertas para marcarlas.\n`;
     helpText += `🚧 /peligro - Reportar peligro en la vía (bloqueo/derrumbe).\n`;
     helpText += `🔔 /alerta - Suscribirse a alertas GPS (radio 10km).\n`;
     helpText += `📦 /acopio - Abrir Dashboard del Centro de Acopio.\n\n`;
