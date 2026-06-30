@@ -1,9 +1,9 @@
 ---
-import Layout from "../../../layouts/Layout.astro";
-import Navbar from "../../../components/Navbar.astro";
-import ShareButton from "../../../components/ShareButton.astro";
+import Layout from "../../layouts/Layout.astro";
+import Navbar from "../../components/Navbar.astro";
+import ShareButton from "../../components/ShareButton.astro";
 import { env } from "cloudflare:workers";
-import { CATEGORIAS_INVENTARIO } from "../../../lib/items";
+import { CATEGORIAS_INVENTARIO } from "../../lib/items";
 
 export const prerender = false;
 
@@ -209,8 +209,8 @@ const descripcion = `${tipoLabel} en ${r.direccion || "Venezuela"}. Ayuda a difu
           <div class="w-full">
             <ShareButton 
               buttonText="Compartir Ficha"
-              url={`https://dondeestan.org/refugios/ficha/${r.id}`}
-              text={`Ficha del Refugio ${r.nombre} en dondeestan.org`}
+              url={`https://dondeestan.org/r/${r.id}`}
+              text={`📍 Ayuda en ${r.nombre}:`}
             />
           </div>
         </div>
