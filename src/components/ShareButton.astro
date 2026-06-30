@@ -2,15 +2,24 @@
 // ShareButton.astro
 interface Props {
   class?: string;
+  url?: string;
+  text?: string;
+  buttonText?: string;
 }
 
-const { class: className = "" } = Astro.props;
+const { class: className = "", url, text, buttonText } = Astro.props;
 ---
-<div class={`dropdown dropdown-end ${className}`}>
-  <div tabindex="0" role="button" class="w-10 h-10 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors active:bg-surface-pressed" title="Compartir">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-    </svg>
+<div class={`dropdown dropdown-end ${className}`} data-share-url={url} data-share-text={text}>
+  <div tabindex="0" role="button" class={buttonText ? "btn btn-xs bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text font-semibold px-3 py-1.5 rounded-lg border border-canvas-soft cursor-pointer flex items-center gap-1" : "w-10 h-10 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors active:bg-surface-pressed"} title="Compartir">
+    {buttonText ? (
+      <>
+        📤 {buttonText}
+      </>
+    ) : (
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+      </svg>
+    )}
   </div>
   <ul tabindex="0" class="dropdown-content z-[60] menu p-2 shadow-lg bg-canvas border border-canvas-soft rounded-xl w-56 mt-2 gap-1">
     <li>
@@ -71,9 +80,12 @@ const { class: className = "" } = Astro.props;
       if (!btnWa) return; // Not our share dropdown
       dropdown.classList.add('share-initialized');
 
-      const text = 'dondeestan.org - Censo y Búsqueda de Emergencia. Ayuda a encontrar a las víctimas y colabora con refugios.';
+      const customText = dropdown.getAttribute('data-share-text');
+      const customUrl = dropdown.getAttribute('data-share-url');
+
+      const text = customText || 'dondeestan.org - Censo y Búsqueda de Emergencia. Ayuda a encontrar a las víctimas y colabora con refugios.';
       
-      const getUrl = () => window.location.href;
+      const getUrl = () => customUrl || window.location.href;
       
       const closeDropdown = () => {
         if (document.activeElement instanceof HTMLElement) {
@@ -133,5 +145,6 @@ const { class: className = "" } = Astro.props;
     });
   }
   
+  window.initShareDropdowns = initShare;
   document.addEventListener('astro:page-load', initShare);
 </script>

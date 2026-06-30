@@ -1,6 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import Navbar from "../../components/Navbar.astro";
+import ShareButton from "../../components/ShareButton.astro";
 import { env } from "cloudflare:workers";
 import { CATEGORIAS_INVENTARIO } from "../../lib/items";
 import { obtenerVoluntarioSesion } from "../../lib/auth-helpers";
@@ -267,32 +268,39 @@ try {
                 <div class="text-xs text-mute font-uber-text">
                   {r.contacto ? `📞 Contacto: ${r.contacto}` : "Sin información de contacto"}
                 </div>
-                {esVoluntario && (
-                  <button 
-                    class="btn-edit-refugio btn btn-xs bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text font-semibold px-3 py-1.5 rounded-lg border border-canvas-soft cursor-pointer"
-                    data-id={r.id}
-                    data-nombre={r.nombre}
-                    data-ocupacion={ocupacion}
-                    data-capacidad={capacidad}
-                    data-necesidades={r.necesidades || ""}
-                    data-contacto={r.contacto || ""}
-                    data-direccion={r.direccion || ""}
-                    data-tipo={r.tipo || "refugio"}
-                    data-encargado={r.encargado || ""}
-                    data-ninos={r.ninos || 0}
-                    data-bebes={r.bebes_lactantes || 0}
-                    data-mayores={r.adultos_mayores || 0}
-                    data-prof={r.personal_profesional || 0}
-                    data-vols={r.voluntarios || 0}
-                    data-inventario={typeof r.inventario === 'string' ? r.inventario : JSON.stringify(r.inventario || {})}
-                    data-fecha={r.fecha_registro || ""}
-                    data-lat={r.latitud || ""}
-                    data-lng={r.longitud || ""}
-                    data-fotos={typeof r.fotos === 'string' ? r.fotos : JSON.stringify(r.fotos || [])}
-                  >
-                    ✏️ Actualizar Estado
-                  </button>
-                )}
+                <div class="flex flex-wrap items-center gap-2">
+                  <ShareButton 
+                    buttonText="Compartir Ficha"
+                    url={`https://dondeestan.org/refugios/flyer/${r.id}.png`}
+                    text={`Ficha del Refugio ${r.nombre} en dondeestan.org`}
+                  />
+                  {esVoluntario && (
+                    <button 
+                      class="btn-edit-refugio btn btn-xs bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text font-semibold px-3 py-1.5 rounded-lg border border-canvas-soft cursor-pointer"
+                      data-id={r.id}
+                      data-nombre={r.nombre}
+                      data-ocupacion={ocupacion}
+                      data-capacidad={capacidad}
+                      data-necesidades={r.necesidades || ""}
+                      data-contacto={r.contacto || ""}
+                      data-direccion={r.direccion || ""}
+                      data-tipo={r.tipo || "refugio"}
+                      data-encargado={r.encargado || ""}
+                      data-ninos={r.ninos || 0}
+                      data-bebes={r.bebes_lactantes || 0}
+                      data-mayores={r.adultos_mayores || 0}
+                      data-prof={r.personal_profesional || 0}
+                      data-vols={r.voluntarios || 0}
+                      data-inventario={typeof r.inventario === 'string' ? r.inventario : JSON.stringify(r.inventario || {})}
+                      data-fecha={r.fecha_registro || ""}
+                      data-lat={r.latitud || ""}
+                      data-lng={r.longitud || ""}
+                      data-fotos={typeof r.fotos === 'string' ? r.fotos : JSON.stringify(r.fotos || [])}
+                    >
+                      ✏️ Actualizar Estado
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -813,6 +821,24 @@ try {
         semaforoColor = "text-amber-600 font-semibold";
       }
 
+      const shareUrl = `https://dondeestan.org/refugios/flyer/${id}.png`;
+      const shareText = `Ficha del Refugio ${nombre} en dondeestan.org`;
+      
+      const shareHTML = `
+        <div class="dropdown dropdown-bottom" data-share-url="${shareUrl}" data-share-text="${shareText}">
+          <div tabindex="0" role="button" class="btn btn-xs bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text font-semibold px-3 py-1.5 rounded-lg border border-canvas-soft cursor-pointer flex items-center gap-1" title="Compartir">
+            📤 Compartir Ficha
+          </div>
+          <ul tabindex="0" class="dropdown-content z-[9999] menu p-2 shadow-lg bg-canvas border border-canvas-soft rounded-xl w-52 mt-1 gap-1" style="min-width: max-content;">
+            <li><button class="share-wa flex items-center gap-2 text-ink hover:bg-canvas-soft px-3 py-2 rounded-lg text-xs"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.65 -3.8a9 9 0 1 1 3.4 2.9l-5.05 .9" /><path d="M9 10a.5 .5 0 0 0 1 0v-1a.5 .5 0 0 0 -1 0v1a5 5 0 0 0 5 5h1a.5 .5 0 0 0 0 -1h-1a.5 .5 0 0 0 0 1" /></svg> WhatsApp</button></li>
+            <li><button class="share-tg flex items-center gap-2 text-ink hover:bg-canvas-soft px-3 py-2 rounded-lg text-xs"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0088cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l-4 4l6 6l4 -16l-18 7l4 2l2 6l3 -4" /></svg> Telegram</button></li>
+            <li><button class="share-ig flex items-center gap-2 text-ink hover:bg-canvas-soft px-3 py-2 rounded-lg text-xs" title="Copiar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E1306C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4" /><circle cx="12" cy="12" r="3" /><line x1="16.5" y1="7.5" x2="16.5" y2="7.501" /></svg> Instagram</button></li>
+            <li><button class="share-fb flex items-center gap-2 text-ink hover:bg-canvas-soft px-3 py-2 rounded-lg text-xs"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1877F2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v4h3v7h4v-7h3l1 -4h-4v-2a1 1 0 0 1 1 -1h3v-4h-3a5 5 0 0 0 -5 5v2h-3" /></svg> Facebook</button></li>
+            <li><button class="share-x flex items-center gap-2 text-ink hover:bg-canvas-soft px-3 py-2 rounded-lg text-xs"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z" /><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772" /></svg> X</button></li>
+          </ul>
+        </div>
+      `;
+
       const popupHTML = `
         <div class="p-3 space-y-2 max-w-[240px] font-uber-text">
           ${fotos.length > 0 ? `
@@ -831,6 +857,7 @@ try {
             ${contacto ? `<div>📞 Contacto: <strong class="text-ink">${contacto}</strong></div>` : ''}
           </div>
           <div class="flex flex-col gap-1.5 pt-1">
+            ${shareHTML}
             <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-primary text-primary-content text-center py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 no-underline">
               🚗 Cómo llegar
             </a>
@@ -843,8 +870,12 @@ try {
         </div>
       `;
 
-      // @ts-ignore
       const marker = L.marker([lat, lng], { icon: customIcon }).bindPopup(popupHTML);
+      marker.on('popupopen', () => {
+        if (typeof window.initShareDropdowns === 'function') {
+          window.initShareDropdowns();
+        }
+      });
       marker.addTo(map);
       marcadores.set(id, marker);
     });
