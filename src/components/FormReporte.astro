@@ -156,7 +156,7 @@ try {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Tipo de Necesidad *</label>
-              <select name="necesidad_categoria" class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent">
+              <select name="necesidad_categoria" id="necesidad_categoria_select" class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent">
                 <option value="Agua potable">Agua potable</option>
                 <option value="Alimentos / Comida">Alimentos / Comida</option>
                 <option value="Atención médica / Medicinas">Atención médica / Medicinas</option>
@@ -165,6 +165,9 @@ try {
                 <option value="Energía / Telecomunicaciones">Energía / Telecomunicaciones</option>
                 <option value="Otro">Otro / Varios</option>
               </select>
+              <div id="wrapper-necesidad-otro" class="hidden mt-2">
+                <input type="text" name="necesidad_categoria_otro" id="necesidad_categoria_otro" placeholder="Especifica la necesidad (ej: Pañales, linternas...)" class="input w-full font-uber-text uber-body-md" />
+              </div>
             </div>
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Urgencia / Gravedad *</label>
@@ -235,14 +238,22 @@ try {
 
         <!-- CAMPO COMÚN: DESCRIPCIÓN DETALLADA -->
         <div class="mt-4 pt-4 border-t border-canvas-soft">
-          <label id="label-descripcion" class="block font-uber-text uber-body-sm-strong text-body mb-1">Descripción Detallada *</label>
+          <div class="flex items-center justify-between mb-1">
+            <label id="label-descripcion" class="block font-uber-text uber-body-sm-strong text-body">Descripción Detallada *</label>
+            {isVolunteer && (
+              <button type="button" id="btn-dictar" class="btn btn-xs btn-outline border-canvas-soft text-mute flex items-center gap-1 cursor-pointer hover:bg-canvas-soft active:scale-95 transition-all" title="Dictar por voz (Micrófono)">
+                <span id="mic-icon">🎙️</span>
+                <span id="mic-text" class="text-xs font-uber-text">Dictar por voz</span>
+              </button>
+            )}
+          </div>
           <textarea 
             name="descripcion" 
             id="input-descripcion"
             class="textarea w-full h-24 font-uber-text uber-body-md" 
             placeholder="Ej: Detalles de la desaparición o situación..."
           ></textarea>
-          <span class="text-xs text-mute mt-1 block font-uber-text">La IA utilizará esta descripción para cruzar reportes.</span>
+          <span id="help-descripcion" class="text-xs text-mute mt-1 block font-uber-text">La IA utilizará esta descripción para cruzar reportes.</span>
         </div>
       </fieldset>
 
@@ -394,6 +405,7 @@ try {
       const labelNombreBuscado = document.getElementById("label-nombre-buscado");
       const labelDescripcion = document.getElementById("label-descripcion");
       const labelFoto = Array.from(document.querySelectorAll("#form-reporte label")).find(el => el.textContent?.includes("Foto Evidencia"));
+      const helpDescripcion = document.getElementById("help-descripcion");
 
       if (!camposPersona || !camposNecesidad || !camposRefugio || !camposDesaparecido) return;
 
@@ -411,6 +423,7 @@ try {
         inputDescripcion.placeholder = "Ej: Detalles de la desaparición, vestimenta, última vez que se le vio...";
         if (labelDescripcion) labelDescripcion.innerHTML = 'Detalles adicionales y contexto *';
         if (labelFoto) labelFoto.innerHTML = '📸 Foto de la Persona (Requerida) *';
+        if (helpDescripcion) helpDescripcion.textContent = "La IA utilizará esta descripción para cruzar reportes.";
       } else if (tipo === "encontrado") {
         camposPersona.classList.remove("hidden");
         if (labelNombreBuscado) labelNombreBuscado.innerHTML = 'Nombre de Persona Encontrada';
@@ -418,16 +431,19 @@ try {
         inputDescripcion.placeholder = "Ej: Rasgos físicos, estado de salud actual, señas particulares...";
         if (labelDescripcion) labelDescripcion.innerHTML = 'Descripción del Hallazgo *';
         if (labelFoto) labelFoto.innerHTML = '📸 Foto Evidencia (Opcional)';
+        if (helpDescripcion) helpDescripcion.textContent = "La IA utilizará esta descripción para cruzar reportes.";
       } else if (tipo === "necesidad") {
         camposNecesidad.classList.remove("hidden");
         inputDescripcion.placeholder = "Ej: Describa qué insumos específicos hacen falta, el nivel de urgencia y la cantidad de familias afectadas...";
         if (labelDescripcion) labelDescripcion.innerHTML = 'Descripción de la Necesidad *';
         if (labelFoto) labelFoto.innerHTML = '📸 Foto del Lugar/Situación (Opcional)';
+        if (helpDescripcion) helpDescripcion.textContent = "La información será visible para voluntarios y coordinadores de ayuda.";
       } else if (tipo === "refugio") {
         camposRefugio.classList.remove("hidden");
         inputDescripcion.placeholder = "Ej: Estado general del refugio, insumos críticos faltantes, datos sobre el encargado o reglas de acceso...";
         if (labelDescripcion) labelDescripcion.innerHTML = 'Descripción del Refugio / Necesidades *';
         if (labelFoto) labelFoto.innerHTML = '📸 Foto del Centro (Opcional)';
+        if (helpDescripcion) helpDescripcion.textContent = "Detalle el estado del refugio, insumos requeridos y contactos.";
       }
     }
 
@@ -500,6 +516,13 @@ try {
       } else if (tipo === "refugio") {
         if (!inputRefugioNombre.value.trim()) {
           mostrarError(inputRefugioNombre, "El nombre del refugio o centro de acopio es requerido.");
+          esValido = false;
+        }
+      } else if (tipo === "necesidad") {
+        const selectCat = document.getElementById("necesidad_categoria_select") as HTMLSelectElement;
+        const inputOtro = document.getElementById("necesidad_categoria_otro") as HTMLInputElement;
+        if (selectCat && selectCat.value === "Otro" && inputOtro && !inputOtro.value.trim()) {
+          mostrarError(inputOtro, "Especifica qué tipo de necesidad es.");
           esValido = false;
         }
       }
@@ -647,6 +670,28 @@ try {
     btnBack2.addEventListener("click", () => goToStep(1));
     btnBack3.addEventListener("click", () => goToStep(2));
 
+    const selectCategoria = document.getElementById("necesidad_categoria_select") as HTMLSelectElement;
+    const wrapperOtro = document.getElementById("wrapper-necesidad-otro");
+    if (selectCategoria && wrapperOtro) {
+      selectCategoria.addEventListener("change", function() {
+        if (this.value === "Otro") {
+          wrapperOtro.classList.remove("hidden");
+          const inputOtro = document.getElementById("necesidad_categoria_otro") as HTMLInputElement;
+          if (inputOtro) {
+            inputOtro.focus();
+          }
+        } else {
+          wrapperOtro.classList.add("hidden");
+        }
+      });
+    }
+
+    form.addEventListener("reset", () => {
+      if (wrapperOtro) {
+        wrapperOtro.classList.add("hidden");
+      }
+    });
+
     const selectRefugio = document.getElementById("select_refugio_id") as HTMLSelectElement;
     if (selectRefugio) {
       selectRefugio.addEventListener("change", function() {
@@ -756,8 +801,14 @@ try {
         };
       } else if (data.tipo === "necesidad") {
         endpointUrl = "/api/necesidades";
+        
+        let categoriaFinal = String(data.necesidad_categoria);
+        if (categoriaFinal === "Otro") {
+          categoriaFinal = String(data.necesidad_categoria_otro || "").trim() || "Otro";
+        }
+
         payload = {
-          categoria: String(data.necesidad_categoria),
+          categoria: categoriaFinal,
           gravedad: String(data.necesidad_gravedad),
           afectados: data.necesidad_afectados ? parseInt(String(data.necesidad_afectados), 10) : null,
           descripcion: descConcatenada,
@@ -972,6 +1023,107 @@ try {
       setTimeout(() => {
         toastContainer.classList.add("hidden");
       }, 5000);
+    }
+
+    // Lógica de dictado por voz (Whisper)
+    const btnDictar = document.getElementById("btn-dictar") as HTMLButtonElement;
+    const micIcon = document.getElementById("mic-icon");
+    const micText = document.getElementById("mic-text");
+    let mediaRecorder: MediaRecorder | null = null;
+    let audioChunks: Blob[] = [];
+    let isRecording = false;
+
+    if (btnDictar && micIcon && micText && inputDescripcion) {
+      btnDictar.addEventListener("click", async () => {
+        if (!isRecording) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioChunks = [];
+            
+            // Intentar usar formatos compatibles con Whisper
+            let options = {};
+            if (MediaRecorder.isTypeSupported("audio/webm")) {
+              options = { mimeType: "audio/webm" };
+            } else if (MediaRecorder.isTypeSupported("audio/ogg")) {
+              options = { mimeType: "audio/ogg" };
+            }
+            
+            mediaRecorder = new MediaRecorder(stream, options);
+            mediaRecorder.addEventListener("dataavailable", (event) => {
+              if (event.data.size > 0) {
+                audioChunks.push(event.data);
+              }
+            });
+
+            mediaRecorder.addEventListener("stop", async () => {
+              const audioBlob = new Blob(audioChunks, { type: mediaRecorder?.mimeType || "audio/webm" });
+              
+              // Cambiar botón a cargando/transcribiendo
+              btnDictar.disabled = true;
+              micIcon.textContent = "⏳";
+              micText.textContent = "Transcribiendo...";
+
+              try {
+                const response = await fetch("/api/transcribir", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/octet-stream" },
+                  body: audioBlob
+                });
+
+                if (response.ok) {
+                  const result = await response.json();
+                  if (result.text && result.text.trim()) {
+                    const text = result.text.trim();
+                    const currentVal = inputDescripcion.value.trim();
+                    inputDescripcion.value = currentVal ? `${currentVal} ${text}` : text;
+                    inputDescripcion.dispatchEvent(new Event("input"));
+                    mostrarToast("✓ Audio transcrito con éxito.", "border-green-500/30");
+                  } else {
+                    mostrarToast("⚠️ No se detectó voz clara en el audio.", "border-yellow-500/30");
+                  }
+                } else {
+                  throw new Error("Fallo en transcripción");
+                }
+              } catch (err) {
+                console.error(err);
+                mostrarToast("❌ Error al transcribir el audio.", "border-red-500/30");
+              } finally {
+                btnDictar.disabled = false;
+                micIcon.textContent = "🎙️";
+                micText.textContent = "Dictar por voz";
+                
+                // Detener todas las pistas de audio para liberar el micrófono
+                stream.getTracks().forEach(track => track.stop());
+              }
+            });
+
+            mediaRecorder.start();
+            isRecording = true;
+            btnDictar.classList.add("border-red-500", "text-red-500", "animate-pulse");
+            micIcon.textContent = "🛑";
+            micText.textContent = "Detener grabación";
+
+            // Detener automáticamente a los 15 segundos para no procesar audios gigantescos
+            setTimeout(() => {
+              if (isRecording && mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+                isRecording = false;
+                btnDictar.classList.remove("border-red-500", "text-red-500", "animate-pulse");
+              }
+            }, 15000);
+
+          } catch (err) {
+            console.error("Error al acceder al micrófono:", err);
+            mostrarToast("❌ Permiso de micrófono denegado o no disponible.", "border-red-500/30");
+          }
+        } else {
+          if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            mediaRecorder.stop();
+          }
+          isRecording = false;
+          btnDictar.classList.remove("border-red-500", "text-red-500", "animate-pulse");
+        }
+      });
     }
   }
   }
