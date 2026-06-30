@@ -851,7 +851,12 @@ if (!voluntario) {
       });
 
       if (resp.ok) {
-        window.location.href = "/refugios";
+        const data = await resp.json();
+        if (data.id) {
+          window.location.href = `/r/${data.id}`;
+        } else {
+          window.location.href = "/";
+        }
       } else {
         const err = await resp.json();
         if (errorDiv) {
