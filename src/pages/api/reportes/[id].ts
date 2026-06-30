@@ -58,6 +58,9 @@ export const PATCH: APIRoute = async (context) => {
     let nuevaLat = body.latitud !== undefined ? body.latitud : existente.latitud;
     let nuevaLon = body.longitud !== undefined ? body.longitud : existente.longitud;
     let nuevaFotoKey = body.foto_key !== undefined ? body.foto_key : existente.foto_key;
+    let nuevoRefugioId = body.refugio_id !== undefined ? body.refugio_id : existente.refugio_id;
+    let nuevoCentroAcopioId = body.centro_acopio_id !== undefined ? body.centro_acopio_id : existente.centro_acopio_id;
+    let nuevoHospitalId = body.hospital_id !== undefined ? body.hospital_id : existente.hospital_id;
     let nuevaDesc = existente.descripcion;
 
     let nuevaVerificacion = existente.verificacion || "ninguna";
@@ -97,6 +100,9 @@ export const PATCH: APIRoute = async (context) => {
             latitud = ?, 
             longitud = ?, 
             descripcion = ?,
+            refugio_id = ?,
+            centro_acopio_id = ?,
+            hospital_id = ?,
             updated_at = datetime('now', '-4 hours'),
             updated_by = ?
         WHERE id = ?
@@ -111,6 +117,9 @@ export const PATCH: APIRoute = async (context) => {
         nuevaLat,
         nuevaLon,
         nuevaDesc,
+        nuevoRefugioId,
+        nuevoCentroAcopioId,
+        nuevoHospitalId,
         voluntario ? voluntario.id : null,
         Number(id)
       ).run();
@@ -235,6 +244,9 @@ export const PATCH: APIRoute = async (context) => {
           longitud = ?, 
           foto_key = ?, 
           descripcion = ?, 
+          refugio_id = ?,
+          centro_acopio_id = ?,
+          hospital_id = ?,
           updated_at = datetime('now', '-4 hours'),
           updated_by = ?
       WHERE id = ?
@@ -246,6 +258,9 @@ export const PATCH: APIRoute = async (context) => {
       nuevaLon, 
       nuevaFotoKey, 
       nuevaDesc,
+      nuevoRefugioId,
+      nuevoCentroAcopioId,
+      nuevoHospitalId,
       voluntario ? voluntario.id : null,
       Number(id)
     ).run();

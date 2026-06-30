@@ -56,6 +56,9 @@ export const PATCH: APIRoute = async (context) => {
     let nuevaUbiNombre = body.ubicacion_nombre !== undefined ? body.ubicacion_nombre : existente.ubicacion_nombre;
     let nuevasNotas = body.notas !== undefined ? body.notas : existente.notas;
     let nuevaFotoKey = body.foto_key !== undefined ? body.foto_key : existente.foto_key;
+    let nuevoRefugioId = body.refugio_id !== undefined ? body.refugio_id : existente.refugio_id;
+    let nuevoCentroAcopioId = body.centro_acopio_id !== undefined ? body.centro_acopio_id : existente.centro_acopio_id;
+    let nuevoHospitalId = body.hospital_id !== undefined ? body.hospital_id : existente.hospital_id;
 
     let nuevaVerificacion = existente.verificacion || "ninguna";
     let nuevaFotoEvidencia = existente.foto_evidencia_key || null;
@@ -91,6 +94,9 @@ export const PATCH: APIRoute = async (context) => {
             foto_evidencia_key = ?,
             contacto_evidencia = ?,
             notas_evidencia = ?,
+            refugio_id = ?,
+            centro_acopio_id = ?,
+            hospital_id = ?,
             updated_at = datetime('now', '-4 hours') 
         WHERE id = ?
       `).bind(
@@ -105,6 +111,9 @@ export const PATCH: APIRoute = async (context) => {
         nuevaFotoEvidencia,
         nuevoContactoEvidencia,
         nuevasNotasEvidencia,
+        nuevoRefugioId,
+        nuevoCentroAcopioId,
+        nuevoHospitalId,
         Number(id)
       ).run();
 
@@ -202,9 +211,25 @@ export const PATCH: APIRoute = async (context) => {
           ubicacion_nombre = ?, 
           notas = ?, 
           foto_key = ?, 
+          refugio_id = ?,
+          centro_acopio_id = ?,
+          hospital_id = ?,
           updated_at = datetime('now', '-4 hours') 
       WHERE id = ?
-    `).bind(nuevoEstado, nuevoRefugio, nuevoContacto, nuevaLat, nuevaLon, nuevaUbiNombre, nuevasNotas, nuevaFotoKey, Number(id)).run();
+    `).bind(
+      nuevoEstado, 
+      nuevoRefugio, 
+      nuevoContacto, 
+      nuevaLat, 
+      nuevaLon, 
+      nuevaUbiNombre, 
+      nuevasNotas, 
+      nuevaFotoKey, 
+      nuevoRefugioId,
+      nuevoCentroAcopioId,
+      nuevoHospitalId,
+      Number(id)
+    ).run();
 
     // Actualización en cascada clásica si no es pendiente y es localizado/herido
     if (["localizado", "herido"].includes(nuevoEstado) && nuevaVerificacion !== "pendiente") {

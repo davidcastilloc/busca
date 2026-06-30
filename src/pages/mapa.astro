@@ -735,7 +735,11 @@ export const prerender = false;
   function buildRefugioPopupHtml(r: any) {
     const semColor = r.semaforo === "rojo" ? "#ef4444" : r.semaforo === "amarillo" ? "#f59e0b" : "#10b981";
     const semText = r.semaforo === "rojo" ? "Crítico" : r.semaforo === "amarillo" ? "Alerta" : "Estable";
-    const pct = Math.min(Math.round((r.ocupacion / r.capacidad) * 100), 100);
+    
+    const showOcupacion = r.tipo === "refugio";
+    const showSuministros = r.tipo !== "hospital";
+
+    const pct = showOcupacion ? Math.min(Math.round((r.ocupacion / r.capacidad) * 100), 100) : 0;
     const pctColor = pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-green-500";
 
     return `
@@ -745,19 +749,23 @@ export const prerender = false;
           <h4 class="font-bold text-sm text-ink m-0 leading-tight">${r.nombre}</h4>
         </div>
         <p class="text-xs text-mute mb-2">📍 ${r.direccion}</p>
-        <div class="mb-2 bg-canvas-soft p-2 rounded-lg">
-          <div class="flex justify-between text-[11px] mb-1 font-bold text-ink">
-            <span>Ocupación</span>
-            <span>${r.ocupacion}/${r.capacidad} (${pct}%)</span>
+        ${showOcupacion ? `
+          <div class="mb-2 bg-canvas-soft p-2 rounded-lg">
+            <div class="flex justify-between text-[11px] mb-1 font-bold text-ink">
+              <span>Ocupación</span>
+              <span>${r.ocupacion}/${r.capacidad} (${pct}%)</span>
+            </div>
+            <div class="h-1.5 w-full bg-canvas-soft rounded-full overflow-hidden border border-canvas-soft">
+              <div class="h-full ${pctColor} rounded-full" style="width: ${pct}%"></div>
+            </div>
           </div>
-          <div class="h-1.5 w-full bg-canvas-soft rounded-full overflow-hidden border border-canvas-soft">
-            <div class="h-full ${pctColor} rounded-full" style="width: ${pct}%"></div>
+        ` : ""}
+        ${showSuministros ? `
+          <div class="text-[11px] font-bold mb-3 flex items-center gap-1.5">
+            <span>Suministros:</span>
+            <span style="color:${semColor}">● ${semText}</span>
           </div>
-        </div>
-        <div class="text-[11px] font-bold mb-3 flex items-center gap-1.5">
-          <span>Suministros:</span>
-          <span style="color:${semColor}">● ${semText}</span>
-        </div>
+        ` : ""}
         ${r.en_camino > 0 ? `
           <div class="text-[11px] font-bold text-primary mb-3 flex items-center gap-1.5">
             <span>👥 En camino:</span>
@@ -954,17 +962,19 @@ export const prerender = false;
       const r = dataStore.refugios.find(x => String(x.id) === String(id));
       if (!r) return;
 
-      
       sheetTitle.textContent = r.nombre;
 
-      const pct = Math.min(Math.round((r.ocupacion / r.capacidad) * 100), 100);
+      const showOcupacion = r.tipo === "refugio";
+      const showSuministros = r.tipo !== "hospital";
+
+      const pct = showOcupacion ? Math.min(Math.round((r.ocupacion / r.capacidad) * 100), 100) : 0;
       const pctColor = pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-green-500";
       
-      let itemsCriticosHtml = r.itemsCriticos.length > 0
+      let itemsCriticosHtml = r.itemsCriticos && r.itemsCriticos.length > 0
         ? r.itemsCriticos.map((i: string) => `<span class="inline-block bg-red-100 text-red-800 text-[10px] px-2 py-0.5 rounded-full font-bold">🔴 ${i}</span>`).join(" ")
         : `<span class="text-xs text-green-600">Ninguno</span>`;
 
-      let itemsAlertaHtml = r.itemsAlerta.length > 0
+      let itemsAlertaHtml = r.itemsAlerta && r.itemsAlerta.length > 0
         ? r.itemsAlerta.map((i: string) => `<span class="inline-block bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold">🟡 ${i}</span>`).join(" ")
         : `<span class="text-xs text-mute">Ninguno</span>`;
 
@@ -995,19 +1005,21 @@ export const prerender = false;
 
           ${carouselHtml}
 
-          <div class="bg-canvas-soft p-3 rounded-xl border border-canvas-soft">
-            <h4 class="font-bold text-xs text-ink mb-2">Capacidad y Ocupación</h4>
-            <div class="flex justify-between text-xs font-bold text-ink mb-1">
-              <span>Personas albergadas</span>
-              <span>${r.ocupacion} / ${r.capacidad} (${pct}%)</span>
+          ${showOcupacion ? `
+            <div class="bg-canvas-soft p-3 rounded-xl border border-canvas-soft">
+              <h4 class="font-bold text-xs text-ink mb-2">Capacidad y Ocupación</h4>
+              <div class="flex justify-between text-xs font-bold text-ink mb-1">
+                <span>Personas albergadas</span>
+                <span>${r.ocupacion} / ${r.capacidad} (${pct}%)</span>
+              </div>
+              <div class="h-2 w-full bg-canvas rounded-full overflow-hidden border border-canvas-soft">
+                <div class="h-full ${pctColor} rounded-full" style="width: ${pct}%"></div>
+              </div>
             </div>
-            <div class="h-2 w-full bg-canvas rounded-full overflow-hidden border border-canvas-soft">
-              <div class="h-full ${pctColor} rounded-full" style="width: ${pct}%"></div>
-            </div>
-          </div>
+          ` : ""}
 
           <div class="space-y-2 bg-canvas-soft p-3 rounded-xl border border-canvas-soft">
-            <h4 class="font-bold text-xs text-ink mb-1">Encargado del Refugio</h4>
+            <h4 class="font-bold text-xs text-ink mb-1">Encargado del ${r.tipo === 'hospital' ? 'Hospital' : r.tipo === 'centro_acopio' ? 'Centro de Acopio' : 'Refugio'}</h4>
             <p class="text-xs text-body font-semibold">${r.encargado || "No registrado"}</p>
             ${r.contacto ? `<p class="text-xs text-mute">Contacto: <a href="tel:${r.contacto}" class="text-primary font-bold">${r.contacto}</a></p>` : ""}
           </div>
@@ -1016,20 +1028,22 @@ export const prerender = false;
             <div class="bg-blue-50 border border-blue-100 p-3 rounded-xl text-xs flex items-center gap-2">
               <span class="text-lg">🚗</span>
               <div class="text-blue-800 font-medium">
-                <strong>${r.en_camino} voluntario(s)</strong> en camino a este refugio.
+                <strong>${r.en_camino} voluntario(s)</strong> en camino.
               </div>
             </div>
           ` : ""}
 
           <div class="space-y-3">
-            <div>
-              <h4 class="font-bold text-xs text-ink mb-1">⚠️ Suministros Críticos</h4>
-              <div class="flex flex-wrap gap-1.5">${itemsCriticosHtml}</div>
-            </div>
-            <div>
-              <h4 class="font-bold text-xs text-ink mb-1">⚠️ Alertas de Suministro</h4>
-              <div class="flex flex-wrap gap-1.5">${itemsAlertaHtml}</div>
-            </div>
+            ${showSuministros ? `
+              <div>
+                <h4 class="font-bold text-xs text-ink mb-1">⚠️ Suministros Críticos</h4>
+                <div class="flex flex-wrap gap-1.5">${itemsCriticosHtml}</div>
+              </div>
+              <div>
+                <h4 class="font-bold text-xs text-ink mb-1">⚠️ Alertas de Suministro</h4>
+                <div class="flex flex-wrap gap-1.5">${itemsAlertaHtml}</div>
+              </div>
+            ` : ""}
             <div>
               <h4 class="font-bold text-xs text-ink mb-1">📝 Necesidades Generales</h4>
               <p class="text-xs text-body">${r.necesidades || "Ninguna registrada"}</p>
