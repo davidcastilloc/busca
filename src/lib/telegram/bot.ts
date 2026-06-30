@@ -20,6 +20,8 @@ import { startShelter, handleShelterState, handleShelterSelection, handleShelter
 import { startSos, handleSosState } from "./handlers/sos";
 import { startBroadcast, handleBroadcastState } from "./handlers/broadcast";
 import { startLogin, handleLoginState } from "./handlers/login";
+import { startPeligro, handlePeligroState } from "./handlers/peligro";
+import { startAlerta, handleAlertaState } from "./handlers/alerta";
 
 // Helper para verificar si un ID de Telegram pertenece a un voluntario activo o admin
 async function checkIsVolunteerOrAdmin(
@@ -170,6 +172,14 @@ export async function processTelegramUpdate(
         await handleBroadcastState(client, db, chatId, telegramId, isAdmin, session, text);
         return;
       }
+      if (session.step.startsWith("pel_")) {
+        await handlePeligroState(client, db, chatId, telegramId, session, text, msg.location);
+        return;
+      }
+      if (session.step.startsWith("sub_")) {
+        await handleAlertaState(client, db, chatId, telegramId, session, text, msg.location);
+        return;
+      }
     }
 
     // Comandos base
@@ -288,8 +298,32 @@ export async function processTelegramUpdate(
         return;
       }
 
+      if (lowerText === "/peligro") {
+        if (!isAuthorized) {
+          await client.sendMessage(
+            chatId,
+            "🚷 Acceso denegado. Este comando es solo para voluntarios autorizados. Inicia sesión con /login."
+          );
+          return;
+        }
+        await startPeligro(client, db, chatId, telegramId);
+        return;
+      }
+
+      if (lowerText === "/alerta") {
+        if (!isAuthorized) {
+          await client.sendMessage(
+            chatId,
+            "🚷 Acceso denegado. Este comando es solo para voluntarios autorizados. Inicia sesión con /login."
+          );
+          return;
+        }
+        await startAlerta(client, db, chatId, telegramId);
+        return;
+      }
+
       // Comandos de Admin (requieren isAdmin)
-      if (lowerText.startsWith("/alerta") || lowerText.startsWith("/broadcast")) {
+      if (lowerText.startsWith("/broadcast")) {
         if (!isAdmin) {
           await client.sendMessage(
             chatId,
@@ -297,7 +331,7 @@ export async function processTelegramUpdate(
           );
           return;
         }
-        const args = text.replace(/^\/(alerta|broadcast)/i, "").trim();
+        const args = text.replace(/^\/broadcast/i, "").trim();
         await startBroadcast(client, db, chatId, telegramId, isAdmin, args);
         return;
       }
@@ -351,7 +385,9 @@ async function sendWelcomeMessage(
     helpText += `📷 /censo - Leer lista de nombres de papel con IA.\n`;
     helpText += `⛺ /refugio - Actualizar capacidad de un refugio.\n`;
     helpText += `🆘 /urgencia [insumo] - Alerta crítica de necesidad en terreno.\n`;
-    helpText += `✅ /cubierta [ID] - Marcar una necesidad como cubierta.\n\n`;
+    helpText += `✅ /cubierta [ID] - Marcar una necesidad como cubierta.\n`;
+    helpText += `🚧 /peligro - Reportar peligro en la vía (bloqueo/derrumbe).\n`;
+    helpText += `🔔 /alerta - Suscribirse a alertas GPS (radio 10km).\n\n`;
   }
 
   if (isAdmin) {

@@ -37,6 +37,7 @@ export const prerender = false;
       <button class="layer-pill" data-layer="refugios">🏠 Refugios</button>
       <button class="layer-pill" data-layer="necesidades">📦 Necesidades</button>
       <button class="layer-pill" data-layer="personas">👥 Personas</button>
+      <button class="layer-pill" data-layer="peligros">🚧 Peligros</button>
       <span class="w-px h-5 bg-canvas-soft shrink-0"></span>
       <button class="layer-pill" data-layer="calor">🔥 Mapa Calor</button>
       <button class="layer-pill" data-layer="cobertura">⭕ Cobertura Gaps</button>
@@ -174,6 +175,7 @@ export const prerender = false;
   .marker-hospital { background: linear-gradient(135deg, #ef4444, #b91c1c); }
   .marker-necesidad { background: linear-gradient(135deg, #a855f7, #6b21a8); }
   .marker-persona { background: linear-gradient(135deg, #10b981, #047857); }
+  .marker-peligro { background: linear-gradient(135deg, #f97316, #d97706); }
 
   /* Badges de semáforo en marcadores */
   .custom-marker-badge {
@@ -297,6 +299,7 @@ export const prerender = false;
   let refugiosCluster: any = null;
   let necesidadesCluster: any = null;
   let personasCluster: any = null;
+  let peligrosCluster: any = null;
   let heatmapLayer: any = null;
   let coverageGroup: any = null; // Para círculos de cobertura de refugios
   let coverageGapsGroup: any = null; // Círculos rojos para zonas sin cobertura
@@ -306,7 +309,8 @@ export const prerender = false;
   let dataStore = {
     refugios: [] as any[],
     necesidades: [] as any[],
-    personas: [] as any[]
+    personas: [] as any[],
+    peligros: [] as any[]
   };
 
   let userMarker: any = null;
@@ -432,6 +436,18 @@ export const prerender = false;
         }
       });
 
+      peligrosCluster = L.markerClusterGroup({
+        maxClusterRadius: 50,
+        showCoverageOnHover: false,
+        iconCreateFunction: (cluster: any) => {
+          return L.divIcon({
+            html: `<div><span>${cluster.getChildCount()}</span></div>`,
+            className: `marker-cluster marker-cluster-small cluster-rojo`,
+            iconSize: L.point(40, 40),
+          });
+        }
+      });
+
       coverageGroup = L.layerGroup();
       coverageGapsGroup = L.layerGroup();
 
@@ -453,7 +469,8 @@ export const prerender = false;
       dataStore = {
         refugios: payload.refugios || [],
         necesidades: payload.necesidades || [],
-        personas: payload.personas || []
+        personas: payload.personas || [],
+        peligros: payload.peligros || []
       };
 
       // Guardar en caché offline
@@ -582,10 +599,35 @@ export const prerender = false;
       checkCoverageGap("persona", p);
     });
 
-    // 4. Mapa de Calor
+    // 4. Peligros
+    dataStore.peligros.forEach((p: any) => {
+      const emoji = p.tipo === "bloqueo" ? "🚧" : p.tipo === "derrumbe" ? "⛰️" : "🌊";
+      const icon = L.divIcon({
+        html: `<div class="custom-marker marker-peligro" data-id="${p.id}">${emoji}</div>`,
+        className: "",
+        iconSize: [38, 38],
+        iconAnchor: [19, 38],
+        popupAnchor: [0, -40]
+      });
+
+      const popupHtml = buildPeligroPopupHtml(p);
+      const marker = L.marker([p.lat, p.lng], {
+        icon,
+        _tipo: "peligro",
+        _id: p.id
+      }).bindPopup(popupHtml, { maxWidth: 280 });
+
+      marker.on("click", () => showEntityDetail("peligro", p.id));
+
+      markers.set(`peligro-${p.id}`, marker);
+      peligrosCluster.addLayer(marker);
+    });
+
+    // 5. Mapa de Calor
     const heatPoints = [
       ...dataStore.necesidades.map(n => [n.lat, n.lng, n.gravedad === "Alta" ? 3 : n.gravedad === "Media" ? 2 : 1]),
-      ...dataStore.personas.map(p => [p.lat, p.lng, p.estado === "desconocido" ? 2.5 : p.estado === "herido" ? 2 : 1])
+      ...dataStore.personas.map(p => [p.lat, p.lng, p.estado === "desconocido" ? 2.5 : p.estado === "herido" ? 2 : 1]),
+      ...dataStore.peligros.map(p => [p.lat, p.lng, 3])
     ];
     heatmapLayer = L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 17 });
 
@@ -596,7 +638,8 @@ export const prerender = false;
     const allPoints = [
       ...dataStore.refugios,
       ...dataStore.necesidades,
-      ...dataStore.personas
+      ...dataStore.personas,
+      ...dataStore.peligros
     ];
     
     if (allPoints.length > 0) {
@@ -658,6 +701,7 @@ export const prerender = false;
     map.removeLayer(refugiosCluster);
     map.removeLayer(necesidadesCluster);
     map.removeLayer(personasCluster);
+    map.removeLayer(peligrosCluster);
     map.removeLayer(heatmapLayer);
     map.removeLayer(coverageGroup);
     map.removeLayer(coverageGapsGroup);
@@ -666,12 +710,15 @@ export const prerender = false;
       map.addLayer(refugiosCluster);
       map.addLayer(necesidadesCluster);
       map.addLayer(personasCluster);
+      map.addLayer(peligrosCluster);
     } else if (activeLayer === "refugios") {
       map.addLayer(refugiosCluster);
     } else if (activeLayer === "necesidades") {
       map.addLayer(necesidadesCluster);
     } else if (activeLayer === "personas") {
       map.addLayer(personasCluster);
+    } else if (activeLayer === "peligros") {
+      map.addLayer(peligrosCluster);
     } else if (activeLayer === "calor") {
       map.addLayer(heatmapLayer);
     } else if (activeLayer === "cobertura") {
@@ -679,6 +726,7 @@ export const prerender = false;
       map.addLayer(coverageGapsGroup);
       map.addLayer(refugiosCluster);
       map.addLayer(necesidadesCluster);
+      map.addLayer(peligrosCluster);
     }
   }
 
@@ -709,6 +757,12 @@ export const prerender = false;
           <span>Suministros:</span>
           <span style="color:${semColor}">● ${semText}</span>
         </div>
+        ${r.en_camino > 0 ? `
+          <div class="text-[11px] font-bold text-primary mb-3 flex items-center gap-1.5">
+            <span>👥 En camino:</span>
+            <span>${r.en_camino}</span>
+          </div>
+        ` : ""}
         <div class="flex gap-2">
           <button onclick="window._rutaA('refugio-${r.id}')" class="flex-1 py-1.5 rounded-lg bg-primary text-white text-xs font-bold border-none cursor-pointer text-center">🚗 Ruta</button>
           <button onclick="window._showDetails('refugio', '${r.id}')" class="flex-1 py-1.5 rounded-lg bg-canvas-soft text-ink text-xs font-bold border border-canvas-soft cursor-pointer text-center">ℹ️ Ver más</button>
@@ -727,9 +781,35 @@ export const prerender = false;
         </div>
         <p class="text-xs text-body mb-2 line-clamp-2">${n.descripcion}</p>
         <div class="text-[11px] mb-3">Gravedad: <span class="${gravColor}">${n.gravedad}</span></div>
+        ${n.en_camino > 0 ? `
+          <div class="text-[11px] font-bold text-primary mb-3">
+            👥 Ayuda en camino: <strong>${n.en_camino} en ruta</strong>
+          </div>
+        ` : ""}
         <div class="flex gap-2">
           <button onclick="window._rutaA('necesidad-${n.id}')" class="flex-1 py-1.5 rounded-lg bg-primary text-white text-xs font-bold border-none cursor-pointer text-center">🚗 Ruta</button>
           <button onclick="window._showDetails('necesidad', '${n.id}')" class="flex-1 py-1.5 rounded-lg bg-canvas-soft text-ink text-xs font-bold border border-canvas-soft cursor-pointer text-center">ℹ️ Ver más</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildPeligroPopupHtml(p: any) {
+    const tipoMap: Record<string, string> = {
+      bloqueo: "Bloqueo de vía",
+      derrumbe: "Derrumbe",
+      inundacion: "Inundación"
+    };
+    return `
+      <div class="p-3 font-uber-text min-w-[240px]">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg">⚠️</span>
+          <h4 class="font-bold text-sm text-ink m-0 leading-tight">${tipoMap[p.tipo] || p.tipo}</h4>
+        </div>
+        <p class="text-xs text-body mb-3">${p.descripcion}</p>
+        <div class="flex gap-2">
+          <button onclick="window._rutaA('peligro-${p.id}')" class="flex-1 py-1.5 rounded-lg bg-primary text-white text-xs font-bold border-none cursor-pointer text-center">🚗 Ruta</button>
+          <button onclick="window._showDetails('peligro', '${p.id}')" class="flex-1 py-1.5 rounded-lg bg-canvas-soft text-ink text-xs font-bold border border-canvas-soft cursor-pointer text-center">ℹ️ Ver más</button>
         </div>
       </div>
     `;
@@ -782,9 +862,10 @@ export const prerender = false;
     let countRefugios = dataStore.refugios.length;
     let countNecesidades = dataStore.necesidades.length;
     let countPersonas = dataStore.personas.length;
+    let countPeligros = dataStore.peligros.length;
 
     const sheetTitle = document.getElementById("sheet-title")!;
-    sheetTitle.textContent = `${countRefugios + countNecesidades + countPersonas} incidentes y recursos`;
+    sheetTitle.textContent = `${countRefugios + countNecesidades + countPersonas + countPeligros} incidentes y recursos`;
 
     let html = "";
 
@@ -800,19 +881,26 @@ export const prerender = false;
 
     dataStore.necesidades.forEach(n => {
       const key = "Necesidades Reportadas";
-      if (!geoSummary[key]) geoSummary[key] = { refugios: 0, necesidades: 0, personas: 0 };
+      if (!geoSummary[key]) geoSummary[key] = { refugios: 0, necesidades: 0, personas: 0, peligros: 0 };
       geoSummary[key].necesidades++;
     });
 
     dataStore.personas.forEach(p => {
       const key = p.refugio || "Zonas de Búsqueda";
-      if (!geoSummary[key]) geoSummary[key] = { refugios: 0, necesidades: 0, personas: 0 };
+      if (!geoSummary[key]) geoSummary[key] = { refugios: 0, necesidades: 0, personas: 0, peligros: 0 };
       geoSummary[key].personas++;
+    });
+
+    dataStore.peligros.forEach(p => {
+      const key = "Zonas de Peligro (Vías)";
+      if (!geoSummary[key]) geoSummary[key] = { refugios: 0, necesidades: 0, personas: 0, peligros: 0 };
+      geoSummary[key].peligros++;
     });
 
     html += `<div class="mb-4 text-xs font-uber-text text-mute uppercase tracking-wider font-bold">Resumen por Sectores</div>`;
     
     Object.entries(geoSummary).forEach(([zona, metrics]) => {
+      const peligrosMetric = (metrics as any).peligros || 0;
       html += `
         <div class="flex items-center justify-between p-3 bg-canvas-soft/40 border border-canvas-soft rounded-xl mb-2">
           <div class="min-w-0">
@@ -822,6 +910,7 @@ export const prerender = false;
             ${metrics.refugios > 0 ? `<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">🏠 ${metrics.refugios}</span>` : ""}
             ${metrics.necesidades > 0 ? `<span class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">📦 ${metrics.necesidades}</span>` : ""}
             ${metrics.personas > 0 ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">👥 ${metrics.personas}</span>` : ""}
+            ${peligrosMetric > 0 ? `<span class="bg-red-100 text-red-800 px-2 py-0.5 rounded-full">⚠️ ${peligrosMetric}</span>` : ""}
           </div>
         </div>
       `;
@@ -908,6 +997,15 @@ export const prerender = false;
             ${r.contacto ? `<p class="text-xs text-mute">Contacto: <a href="tel:${r.contacto}" class="text-primary font-bold">${r.contacto}</a></p>` : ""}
           </div>
 
+          ${r.en_camino > 0 ? `
+            <div class="bg-blue-50 border border-blue-100 p-3 rounded-xl text-xs flex items-center gap-2">
+              <span class="text-lg">🚗</span>
+              <div class="text-blue-800 font-medium">
+                <strong>${r.en_camino} voluntario(s)</strong> en camino a este refugio.
+              </div>
+            </div>
+          ` : ""}
+
           <div class="space-y-3">
             <div>
               <h4 class="font-bold text-xs text-ink mb-1">⚠️ Suministros Críticos</h4>
@@ -960,9 +1058,37 @@ export const prerender = false;
             <p class="text-mute">Estado del reporte: <span class="capitalize text-primary font-bold">${n.estado}</span></p>
           </div>
 
+          ${n.estado === 'abierta' ? `
+            <div class="bg-blue-50 border border-blue-100 p-3 rounded-xl flex flex-col gap-2">
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-blue-800 font-medium">👥 ${n.en_camino} en camino</span>
+                <button onclick="window._voyEnCamino(${n.id}, ${n.refugio_id || 'null'})" class="btn btn-xs bg-primary text-white border-none hover:bg-black-elevated font-uber-text font-bold cursor-pointer">🚗 Voy en camino</button>
+              </div>
+            </div>
+          ` : ""}
+
           <div class="flex gap-2 pt-2">
             <button onclick="window._rutaA('necesidad-${n.id}')" class="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold border-none cursor-pointer text-center hover:opacity-90">🚗 Trazar Ruta</button>
             <button onclick="window._shareEntity('necesidad', '${n.id}')" class="px-4 py-2.5 rounded-xl bg-canvas-soft text-ink text-xs font-bold border border-canvas-soft cursor-pointer text-center hover:bg-surface-pressed">📤 Compartir</button>
+          </div>
+        </div>
+      `;
+    } else if (tipo === "peligro") {
+      const p = dataStore.peligros.find(x => String(x.id) === String(id));
+      if (!p) return;
+
+      sheetTitle.textContent = `Peligro: ${p.tipo}`;
+
+      detailView.innerHTML = `
+        <div class="space-y-4 font-uber-text">
+          <span class="inline-block bg-red-100 text-red-800 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider mb-2">Advertencia Activa</span>
+          <div class="bg-canvas-soft p-3 rounded-xl border border-canvas-soft">
+            <h4 class="font-bold text-xs text-ink mb-1">Descripción</h4>
+            <p class="text-xs text-body leading-relaxed">${p.descripcion}</p>
+          </div>
+          <div class="flex gap-2 pt-2">
+            <button onclick="window._rutaA('peligro-${p.id}')" class="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold border-none cursor-pointer text-center hover:opacity-90">🚗 Trazar Ruta</button>
+            <button onclick="window._shareEntity('peligro', '${p.id}')" class="px-4 py-2.5 rounded-xl bg-canvas-soft text-ink text-xs font-bold border border-canvas-soft cursor-pointer text-center hover:bg-surface-pressed">📤 Compartir</button>
           </div>
         </div>
       `;
@@ -1131,6 +1257,7 @@ export const prerender = false;
         dataStore.refugios.forEach(r => allItems.push({ ...r, _key: `refugio-${r.id}`, _t: "refugio", _emoji: "🏠" }));
         dataStore.necesidades.forEach(n => allItems.push({ ...n, _key: `necesidad-${n.id}`, _t: "necesidad", _emoji: "📦" }));
         dataStore.personas.forEach(p => allItems.push({ ...p, _key: `persona-${p.id}`, _t: "persona", _emoji: "👥" }));
+        dataStore.peligros.forEach(p => allItems.push({ ...p, _key: `peligro-${p.id}`, _t: "peligro", _emoji: "⚠️" }));
 
         const sorted = allItems.map(item => ({
           ...item,
@@ -1240,6 +1367,15 @@ export const prerender = false;
           }
         });
 
+        // Buscar en peligros
+        dataStore.peligros.forEach(p => {
+          const pTipoMap: Record<string, string> = { bloqueo: "Bloqueo", derrumbe: "Derrumbe", inundacion: "Inundación" };
+          const pName = pTipoMap[p.tipo] || p.tipo;
+          if (p.tipo.toLowerCase().includes(query) || p.descripcion.toLowerCase().includes(query)) {
+            matches.push({ id: p.id, name: pName, label: p.descripcion, tipo: "peligro", emoji: "⚠️" });
+          }
+        });
+
         const sliced = matches.slice(0, 6);
         if (sliced.length === 0) {
           searchResults.innerHTML = `<div class="p-3 text-xs text-mute font-uber-text">Sin coincidencias</div>`;
@@ -1269,6 +1405,26 @@ export const prerender = false;
         setTimeout(() => marker.openPopup(), 1600);
         showEntityDetail(tipo, id);
         expandSheet("medio");
+      }
+    };
+
+    (window as any)._voyEnCamino = async (necesidadId: number, refugioId: number | null) => {
+      if (!confirm("¿Confirmas que vas en camino a ayudar con esta necesidad?")) return;
+      try {
+        const resp = await fetch("/api/ayudas/en-camino", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ necesidad_id: necesidadId, refugio_id: refugioId })
+        });
+        if (resp.ok) {
+          alert("¡Gracias! Tu apoyo en camino ha sido registrado.");
+          await fetchUnifiedData();
+          showEntityDetail("necesidad", String(necesidadId));
+        } else {
+          alert("Error al registrar el apoyo.");
+        }
+      } catch (e) {
+        alert("Error de red.");
       }
     };
   }
@@ -1368,6 +1524,10 @@ export const prerender = false;
       const p = dataStore.personas.find(x => String(x.id) === String(id));
       if (!p) return;
       text = `👥 Persona: *${p.nombre}*\\n🟢 Estado: ${p.estado}\\n📝 Notas: ${p.notas}\\n🗺️ Ver en mapa: `;
+    } else if (tipo === "peligro") {
+      const p = dataStore.peligros.find(x => String(x.id) === String(id));
+      if (!p) return;
+      text = `⚠️ Peligro en vía: *${p.tipo}*\\n📝 Detalle: ${p.descripcion}\\n🗺️ Ver en mapa: `;
     }
 
     if (navigator.share) {

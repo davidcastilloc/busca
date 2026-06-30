@@ -1,6 +1,7 @@
 import { handle } from "@astrojs/cloudflare/handler";
 import { procesarCola } from "./lib/queue-processor";
 import { procesarColaPush } from "./lib/push-queue-processor";
+import { processHourlyAlerts } from "./lib/telegram/cron";
 
 export default {
   async fetch(
@@ -23,5 +24,13 @@ export default {
       // censo-queue (default)
       ctx.waitUntil(procesarCola(batch, env, ctx));
     }
+  },
+
+  async scheduled(
+    event: any,
+    env: Env,
+    ctx: ExecutionContext
+  ): Promise<void> {
+    ctx.waitUntil(processHourlyAlerts(env));
   }
 } satisfies ExportedHandler<Env>;

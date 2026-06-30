@@ -17,6 +17,9 @@
 		}
 	],
 	"main": "./src/worker.ts",
+	"triggers": {
+		"crons": ["0 * * * *"]
+	},
 	"assets": {
 		"directory": "./dist",
 		"binding": "ASSETS"

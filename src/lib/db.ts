@@ -267,6 +267,7 @@ export async function procesarCensoBatch(
           db.prepare(`
             UPDATE reportes 
             SET estado_reporte = 'resuelto', 
+                verificacion = 'pendiente',
                 persona_id = ?,
                 updated_at = datetime('now', '-4 hours') 
             WHERE id = ?
