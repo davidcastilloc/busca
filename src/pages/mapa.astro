@@ -1160,39 +1160,37 @@ export const prerender = false;
     
     if (!bottomSheet || !sheetHandle || !btnSheetClose) return;
 
-    let sheetDragStart = 0;
-    let sheetTranslateStart = 0;
-
-    function getSheetTranslateY(): number {
-      const match = bottomSheet.style.transform.match(/translateY\((-?\d+)px\)/);
-      return match ? parseInt(match[1]) : -80;
-    }
+    let touchStartY = 0;
 
     sheetHandle.addEventListener("touchstart", (e) => {
-      sheetDragStart = e.touches[0].clientY;
-      sheetTranslateStart = getSheetTranslateY();
+      touchStartY = e.touches[0].clientY;
       bottomSheet.style.transition = "none";
     });
 
     sheetHandle.addEventListener("touchmove", (e) => {
-      const diff = e.touches[0].clientY - sheetDragStart;
-      const newTranslate = Math.min(0, Math.max(-window.innerHeight * 0.85, sheetTranslateStart + diff));
-      bottomSheet.style.transform = `translateY(${newTranslate}px)`;
+      const diff = e.touches[0].clientY - touchStartY;
+      if (diff > 0) { // Solo permitir arrastrar hacia abajo
+        bottomSheet.style.transform = `translateY(calc(-${bottomSheet.offsetHeight}px + ${diff}px))`;
+      }
     });
 
-    sheetHandle.addEventListener("touchend", () => {
+    sheetHandle.addEventListener("touchend", (e) => {
       bottomSheet.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
-      const current = Math.abs(getSheetTranslateY());
-      const vh = window.innerHeight;
-      if (current < vh * 0.25) expandSheet("colapsado");
-      else if (current < vh * 0.6) expandSheet("medio");
-      else expandSheet("expandido");
+      const diff = e.changedTouches[0].clientY - touchStartY;
+      
+      if (diff > 40) {
+        selectedEntity = null;
+        renderDefaultList();
+        expandSheet("oculto");
+      } else {
+        expandSheet(sheetState);
+      }
     });
 
     sheetHandle.addEventListener("click", () => {
-      if (sheetState === "colapsado") expandSheet("medio");
-      else if (sheetState === "medio") expandSheet("expandido");
-      else expandSheet("colapsado");
+      selectedEntity = null;
+      renderDefaultList();
+      expandSheet("oculto");
     });
 
     btnSheetClose.addEventListener("click", () => {
