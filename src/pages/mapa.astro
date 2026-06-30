@@ -323,6 +323,8 @@ export const prerender = false;
   let activeLayer = "todos"; // todos, refugios, necesidades, personas, calor, cobertura
   let sheetState: "colapsado" | "medio" | "expandido" = "colapsado";
   let selectedEntity: { id: string; tipo: string } | null = null;
+  let refreshInterval: any = null;
+  let isPopupOpen = false;
 
   // Haversine
   function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -349,6 +351,13 @@ export const prerender = false;
 
   document.addEventListener("astro:page-load", () => {
     const mapDiv = document.getElementById("map-fullscreen");
+    
+    // Limpieza de intervalos al cambiar de página
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+      refreshInterval = null;
+    }
+
     if (!mapDiv) return; // Solo ejecutar si estamos en la página del mapa
 
     // Limpieza
@@ -383,6 +392,9 @@ export const prerender = false;
         zoomControl: false,
         attributionControl: false,
       }).setView([8.0, -66.0], 7);
+
+      map.on('popupopen', () => { isPopupOpen = true; });
+      map.on('popupclose', () => { isPopupOpen = false; });
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
@@ -457,12 +469,20 @@ export const prerender = false;
 
       // Setup UI Events
       setupUIEvents();
+
+      // Refresco periódico automático cada 20 segundos
+      if (refreshInterval) clearInterval(refreshInterval);
+      refreshInterval = setInterval(async () => {
+        if (!isPopupOpen) {
+          await fetchUnifiedData();
+        }
+      }, 20000);
     });
   });
 
   async function fetchUnifiedData() {
     try {
-      const resp = await fetch("/api/maps/unified");
+      const resp = await fetch("/api/maps/unified?t=" + Date.now());
       if (!resp.ok) throw new Error("Error en servidor");
       const payload = await resp.json();
       if (!payload.success) throw new Error(payload.error);
