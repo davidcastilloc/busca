@@ -71,7 +71,7 @@ export const GET: APIRoute = async () => {
       UNION ALL
       SELECT id, nombre, direccion, latitud, longitud, 
              NULL as capacidad_maxima, NULL as ocupacion_actual, necesidades, 
-             contacto, 'hospital' as tipo, encargado, NULL as inventario, NULL as fotos,
+             contacto, 'hospital' as tipo, NULL as encargado, NULL as inventario, fotos,
              COALESCE((SELECT SUM(voluntarios_count) FROM ayudas_en_camino WHERE hospital_id = hospitales.id AND estatus = 'en_ruta'), 0) as en_camino
       FROM hospitales
       WHERE latitud IS NOT NULL AND longitud IS NOT NULL
