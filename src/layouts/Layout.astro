@@ -27,6 +27,9 @@ const {
     <link rel="preconnect" href="https://api.qrserver.com" />
     <meta name="generator" content={Astro.generator} />
     <ClientRouter />
+
+    <!-- Telegram WebApp SDK -->
+    <script is:inline src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <!-- Leaflet y MarkerCluster (Carga única global para evitar colisiones) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
@@ -147,6 +150,48 @@ const {
           }
         });
       }
+    </script>
+
+    <!-- Script de Telegram Mini App para Auto-Login -->
+    <script>
+      function initTelegramMiniApp() {
+        const tg = (window as any).Telegram?.WebApp;
+        if (!tg) return;
+
+        // Expandir la aplicación
+        tg.expand();
+
+        // Si tenemos initData y no hemos intentado el login automático en esta sesión
+        const initData = tg.initData;
+        if (initData && !sessionStorage.getItem('tg_auth_attempted')) {
+          console.log("Telegram MiniApp detectada. Intentando autenticación automática...");
+          sessionStorage.setItem('tg_auth_attempted', 'true');
+          
+          fetch('/api/auth/telegram-miniapp', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ initData })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              console.log(`Autenticado automáticamente como voluntario: ${data.nombre}`);
+              // Recargar la página actual para aplicar los permisos de voluntario
+              window.location.reload();
+            } else {
+              console.warn("No se pudo autenticar automáticamente como voluntario:", data.error);
+            }
+          })
+          .catch(err => {
+            console.error("Error en login automático de Telegram:", err);
+          });
+        }
+      }
+
+      // Ejecutar en cada navegación de Astro
+      document.addEventListener('astro:page-load', initTelegramMiniApp);
     </script>
   </body>
 </html>
