@@ -833,22 +833,34 @@ export const prerender = false;
   }
 
   // --- BOTTOM SHEET INTERACTIVE ---
-  function expandSheet(state: "colapsado" | "medio" | "expandido") {
+  function expandSheet(state: "oculto" | "colapsado" | "medio" | "expandido") {
     const sheet = document.getElementById("bottom-sheet");
     if (!sheet) return;
     sheetState = state;
-    const vh = window.innerHeight;
-    switch (state) {
-      case "colapsado":
-        sheet.style.transform = "translateY(-80px)";
-        break;
-      case "medio":
-        sheet.style.transform = `translateY(-${Math.round(vh * 0.45)}px)`;
-        break;
-      case "expandido":
-        sheet.style.transform = `translateY(-${Math.round(vh * 0.85)}px)`;
-        break;
+    
+    if (state === "oculto") {
+      sheet.style.transform = "translateY(100%)";
+      return;
     }
+
+    // Dejar que el DOM calcule su altura primero
+    setTimeout(() => {
+      const sheetHeight = sheet.offsetHeight;
+      const vh = window.innerHeight;
+      
+      switch (state) {
+        case "colapsado":
+          sheet.style.transform = "translateY(-80px)";
+          break;
+        case "medio":
+          // Medio es 45vh o la altura total del sheet si es más pequeño
+          sheet.style.transform = `translateY(-${Math.min(sheetHeight, Math.round(vh * 0.45))}px)`;
+          break;
+        case "expandido":
+          sheet.style.transform = `translateY(-${sheetHeight}px)`;
+          break;
+      }
+    }, 10);
   }
 
   function renderDefaultList() {
@@ -922,7 +934,7 @@ export const prerender = false;
   // --- DETALLES DE ENTIDAD ---
   (window as any)._showDetails = (tipo: string, id: string) => {
     showEntityDetail(tipo, id);
-    expandSheet("medio");
+    expandSheet("expandido");
   };
 
   function showEntityDetail(tipo: string, id: string) {
@@ -936,9 +948,11 @@ export const prerender = false;
 
     selectedEntity = { id, tipo };
 
+    // --- INYECCIÓN DE DATOS DE LA ENTIDAD ---
     if (tipo === "refugio") {
       const r = dataStore.refugios.find(x => String(x.id) === String(id));
       if (!r) return;
+
       
       sheetTitle.textContent = r.nombre;
 
@@ -1130,6 +1144,9 @@ export const prerender = false;
         </div>
       `;
     }
+
+    // Auto-expandir cuando se muestran detalles desde cualquier marcador
+    expandSheet("expandido");
   }
 
   // --- EVENTOS DE UI ---
@@ -1181,7 +1198,7 @@ export const prerender = false;
     btnSheetClose.addEventListener("click", () => {
       selectedEntity = null;
       renderDefaultList();
-      expandSheet("colapsado");
+      expandSheet("oculto");
     });
 
     // Píldoras de Capas (Layers)
@@ -1196,6 +1213,9 @@ export const prerender = false;
 
         selectedEntity = null;
         renderDefaultList();
+        
+        // Volver a mostrar el panel (colapsado) si estaba oculto
+        if (sheetState === "oculto") expandSheet("colapsado");
       });
     });
 
@@ -1312,7 +1332,7 @@ export const prerender = false;
           </div>
         `).join("");
 
-        expandSheet("medio");
+        expandSheet("expandido");
       }
 
       if (userLatLng) {
