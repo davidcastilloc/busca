@@ -60,18 +60,19 @@ export const prerender = false;
 
   <!-- BOTTOM SHEET (MOBILE-FIRST INTERACTIVE PANEL) -->
   <div id="bottom-sheet" class="fixed left-0 right-0 z-[900] bg-canvas rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out" style="top: 100%; transform: translateY(-80px);">
-    <!-- Tirador (Handle) -->
-    <div id="sheet-handle" class="flex justify-center py-2 cursor-grab active:cursor-grabbing touch-none">
-      <div class="w-10 h-1.5 rounded-full bg-canvas-soft"></div>
-    </div>
-
-    <!-- Cabecera de la hoja -->
-    <div id="sheet-header" class="px-4 pb-2 border-b border-canvas-soft">
-      <div class="flex items-center justify-between">
-        <h2 class="font-uber-display text-base font-bold text-ink" id="sheet-title">
-          Cargando datos...
-        </h2>
-        <button id="btn-sheet-close" class="text-mute hover:text-ink transition-colors text-lg p-1">✕</button>
+    <!-- Zona de arrastre ampliada (Handle + Cabecera) -->
+    <div id="sheet-handle" class="cursor-grab active:cursor-grabbing touch-none">
+      <div class="flex justify-center py-2">
+        <div class="w-10 h-1.5 rounded-full bg-canvas-soft"></div>
+      </div>
+      
+      <div id="sheet-header" class="px-4 pb-2 border-b border-canvas-soft">
+        <div class="flex items-center justify-between">
+          <h2 class="font-uber-display text-base font-bold text-ink" id="sheet-title">
+            Cargando datos...
+          </h2>
+          <button id="btn-sheet-close" class="text-mute hover:text-ink transition-colors text-lg p-1 relative z-10">✕</button>
+        </div>
       </div>
     </div>
 
