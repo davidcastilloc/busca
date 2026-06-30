@@ -1,0 +1,214 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Navbar from "../components/Navbar.astro";
+import { env } from "cloudflare:workers";
+
+const { DB } = env;
+
+const refugiosRes = await DB.prepare("SELECT id, nombre FROM refugios ORDER BY nombre").all();
+const refugios = refugiosRes.results || [];
+---
+
+<Layout title="Dashboard de Acopio - DondeEstan.org" description="Panel de control logístico para centros de acopio y refugios.">
+  <Navbar />
+  
+  <main class="min-h-screen bg-canvas pt-20 pb-12">
+    <div class="max-w-7xl mx-auto px-4">
+      <header class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-black text-ink tracking-tight flex items-center gap-2">
+            📦 Dashboard de Acopio
+          </h1>
+          <p class="text-ink-soft mt-1">Control de recepción y despacho de ayudas.</p>
+        </div>
+        
+        <div class="w-full md:w-auto">
+          <label class="block text-sm font-semibold text-ink-soft mb-1">Selecciona tu Centro Operativo:</label>
+          <select id="refugio-selector" class="select select-bordered select-primary w-full md:w-80 bg-surface">
+            <option value="" disabled selected>-- Elige un Refugio / Acopio --</option>
+            {refugios.map((r: any) => (
+              <option value={r.id}>{r.nombre}</option>
+            ))}
+          </select>
+        </div>
+      </header>
+
+      <!-- Pantalla Vacía -->
+      <div id="empty-state" class="flex flex-col items-center justify-center py-20 bg-surface rounded-2xl border border-canvas-soft shadow-sm">
+        <span class="text-6xl mb-4">📍</span>
+        <h2 class="text-xl font-bold text-ink">Selecciona tu centro</h2>
+        <p class="text-ink-soft text-center max-w-md">Elige un refugio en el menú superior para ver qué ayudas vienen en camino y qué necesitan otros centros.</p>
+      </div>
+
+      <!-- Loader -->
+      <div id="loader" class="hidden flex justify-center py-20">
+        <span class="loading loading-spinner loading-lg text-primary"></span>
+      </div>
+
+      <!-- Contenido del Dashboard -->
+      <div id="dashboard-content" class="hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          <!-- PANEL A: ENTRADAS -->
+          <div class="bg-surface rounded-2xl border border-canvas-soft shadow-sm overflow-hidden flex flex-col">
+            <div class="bg-success/10 border-b border-success/20 p-4 flex items-center justify-between">
+              <h2 class="text-xl font-bold text-success-content flex items-center gap-2">
+                📥 Entradas (Recepción)
+              </h2>
+              <span id="badge-entradas" class="badge badge-success font-bold">0 en ruta</span>
+            </div>
+            
+            <div class="p-4 flex-1 overflow-y-auto max-h-[600px] bg-canvas/50">
+              <div id="lista-entradas" class="space-y-3">
+                <!-- items se llenan por JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- PANEL B: SALIDAS -->
+          <div class="bg-surface rounded-2xl border border-canvas-soft shadow-sm overflow-hidden flex flex-col">
+            <div class="bg-error/10 border-b border-error/20 p-4 flex items-center justify-between">
+              <h2 class="text-xl font-bold text-error-content flex items-center gap-2">
+                📤 Salidas (Despachos)
+              </h2>
+              <span id="badge-salidas" class="badge badge-error font-bold">0 urgencias</span>
+            </div>
+            
+            <div class="p-4 bg-canvas/50 border-b border-canvas-soft">
+              <h3 class="text-sm font-bold text-ink-soft mb-2">Tu Inventario Actual:</h3>
+              <div id="inventario-tags" class="flex flex-wrap gap-2">
+                <!-- tags llenados por JS -->
+              </div>
+            </div>
+
+            <div class="p-4 flex-1 overflow-y-auto max-h-[500px] bg-canvas/50">
+              <p class="text-sm text-ink-soft mb-4">Necesidades críticas en <b>otros</b> refugios para despachar:</p>
+              <div id="lista-salidas" class="space-y-3">
+                <!-- items se llenan por JS -->
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  const selector = document.getElementById('refugio-selector') as HTMLSelectElement;
+  const emptyState = document.getElementById('empty-state');
+  const loader = document.getElementById('loader');
+  const dashboardContent = document.getElementById('dashboard-content');
+  
+  const listaEntradas = document.getElementById('lista-entradas');
+  const badgeEntradas = document.getElementById('badge-entradas');
+  
+  const listaSalidas = document.getElementById('lista-salidas');
+  const badgeSalidas = document.getElementById('badge-salidas');
+  const inventarioTags = document.getElementById('inventario-tags');
+
+  const timeAgo = (dateStr: string | number) => {
+    // Para simplificar, si es timestamp:
+    const past = new Date(typeof dateStr === 'number' ? dateStr * 1000 : dateStr);
+    const now = new Date();
+    const diffMins = Math.round((now.getTime() - past.getTime()) / 60000);
+    if (diffMins < 60) return `hace ${diffMins} min`;
+    const diffHrs = Math.floor(diffMins / 60);
+    return `hace ${diffHrs} hrs`;
+  };
+
+  selector?.addEventListener('change', async (e) => {
+    const refugioId = (e.target as HTMLSelectElement).value;
+    if (!refugioId) return;
+
+    // UI States
+    emptyState?.classList.add('hidden');
+    dashboardContent?.classList.add('hidden');
+    loader?.classList.remove('hidden');
+
+    try {
+      const res = await fetch(`/api/acopio/dashboard?refugio_id=${refugioId}`);
+      const data = await res.json();
+
+      if (data.success) {
+        renderDashboard(data);
+        dashboardContent?.classList.remove('hidden');
+      } else {
+        alert("Error cargando el dashboard: " + data.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error de conexión");
+    } finally {
+      loader?.classList.add('hidden');
+    }
+  });
+
+  function renderDashboard(data: any) {
+    // ENTRADAS
+    if (badgeEntradas) badgeEntradas.textContent = `${data.entradas.length} en ruta`;
+    if (listaEntradas) {
+      if (data.entradas.length === 0) {
+        listaEntradas.innerHTML = `<div class="text-center text-ink-soft py-8">No hay ayudas en camino reportadas en este momento.</div>`;
+      } else {
+        listaEntradas.innerHTML = data.entradas.map((e: any) => `
+          <div class="bg-surface p-4 rounded-xl border-l-4 border-l-success shadow-sm">
+            <div class="flex justify-between items-start mb-2">
+              <span class="font-bold text-ink">🚗 Vehículo en camino</span>
+              <span class="text-xs text-ink-soft bg-canvas px-2 py-1 rounded">${timeAgo(e.created_at)}</span>
+            </div>
+            <p class="text-sm text-ink-soft">
+              ${e.necesidad_categoria ? `<strong>Atendiendo:</strong> ${e.necesidad_categoria} - ${e.necesidad_desc}` : 'Donación general / Ayuda voluntaria'}
+            </p>
+          </div>
+        `).join('');
+      }
+    }
+
+    // INVENTARIO PROPIO
+    if (inventarioTags) {
+      if (!data.inventario || data.inventario.length === 0) {
+        inventarioTags.innerHTML = `<span class="text-xs text-ink-soft">Sin datos de inventario.</span>`;
+      } else {
+        inventarioTags.innerHTML = data.inventario.map((i: any) => {
+          let color = "bg-canvas-soft text-ink-soft";
+          if (i.estado === "Sobrante" || i.estado === "Suficiente") color = "bg-success/20 text-success-content";
+          if (i.estado === "Alerta" || i.estado === "Crítico") color = "bg-error/20 text-error-content";
+          return `<span class="badge ${color} text-xs font-semibold border-none">${i.nombre}: ${i.estado}</span>`;
+        }).join('');
+      }
+    }
+
+    // SALIDAS
+    if (badgeSalidas) badgeSalidas.textContent = `${data.salidas.length} urgencias`;
+    if (listaSalidas) {
+      if (data.salidas.length === 0) {
+        listaSalidas.innerHTML = `<div class="text-center text-ink-soft py-8">No hay urgencias reportadas en otros centros.</div>`;
+      } else {
+        listaSalidas.innerHTML = data.salidas.map((s: any) => {
+          let badgeColor = "badge-neutral";
+          let gravEmoji = "🟡";
+          if (s.gravedad === "sos") { badgeColor = "badge-error animate-pulse"; gravEmoji = "🚨"; }
+          else if (s.gravedad === "alta") { badgeColor = "badge-error"; gravEmoji = "🔴"; }
+          else if (s.gravedad === "media") { badgeColor = "badge-warning"; gravEmoji = "🟠"; }
+
+          return `
+            <div class="bg-surface p-4 rounded-xl border border-canvas-soft shadow-sm hover:border-primary/30 transition-colors">
+              <div class="flex justify-between items-start mb-2 gap-2">
+                <span class="badge ${badgeColor} font-bold text-xs uppercase">${gravEmoji} ${s.gravedad}</span>
+                <span class="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded truncate">📍 ${s.refugio_nombre || 'Zona Externa'}</span>
+              </div>
+              <h4 class="font-bold text-ink text-sm mb-1">${s.categoria}</h4>
+              <p class="text-sm text-ink-soft mb-3 line-clamp-2">${s.descripcion}</p>
+              
+              <div class="flex gap-2">
+                <a href="/?necesidad=${s.id}" target="_blank" class="btn btn-xs btn-outline border-canvas-soft flex-1">👀 Ver en Mapa</a>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+  }
+</script>
