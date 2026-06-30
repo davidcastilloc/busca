@@ -61,7 +61,7 @@ export const prerender = false;
   <!-- BOTTOM SHEET (MOBILE-FIRST INTERACTIVE PANEL) -->
   <div id="bottom-sheet" class="fixed left-0 right-0 z-[900] bg-canvas rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out" style="top: 100%; transform: translateY(-80px);">
     <!-- Tirador (Handle) -->
-    <div id="sheet-handle" class="flex justify-center py-2 cursor-grab active:cursor-grabbing">
+    <div id="sheet-handle" class="flex justify-center py-2 cursor-grab active:cursor-grabbing touch-none">
       <div class="w-10 h-1.5 rounded-full bg-canvas-soft"></div>
     </div>
 
@@ -76,7 +76,7 @@ export const prerender = false;
     </div>
 
     <!-- Contenedor dinámico (Detalle o Lista) -->
-    <div id="sheet-content" class="px-4 py-3 overflow-y-auto" style="max-height: calc(80vh - 80px);">
+    <div id="sheet-content" class="px-4 py-3 overflow-y-auto overscroll-contain" style="max-height: calc(80vh - 80px);">
       <!-- Aquí se inyectan las listas por defecto o los detalles del pin seleccionado -->
       <div id="default-list" class="space-y-2">
         <div class="text-center py-8 text-mute text-sm font-uber-text">Obteniendo coordenadas del servidor...</div>
@@ -1168,11 +1168,12 @@ export const prerender = false;
     });
 
     sheetHandle.addEventListener("touchmove", (e) => {
+      e.preventDefault(); // Previene el pull-to-refresh del navegador (Safari/Chrome)
       const diff = e.touches[0].clientY - touchStartY;
       if (diff > 0) { // Solo permitir arrastrar hacia abajo
         bottomSheet.style.transform = `translateY(calc(-${bottomSheet.offsetHeight}px + ${diff}px))`;
       }
-    });
+    }, { passive: false });
 
     sheetHandle.addEventListener("touchend", (e) => {
       bottomSheet.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
