@@ -1,0 +1,123 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import Navbar from "../../../components/Navbar.astro";
+import { env } from "cloudflare:workers";
+
+export const prerender = false;
+
+const { id } = Astro.params;
+
+let nombre = "Refugio";
+let descripcion = "Ficha de información del refugio o centro de acopio.";
+let notFound = false;
+
+try {
+  const { DB } = env;
+  if (DB && id) {
+    const query = await DB.prepare("SELECT nombre, direccion, tipo FROM refugios WHERE id = ?").bind(id).first();
+    if (query) {
+      nombre = query.nombre as string;
+      const tipo = query.tipo === "centro_acopio" ? "Centro de Acopio" : query.tipo === "hospital" ? "Hospital" : "Refugio";
+      descripcion = `${tipo} en ${query.direccion || "Venezuela"}. Ayuda a difundir y organizar la ayuda.`;
+    } else {
+      notFound = true;
+    }
+  }
+} catch (error) {
+  console.error("Error al buscar refugio para la ficha:", error);
+}
+
+if (notFound) {
+  return Astro.redirect("/404");
+}
+
+const flyerUrl = `https://dondeestan.org/refugios/flyer/${id}.png`;
+const currentUrl = Astro.url.href;
+---
+
+<Layout 
+  title={`Ficha: ${nombre} - dondeestan.org`}
+  description={descripcion}
+  ogImage={flyerUrl}
+>
+  <Navbar />
+  
+  <main class="flex-grow flex flex-col items-center py-8 px-4 bg-canvas min-h-[80vh]">
+    <div class="max-w-md w-full space-y-6">
+      <div class="text-center space-y-2">
+        <a href="/" class="text-primary hover:underline text-sm font-semibold font-uber-text">← Volver al mapa y listado</a>
+        <h1 class="font-uber-display text-2xl sm:text-3xl text-ink tracking-tight">Ficha del Centro</h1>
+        <p class="text-sm text-body font-uber-text">{nombre}</p>
+      </div>
+
+      <div class="bg-canvas border border-canvas-soft rounded-2xl shadow-sm overflow-hidden p-2 flex justify-center">
+        <img 
+          src={flyerUrl} 
+          alt={`Ficha de ${nombre}`} 
+          class="max-w-full h-auto rounded-xl border border-canvas-soft"
+          loading="eager"
+        />
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <button 
+          id="btn-descargar"
+          class="btn bg-primary text-white hover:bg-black-elevated font-uber-text font-semibold py-3 rounded-xl shadow-sm w-full cursor-pointer flex items-center justify-center gap-2"
+        >
+          ⬇️ Descargar Imagen
+        </button>
+        <button 
+          id="btn-compartir"
+          class="btn bg-canvas-soft text-ink hover:bg-surface-pressed border border-canvas-soft font-uber-text font-semibold py-3 rounded-xl shadow-sm w-full cursor-pointer flex items-center justify-center gap-2"
+        >
+          📤 Compartir Link Nativamente
+        </button>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<script define:vars={{ flyerUrl, nombre }}>
+  const btnDescargar = document.getElementById('btn-descargar');
+  btnDescargar?.addEventListener('click', async () => {
+    try {
+      btnDescargar.textContent = "⏳ Descargando...";
+      const resp = await fetch(flyerUrl);
+      const blob = await resp.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `ficha_${nombre.replace(/\s+/g, '_')}.png`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      btnDescargar.textContent = "✅ ¡Descargado!";
+      setTimeout(() => btnDescargar.textContent = "⬇️ Descargar Imagen", 3000);
+    } catch(e) {
+      console.error(e);
+      window.open(flyerUrl, '_blank');
+      btnDescargar.textContent = "⬇️ Descargar Imagen";
+    }
+  });
+
+  const btnCompartir = document.getElementById('btn-compartir');
+  btnCompartir?.addEventListener('click', async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Ficha: ${nombre}`,
+          text: `Información de ${nombre} en dondeestan.org`,
+          url: window.location.href,
+        });
+      } catch(e) {
+        console.error("Error al compartir", e);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        alert("Enlace copiado al portapapeles.");
+      } catch(e) {}
+    }
+  });
+</script>
