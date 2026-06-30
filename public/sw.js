@@ -4,7 +4,7 @@
 // Background Sync, Push Notifications, Update controlado
 // ═══════════════════════════════════════════════════════════
 
-const CACHE_NAME = "busca-cache-v6";
+const CACHE_NAME = "busca-cache-v7";
 const TILES_CACHE = "busca-tiles-v1";
 const API_CACHE = "busca-api-v1";
 const FOTOS_CACHE = "busca-fotos-v1";
@@ -12,7 +12,7 @@ const STATIC_ASSETS = [
   "/",
   "/registrar",
   "/reportar",
-  "/refugios/mapa",
+  "/mapa",
   "/manifest.json",
   "/favicon.svg",
   "/icons/icon-192.png",
