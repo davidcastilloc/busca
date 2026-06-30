@@ -133,10 +133,12 @@ export const GET: APIRoute = async () => {
       LEFT JOIN refugios ref ON n.refugio_id = ref.id
       LEFT JOIN hospitales hosp ON n.hospital_id = hosp.id
       LEFT JOIN centros_acopio acop ON n.centro_acopio_id = acop.id
-      WHERE (n.latitud IS NOT NULL AND n.longitud IS NOT NULL)
+      WHERE n.estado = 'abierta' AND (
+         (n.latitud IS NOT NULL AND n.longitud IS NOT NULL)
          OR (n.refugio_id IS NOT NULL AND ref.latitud IS NOT NULL AND ref.longitud IS NOT NULL)
          OR (n.hospital_id IS NOT NULL AND hosp.latitud IS NOT NULL AND hosp.longitud IS NOT NULL)
          OR (n.centro_acopio_id IS NOT NULL AND acop.latitud IS NOT NULL AND acop.longitud IS NOT NULL)
+      )
     `).all<NecesidadRaw>();
 
     const necesidades = (necesidadesRes.results || []).map((n) => ({
