@@ -1,26 +1,9 @@
 import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
-import satori from "satori";
-import { initWasm, Resvg } from "@resvg/resvg-wasm";
+import { ImageResponse } from "cf-workers-og";
+import { Buffer } from "node:buffer";
 
 export const prerender = false;
-
-let wasmInitialized = false;
-
-async function initializeResvg() {
-  if (wasmInitialized) return;
-  try {
-    // Carga de wasm desde CDN para ejecución rápida y sin configuraciones de bundler en el Edge
-    const wasmResponse = await fetch("https://unpkg.com/@resvg/resvg-wasm@2.6.2/index_bg.wasm");
-    if (!wasmResponse.ok) throw new Error("No se pudo obtener el wasm de resvg");
-    const wasmBuffer = await wasmResponse.arrayBuffer();
-    await initWasm(wasmBuffer);
-    wasmInitialized = true;
-  } catch (e) {
-    // Si ya fue inicializado por otro request concurrentemente
-    console.warn("Inicialización de resvg-wasm omitida o reintentada:", e);
-  }
-}
 
 export const GET: APIRoute = async ({ params, request }) => {
   try {
@@ -40,12 +23,9 @@ export const GET: APIRoute = async ({ params, request }) => {
     const phones: string[] = JSON.parse(flyer.phones || "[]");
     const socials: string[] = JSON.parse(flyer.socials || "[]");
 
-    // 2. Inicializar Resvg
-    await initializeResvg();
-
-    // 3. Descargar fuente Roboto WOFF
-    const fontResponse = await fetch("https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.woff");
-    if (!fontResponse.ok) throw new Error("No se pudo descargar la fuente de Google Fonts");
+    // 3. Descargar fuente Roboto TTF
+    const fontResponse = await fetch("https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf");
+    if (!fontResponse.ok) throw new Error("No se pudo descargar la fuente");
     const fontBuffer = await fontResponse.arrayBuffer();
 
     // 4. Descargar foto de R2 si existe y codificar a Base64
@@ -55,24 +35,23 @@ export const GET: APIRoute = async ({ params, request }) => {
         const object = await FOTOS_BUCKET.get(flyer.foto_key);
         if (object) {
           const bytes = await object.arrayBuffer();
-          // Conversión segura de bytes a base64
-          let binary = "";
-          const len = bytes.byteLength;
-          const uints = new Uint8Array(bytes);
-          for (let i = 0; i < len; i++) {
-            binary += String.fromCharCode(uints[i]);
+          // Límite de seguridad: WASM / Resvg colapsa con OOM
+          if (bytes.byteLength < 1.5 * 1024 * 1024) {
+            // Conversión rápida con Buffer de NodeJS
+            const base64 = Buffer.from(bytes).toString('base64');
+            const ext = flyer.foto_key.split('.').pop() || 'jpeg';
+            const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
+            base64Image = `data:${mime};base64,${base64}`;
+          } else {
+            console.warn(`Foto persona demasiado grande: ${bytes.byteLength} bytes. Se omitirá para prevenir crash.`);
           }
-          const base64 = btoa(binary);
-          const ext = flyer.foto_key.split('.').pop() || 'jpeg';
-          const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
-          base64Image = `data:${mime};base64,${base64}`;
         }
       } catch (err) {
         console.error("Error al obtener foto de R2 para el flyer:", err);
       }
     }
 
-    // 5. Descargar código QR para redirigir al flyer interactivo
+    // 5. Generar QR Code
     let base64QR = "";
     try {
       const siteUrl = "https://dondeestan.org";
@@ -80,12 +59,7 @@ export const GET: APIRoute = async ({ params, request }) => {
       const qrResponse = await fetch(`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(flyerUrl)}`);
       if (qrResponse.ok) {
         const qrBytes = await qrResponse.arrayBuffer();
-        let qrBinary = "";
-        const qrUints = new Uint8Array(qrBytes);
-        for (let i = 0; i < qrUints.length; i++) {
-          qrBinary += String.fromCharCode(qrUints[i]);
-        }
-        base64QR = `data:image/png;base64,${btoa(qrBinary)}`;
+        base64QR = `data:image/png;base64,${Buffer.from(qrBytes).toString('base64')}`;
       }
     } catch (err) {
       console.error("Error al generar QR para el flyer:", err);
@@ -110,32 +84,121 @@ export const GET: APIRoute = async ({ params, request }) => {
       tipoLabel = "PERSONA LOCALIZADA";
     }
 
-    // 7. Generar diseño HTML/CSS para Satori (Aspect ratio de cartel 600x800)
-    const svg = await satori(
+    // 7. Limpiar datos para el diseño
+    let cleanTitle = flyer.title || "DESCONOCIDO";
+    cleanTitle = cleanTitle.replace(/^(SE BUSCA:|ALERTA AMBER:|ALERTA:|URGENTE:)\s*/i, "").trim().toUpperCase();
+
+    let rawDescription = flyer.description || "";
+    
+    let ubicaciones: string[] = [];
+    rawDescription = rawDescription.replace(/\[UBICACIÓN:\s*(.*?)\]/gi, (match, p1) => {
+      if (p1.trim()) ubicaciones.push(p1.trim());
+      return "";
+    });
+
+    let ultimoContacto = "";
+    rawDescription = rawDescription.replace(/\[FECHA ÚLTIMO CONTACTO:\s*(.*?)\]/gi, (match, p1) => {
+      ultimoContacto = p1.trim();
+      return "";
+    });
+
+    let senas = "";
+    rawDescription = rawDescription.replace(/\[SEÑAS:\s*(.*?)\]/gi, (match, p1) => {
+      senas = p1.trim();
+      return "";
+    });
+
+    // Remover otras etiquetas sobrantes
+    rawDescription = rawDescription.replace(/\[(.*?)\]/g, "");
+    
+    let extraDetails = rawDescription.replace(/\n{2,}/g, "\n").trim();
+    const ubiText = ubicaciones.length > 0 ? Array.from(new Set(ubicaciones)).join(" / ") : "";
+
+    const descriptionChildren: any[] = [];
+    const fieldStyle = { display: "flex", flexDirection: "column" as any, marginBottom: "8px" };
+    const labelStyle = { display: "flex", fontSize: "11px", fontWeight: "bold", color: themeColor, textTransform: "uppercase" as any, marginBottom: "2px" };
+    const valueStyle = { display: "flex", fontSize: "13px", color: "#374151", lineHeight: "1.3" };
+
+    if (ubiText) {
+      descriptionChildren.push({
+        type: "div",
+        props: {
+          style: fieldStyle,
+          children: [
+            { type: "span", props: { style: labelStyle, children: "📍 Ubicación" } },
+            { type: "span", props: { style: valueStyle, children: ubiText } }
+          ]
+        }
+      });
+    }
+
+    if (ultimoContacto) {
+      descriptionChildren.push({
+        type: "div",
+        props: {
+          style: fieldStyle,
+          children: [
+            { type: "span", props: { style: labelStyle, children: "📅 Último Contacto" } },
+            { type: "span", props: { style: valueStyle, children: ultimoContacto } }
+          ]
+        }
+      });
+    }
+
+    if (senas) {
+      descriptionChildren.push({
+        type: "div",
+        props: {
+          style: fieldStyle,
+          children: [
+            { type: "span", props: { style: labelStyle, children: "👤 Señas Particulares" } },
+            { type: "span", props: { style: valueStyle, children: senas } }
+          ]
+        }
+      });
+    }
+
+    if (extraDetails) {
+      const truncated = extraDetails.length > 300 ? extraDetails.substring(0, 300) + "..." : extraDetails;
+      descriptionChildren.push({
+        type: "div",
+        props: {
+          style: { display: "flex", flexDirection: "column" as any },
+          children: [
+            { type: "span", props: { style: labelStyle, children: "📝 Detalles Adicionales" } },
+            { type: "span", props: { style: valueStyle, children: truncated } }
+          ]
+        }
+      });
+    }
+
+    // 8. Generar diseño HTML/CSS para ImageResponse (Aspect ratio de cartel 600x800)
+    return ImageResponse.create(
       {
         type: "div",
         props: {
           style: {
             display: "flex",
             flexDirection: "column",
-            justifyContent: "space-between",
             width: "600px",
             height: "800px",
             backgroundColor: "#ffffff",
-            padding: "28px",
+            padding: "24px",
             boxSizing: "border-box",
-            border: `12px solid ${themeColor}`,
+            borderTop: `16px solid ${themeColor}`,
             fontFamily: "Roboto",
           },
           children: [
-            // Cabecera superior
+            // Header
             {
               type: "div",
               props: {
                 style: {
                   display: "flex",
-                  flexDirection: "column",
+                  justifyContent: "space-between",
                   alignItems: "center",
+                  marginBottom: "12px",
+                  width: "100%",
                 },
                 children: [
                   {
@@ -143,107 +206,88 @@ export const GET: APIRoute = async ({ params, request }) => {
                     props: {
                       style: {
                         display: "flex",
-                        justifyContent: "center",
                         alignItems: "center",
                         backgroundColor: themeColor,
                         color: "#ffffff",
-                        padding: "8px 24px",
+                        padding: "6px 16px",
                         fontSize: "14px",
                         fontWeight: "bold",
-                        letterSpacing: "4px",
+                        letterSpacing: "2px",
                         borderRadius: "4px",
-                        marginBottom: "16px",
                       },
-                      children: `🚨 DONDE ESTAN 🚨`,
+                      children: tipoLabel,
                     },
                   },
                   {
                     type: "div",
                     props: {
                       style: {
-                        fontSize: "26px",
-                        fontWeight: "900",
-                        color: "#111827",
-                        textAlign: "center",
-                        textTransform: "uppercase",
-                        marginBottom: "16px",
-                        lineHeight: "1.2",
+                        display: "flex",
+                        fontSize: "24px",
                       },
-                      children: flyer.title,
+                      children: tipoEmoji,
                     },
                   },
                 ],
               },
             },
-            // Imagen central o marcador de posición
-            base64Image
-              ? {
-                  type: "div",
-                  props: {
-                    style: {
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      width: "100%",
-                      height: "360px",
-                      backgroundColor: "#f3f4f6",
-                      borderRadius: "8px",
-                      border: "1px solid #e5e7eb",
-                      overflow: "hidden",
-                    },
-                    children: [
-                      {
-                        type: "img",
-                        props: {
-                          src: base64Image,
-                          style: {
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "contain",
-                          },
-                        },
-                      },
-                    ],
-                  },
-                }
-              : {
-                  type: "div",
-                  props: {
-                    style: {
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      width: "100%",
-                      height: "360px",
-                      backgroundColor: "#f3f4f6",
-                      borderRadius: "8px",
-                      border: "1px solid #e5e7eb",
-                    },
-                    children: [
-                      {
-                        type: "span",
-                        props: {
-                          style: { fontSize: "80px", marginBottom: "12px" },
-                          children: tipoEmoji,
-                        },
-                      },
-                      {
-                        type: "span",
-                        props: {
-                          style: {
-                            fontSize: "14px",
-                            fontWeight: "bold",
-                            color: "#4b5563",
-                            letterSpacing: "2px",
-                          },
-                          children: tipoLabel,
-                        },
-                      },
-                    ],
-                  },
+            
+            // Título
+            {
+              type: "h1",
+              props: {
+                style: {
+                  display: "flex",
+                  fontSize: "32px",
+                  fontWeight: "900",
+                  color: "#111827",
+                  margin: "0 0 12px 0",
+                  lineHeight: "1.1",
+                  textTransform: "uppercase",
                 },
-            // Descripción detallada
+                children: cleanTitle,
+              },
+            },
+
+            // Imagen
+            {
+              type: "div",
+              props: {
+                style: {
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  width: "100%",
+                  height: "380px",
+                  backgroundColor: "#f3f4f6",
+                  borderRadius: "8px",
+                  border: "1px solid #e5e7eb",
+                  overflow: "hidden",
+                  marginBottom: "12px",
+                },
+                children: base64Image
+                  ? {
+                      type: "img",
+                      props: {
+                        src: base64Image,
+                        style: {
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "contain",
+                        },
+                      },
+                    }
+                  : {
+                      type: "span",
+                      props: {
+                        style: { display: "flex", color: "#9ca3af", fontSize: "20px" },
+                        children: "SIN FOTO",
+                      },
+                    },
+              },
+            },
+
+            // Descripción
             {
               type: "div",
               props: {
@@ -251,32 +295,18 @@ export const GET: APIRoute = async ({ params, request }) => {
                   display: "flex",
                   flexDirection: "column",
                   backgroundColor: "#f9fafb",
-                  padding: "16px",
+                  padding: "12px",
                   borderRadius: "8px",
                   borderLeft: `5px solid ${themeColor}`,
-                  marginTop: "16px",
-                  flexGrow: "1",
-                  maxHeight: "130px",
+                  flex: "1",
+                  maxHeight: "180px",
                   overflow: "hidden",
                 },
-                children: [
-                  {
-                    type: "p",
-                    props: {
-                      style: {
-                        fontSize: "14px",
-                        color: "#1f2937",
-                        lineHeight: "1.5",
-                        margin: "0",
-                        whiteSpace: "pre-wrap",
-                      },
-                      children: flyer.description,
-                    },
-                  },
-                ],
+                children: descriptionChildren,
               },
             },
-            // Pie de página con contactos y QR
+
+            // Footer
             {
               type: "div",
               props: {
@@ -284,160 +314,125 @@ export const GET: APIRoute = async ({ params, request }) => {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "flex-end",
-                  borderTop: "1px solid #e5e7eb",
+                  borderTop: "2px solid #f3f4f6",
                   paddingTop: "16px",
-                  marginTop: "16px",
+                  marginTop: "auto",
+                  width: "100%",
                 },
                 children: [
-                  // Contactos
                   {
                     type: "div",
                     props: {
                       style: {
                         display: "flex",
                         flexDirection: "column",
-                        maxWidth: "350px",
                       },
                       children: [
-                        phones.length > 0
-                          ? {
-                              type: "div",
-                              props: {
-                                style: {
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  marginBottom: "8px",
-                                },
-                                children: [
-                                  {
-                                    type: "span",
-                                    props: {
-                                      style: {
-                                        fontSize: "10px",
-                                        fontWeight: "bold",
-                                        color: "#4b5563",
-                                        textTransform: "uppercase",
-                                        letterSpacing: "1px",
-                                      },
-                                      children: "Llamar a:",
-                                    },
-                                  },
-                                  ...phones.map((phone) => ({
-                                    type: "span",
-                                    props: {
-                                      style: {
-                                        fontSize: "16px",
-                                        fontWeight: "bold",
-                                        color: "#111827",
-                                      },
-                                      children: phone,
-                                    },
-                                  })),
-                                ],
-                              },
-                            }
-                          : null,
-                        socials.length > 0
-                          ? {
-                              type: "div",
-                              props: {
-                                style: { display: "flex", flexDirection: "column" },
-                                children: [
-                                  {
-                                    type: "span",
-                                    props: {
-                                      style: {
-                                        fontSize: "10px",
-                                        fontWeight: "bold",
-                                        color: "#4b5563",
-                                        textTransform: "uppercase",
-                                        letterSpacing: "1px",
-                                      },
-                                      children: "Redes Sociales / Info:",
-                                    },
-                                  },
-                                  ...socials.map((social) => ({
-                                    type: "span",
-                                    props: {
-                                      style: {
-                                        fontSize: "13px",
-                                        fontWeight: "bold",
-                                        color: "#374151",
-                                      },
-                                      children: social,
-                                    },
-                                  })),
-                                ],
-                              },
-                            }
-                          : null,
                         {
                           type: "span",
                           props: {
                             style: {
-                              fontSize: "9px",
-                              color: "#9ca3af",
-                              marginTop: "8px",
+                              display: "flex",
+                              fontSize: "12px",
+                              fontWeight: "bold",
+                              color: "#6b7280",
+                              textTransform: "uppercase",
                             },
-                            children: `Reporte #${id}`,
+                            children: "¿Tienes información?",
                           },
                         },
-                      ].filter(Boolean),
-                    },
-                  },
-                  // QR
-                  {
-                    type: "div",
-                    props: {
-                      style: {
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                      },
-                      children: [
+                        phones.length > 0
+                          ? {
+                              type: "span",
+                              props: {
+                                style: {
+                                  display: "flex",
+                                  fontSize: "24px",
+                                  fontWeight: "900",
+                                  color: themeColor,
+                                  marginTop: "4px",
+                                },
+                                children: phones[0],
+                              },
+                            }
+                          : null,
                         {
                           type: "div",
                           props: {
                             style: {
                               display: "flex",
-                              flexDirection: "column",
-                              alignItems: "flex-end",
-                              fontSize: "9px",
-                              color: "#4b5563",
-                              textTransform: "uppercase",
-                              fontWeight: "bold",
-                              letterSpacing: "0.5px",
+                              alignItems: "center",
+                              marginTop: "8px",
                             },
                             children: [
-                              { type: "span", props: { children: "Escanea" } },
-                              { type: "span", props: { children: "para" } },
-                              { type: "span", props: { children: "más info" } },
+                              {
+                                type: "span",
+                                props: {
+                                  style: {
+                                    display: "flex",
+                                    fontSize: "14px",
+                                    fontWeight: "900",
+                                    color: "#111827",
+                                  },
+                                  children: "dondeestan.org",
+                                },
+                              },
+                              {
+                                type: "span",
+                                props: {
+                                  style: {
+                                    display: "flex",
+                                    fontSize: "10px",
+                                    color: "#9ca3af",
+                                    marginLeft: "6px",
+                                  },
+                                  children: `(Reporte #${id})`,
+                                },
+                              },
                             ],
                           },
                         },
-                        base64QR
-                          ? {
-                              type: "img",
-                              props: {
-                                src: base64QR,
-                                style: {
-                                  width: "60px",
-                                  height: "60px",
-                                  borderRadius: "4px",
-                                  border: "1px solid #e5e7eb",
-                                  padding: "2px",
-                                  backgroundColor: "#ffffff",
-                                },
-                              },
-                            }
-                          : null,
                       ].filter(Boolean),
                     },
                   },
-                ],
+                  base64QR
+                    ? {
+                        type: "div",
+                        props: {
+                          style: { display: "flex", alignItems: "center", gap: "8px" },
+                          children: [
+                            {
+                              type: "div",
+                              props: {
+                                style: {
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "flex-end",
+                                  fontSize: "10px",
+                                  color: "#9ca3af",
+                                  fontWeight: "bold",
+                                },
+                                children: [
+                                  { type: "span", props: { style: { display: "flex" }, children: "ESCANEA" } },
+                                  { type: "span", props: { style: { display: "flex" }, children: "PARA MÁS INFO" } },
+                                ],
+                              },
+                            },
+                            {
+                              type: "img",
+                              props: {
+                                src: base64QR,
+                                style: { width: "60px", height: "60px", borderRadius: "4px" },
+                              },
+                            },
+                          ],
+                        },
+                      }
+                    : null,
+                ].filter(Boolean),
               },
             },
-          ],
+          ].filter(Boolean),
         },
       },
       {
@@ -451,29 +446,11 @@ export const GET: APIRoute = async ({ params, request }) => {
             style: "normal",
           },
         ],
+        headers: {
+          "Cache-Control": "public, max-age=31536000, immutable",
+        },
       }
     );
-
-    // 8. Convertir SVG a PNG en milisegundos con Resvg
-    const resvg = new Resvg(svg, {
-      background: "rgba(255, 255, 255, 1)",
-      fitTo: {
-        mode: "width",
-        value: 600,
-      },
-    });
-
-    const pngData = resvg.render();
-    const pngBuffer = pngData.asPng();
-
-    // 9. Responder con los bytes del PNG
-    return new Response(pngBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type": "image/png",
-        "Cache-Control": "public, max-age=31536000, immutable", // Cachear agresivamente
-      },
-    });
   } catch (error: any) {
     console.error("Error al renderizar el flyer PNG:", error);
     return new Response(`Error al renderizar flyer: ${error.message}`, { status: 500 });
