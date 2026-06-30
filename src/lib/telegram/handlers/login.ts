@@ -148,6 +148,25 @@ export async function handleLoginState(
         parse_mode: "HTML",
       }
     );
+
+    // Actualizar el menú de comandos nativo específicamente para este usuario
+    try {
+      await client.setMyCommands([
+        { command: "buscar", description: "Buscar persona en el censo" },
+        { command: "reportar", description: "Reportar persona desaparecida" },
+        { command: "login", description: "Identificarte como voluntario" },
+        { command: "inventario", description: "Administrar stock de insumos" },
+        { command: "encontrado", description: "Marcar persona como localizado" },
+        { command: "censo", description: "Leer lista de nombres con IA" },
+        { command: "refugio", description: "Actualizar capacidad de un refugio" },
+        { command: "urgencia", description: "Alerta critica de necesidad en terreno" },
+        { command: "cubierta", description: "Marcar una necesidad como cubierta" },
+        { command: "peligro", description: "Reportar peligro en la via (bloqueo)" },
+        { command: "alerta", description: "Suscribirse a alertas GPS (radio 10km)" }
+      ], { type: "chat", chat_id: chatId });
+    } catch (cmdErr) {
+      console.error("Error al setear comandos personalizados:", cmdErr);
+    }
   } catch (err) {
     console.error("Error al procesar login de contacto:", err);
     await client.sendMessage(chatId, "❌ Error de conexión al validar tu voluntariado en la base de datos.", {
