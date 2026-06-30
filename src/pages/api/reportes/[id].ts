@@ -199,6 +199,7 @@ export const PATCH: APIRoute = async (context) => {
         UPDATE reportes 
         SET estado_reporte = ?,
             verificacion = ?,
+            persona_id = NULL,
             foto_evidencia_key = NULL,
             contacto_evidencia = NULL,
             notas_evidencia = NULL,

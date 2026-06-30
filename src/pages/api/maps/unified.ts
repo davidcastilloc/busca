@@ -18,6 +18,7 @@ interface RefugioRaw {
   encargado: string | null;
   inventario: string | null;
   fotos: string | null;
+  en_camino: number;
 }
 
 interface NecesidadRaw {
@@ -31,6 +32,7 @@ interface NecesidadRaw {
   refugio_id: number | null;
   reportante_nombre: string | null;
   reportante_contacto: string | null;
+  en_camino: number;
 }
 
 interface PersonaRaw {
@@ -49,11 +51,12 @@ export const GET: APIRoute = async () => {
   try {
     const { DB } = env;
 
-    // 1. Obtener refugios
+    // 1. Obtener refugios con contador de ayuda en camino
     const refugiosRes = await DB.prepare(`
       SELECT id, nombre, direccion, latitud, longitud, 
              capacidad_maxima, ocupacion_actual, necesidades, 
-             contacto, tipo, encargado, inventario, fotos
+             contacto, tipo, encargado, inventario, fotos,
+             COALESCE((SELECT SUM(voluntarios_count) FROM ayudas_en_camino WHERE refugio_id = refugios.id AND estatus = 'en_ruta'), 0) as en_camino
       FROM refugios
       WHERE latitud IS NOT NULL AND longitud IS NOT NULL
     `).all<RefugioRaw>();
@@ -98,16 +101,18 @@ export const GET: APIRoute = async () => {
         contacto: r.contacto || "",
         itemsCriticos,
         itemsAlerta,
-        fotos: fotosArray
+        fotos: fotosArray,
+        en_camino: r.en_camino || 0
       };
     });
 
-    // 2. Obtener necesidades con coords o asociadas a refugios
+    // 2. Obtener necesidades con coords o asociadas a refugios, incluyendo voluntarios en camino
     const necesidadesRes = await DB.prepare(`
       SELECT n.id, n.categoria, n.gravedad, n.descripcion,
              COALESCE(n.latitud, ref.latitud) as latitud,
              COALESCE(n.longitud, ref.longitud) as longitud,
-             n.estado, n.refugio_id, n.reportante_nombre, n.reportante_contacto
+             n.estado, n.refugio_id, n.reportante_nombre, n.reportante_contacto,
+             COALESCE((SELECT SUM(voluntarios_count) FROM ayudas_en_camino WHERE necesidad_id = n.id AND estatus = 'en_ruta'), 0) as en_camino
       FROM necesidades n
       LEFT JOIN refugios ref ON n.refugio_id = ref.id
       WHERE (n.latitud IS NOT NULL AND n.longitud IS NOT NULL)
@@ -124,7 +129,8 @@ export const GET: APIRoute = async () => {
       estado: n.estado,
       refugio_id: n.refugio_id,
       reportante: n.reportante_nombre || "Anónimo",
-      contacto: n.reportante_contacto || ""
+      contacto: n.reportante_contacto || "",
+      en_camino: n.en_camino || 0
     }));
 
     // 3. Obtener personas con coords o asociadas a refugios
@@ -150,18 +156,34 @@ export const GET: APIRoute = async () => {
       notas: p.notas || ""
     }));
 
+    // 4. Obtener zonas de peligro activas
+    const peligrosRes = await DB.prepare(`
+      SELECT id, tipo_peligro, descripcion, latitud, longitud, created_at
+      FROM zonas_peligro
+      WHERE activo = 1 AND latitud IS NOT NULL AND longitud IS NOT NULL
+    `).all<{ id: string; tipo_peligro: string; descripcion: string; latitud: number; longitud: number; created_at: number }>();
+
+    const peligros = (peligrosRes.results || []).map((p) => ({
+      id: p.id,
+      tipo: p.tipo_peligro,
+      descripcion: p.descripcion,
+      lat: p.latitud,
+      lng: p.longitud
+    }));
+
     return new Response(
       JSON.stringify({
         success: true,
         refugios,
         necesidades,
-        personas
+        personas,
+        peligros
       }),
       {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=15"
+          "Cache-Control": "public, max-age=5" // Reducido a 5s para mayor dinamismo
         }
       }
     );

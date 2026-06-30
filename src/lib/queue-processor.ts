@@ -44,10 +44,7 @@ export async function procesarCola(
             console.error("Error al notificar admin por Telegram:", err);
           }
           
-          // Si el reporte es de tipo 'encontrado', resolver reportes de búsqueda relacionados
-          if (data.tipo === "encontrado") {
-            await resolverReportesRelacionados(env.DB, data.cedula_buscado, data.nombre_buscado);
-          }
+          // Si el reporte es de tipo 'encontrado', la resolución en cascada de desaparecidos se realiza al aprobar en el panel.
           
           // Extraer entidades y guardar embeddings en Vectorize
           try {
