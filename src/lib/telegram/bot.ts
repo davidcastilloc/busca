@@ -124,13 +124,53 @@ export async function processTelegramUpdate(
         try {
           const res = await db.prepare("UPDATE necesidades SET estado = 'atendida', updated_at = datetime('now', '-4 hours') WHERE id = ?").bind(necesidadId).run();
           if (res.meta.changes > 0) {
+            // Actualizar también ayudas en camino a entregadas
+            await db.prepare("UPDATE ayudas_en_camino SET estatus = 'entregado' WHERE necesidad_id = ? AND estatus = 'en_ruta'").bind(necesidadId).run();
             await client.sendMessage(chatId, `✅ <b>¡Necesidad #${necesidadId} marcada como satisfecha!</b>`);
             await client.editMessageReplyMarkup(chatId, messageId, { inline_keyboard: [] });
           } else {
             await client.sendMessage(chatId, `❌ No se encontró la necesidad o ya estaba marcada.`);
           }
         } catch (e) {
+          console.error("Error al marcar cubierta:", e);
           await client.sendMessage(chatId, "❌ Ocurrió un error al actualizar la base de datos.");
+        }
+      } else if (data.startsWith("camino:")) {
+        const [, necesidadId] = data.split(":");
+        try {
+          // Obtener centro asociado a la necesidad
+          const necesidad = await db.prepare("SELECT refugio_id, hospital_id, centro_acopio_id FROM necesidades WHERE id = ?").bind(necesidadId).first<any>();
+          if (!necesidad) {
+            await client.sendMessage(chatId, `❌ No se encontró la necesidad #${necesidadId}.`);
+            return;
+          }
+
+          const uuid = "ayuda-tg-" + crypto.randomUUID();
+          const timestamp = Math.floor(Date.now() / 1000);
+
+          await db.prepare(`
+            INSERT INTO ayudas_en_camino (id, refugio_id, centro_acopio_id, hospital_id, necesidad_id, voluntarios_count, estatus, created_at)
+            VALUES (?, ?, ?, ?, ?, 1, 'en_ruta', ?)
+          `).bind(
+            uuid,
+            necesidad.refugio_id || null,
+            necesidad.centro_acopio_id || null,
+            necesidad.hospital_id || null,
+            necesidadId,
+            timestamp
+          ).run();
+
+          await client.sendMessage(chatId, `🚗 <b>¡Ayuda en Camino Registrada!</b>\nVas rumbo a atender la necesidad #${necesidadId}. El mapa y los centros de acopio ya muestran esta asignación para evitar duplicaciones.`);
+          
+          // Dejar solo botón de Marcar Satisfecha
+          await client.editMessageReplyMarkup(chatId, messageId, {
+            inline_keyboard: [
+              [{ text: "✅ Marcar como Satisfecha", callback_data: `cub:${necesidadId}` }]
+            ]
+          });
+        } catch (e) {
+          console.error("Error al registrar ayuda en camino desde Telegram:", e);
+          await client.sendMessage(chatId, "❌ Ocurrió un error al registrar la ruta en la base de datos.");
         }
       }
 
@@ -292,7 +332,7 @@ export async function processTelegramUpdate(
           return;
         }
         
-        await client.sendMessage(chatId, "📋 <b>Necesidades Abiertas:</b>\nSelecciona el botón de abajo si la necesidad ya fue satisfecha.");
+        await client.sendMessage(chatId, "📋 <b>Necesidades Abiertas:</b>\nInteractúa usando los botones de cada necesidad.");
         
         for (const n of results) {
           const gravEmoji = n.gravedad.toLowerCase().includes("alta") ? "🔴" : n.gravedad.toLowerCase().includes("media") ? "🟡" : "🔵";
@@ -301,7 +341,10 @@ export async function processTelegramUpdate(
           await client.sendMessage(chatId, textMsg, {
             reply_markup: {
               inline_keyboard: [
-                [{ text: "✅ Marcar como Satisfecha", callback_data: `cub:${n.id}` }]
+                [
+                  { text: "🚗 Voy en Camino", callback_data: `camino:${n.id}` },
+                  { text: "✅ Satisfecha", callback_data: `cub:${n.id}` }
+                ]
               ]
             }
           });
@@ -390,11 +433,14 @@ export async function processTelegramUpdate(
         try {
           const res = await db.prepare("UPDATE necesidades SET estado = 'atendida', updated_at = datetime('now', '-4 hours') WHERE id = ?").bind(args).run();
           if (res.meta.changes > 0) {
+            // Actualizar también ayudas en camino a entregadas
+            await db.prepare("UPDATE ayudas_en_camino SET estatus = 'entregado' WHERE necesidad_id = ? AND estatus = 'en_ruta'").bind(args).run();
             await client.sendMessage(chatId, `✅ <b>¡Necesidad #${args} marcada como cubierta!</b>\nGracias por mantener actualizada la información.`);
           } else {
             await client.sendMessage(chatId, `❌ No se encontró la necesidad con ID: ${args}`);
           }
         } catch (e) {
+          console.error("Error al marcar cubierta por texto:", e);
           await client.sendMessage(chatId, "❌ Ocurrió un error al actualizar la base de datos.");
         }
         return;
