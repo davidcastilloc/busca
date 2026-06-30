@@ -512,4 +512,29 @@ async function sendWelcomeMessage(
   }
 
   await client.sendMessage(chatId, helpText);
+
+  // Configurar el botón de menú dinámico para chats privados
+  if (Number(chatId) > 0) {
+    try {
+      if (isAuthorized) {
+        await client.setChatMenuButton(chatId, {
+          type: "web_app",
+          text: "🗺️ Mapa Voluntarios",
+          web_app: {
+            url: "https://dondeestan.org/mapa"
+          }
+        });
+      } else {
+        await client.setChatMenuButton(chatId, {
+          type: "web_app",
+          text: "🔍 Buscar Familiar",
+          web_app: {
+            url: "https://dondeestan.org/buscar"
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Error al configurar botón de menú del chat:", e);
+    }
+  }
 }

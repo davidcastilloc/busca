@@ -127,6 +127,13 @@ export class TelegramClient {
     });
   }
 
+  async setChatMenuButton(chatId?: string | number, menuButton?: any): Promise<any> {
+    return this.call("setChatMenuButton", {
+      chat_id: chatId,
+      menu_button: menuButton,
+    });
+  }
+
   async getFile(fileId: string): Promise<any> {
     return this.call("getFile", { file_id: fileId });
   }
