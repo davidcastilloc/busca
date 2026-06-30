@@ -151,14 +151,28 @@ export async function processTelegramUpdate(
     const telegramId = msg.from.id;
     const chatId = msg.chat.id;
     const text = msg.text?.trim();
+    const isPrivate = msg.chat.type === "private";
+
+    // Si agregaron al bot a un grupo
+    if (msg.new_chat_members) {
+      const welcomeGroupText = `👋 <b>¡Hola grupo!</b>\n\n` +
+        `He sido agregado a este chat para asistir en la búsqueda y coordinación logística.\n\n` +
+        `<b>Comandos permitidos en este grupo:</b>\n` +
+        `🔍 /buscar [nombre/cédula] - Buscar persona en el censo.\n` +
+        `📋 /necesidades - Listar necesidades abiertas.\n` +
+        `✅ /cubierta [ID] - Marcar una necesidad como cubierta.\n\n` +
+        `⚠️ <i>Nota: Para flujos interactivos (como /reportar, /login, /censo, /urgencia), por favor háblame por <b>chat privado</b> para no saturar este grupo.</i>`;
+      await client.sendMessage(chatId, welcomeGroupText);
+      return;
+    }
 
     // Verificar permisos
     const adminIds = (env.TELEGRAM_ADMIN_IDS || "").split(",").map((id) => id.trim());
     const isAdmin = adminIds.includes(String(telegramId));
     const isAuthorized = await checkIsVolunteerOrAdmin(db, telegramId, env.TELEGRAM_ADMIN_IDS);
 
-    // Obtener sesión
-    const session = await getSession(db, telegramId);
+    // Obtener sesión (solo en chats privados para evitar interferir en grupos)
+    const session = isPrivate ? await getSession(db, telegramId) : null;
 
     // Si tiene sesión activa en un flujo conversacional
     if (session) {
@@ -202,14 +216,43 @@ export async function processTelegramUpdate(
 
     // Comandos base
     if (text) {
-      const lowerText = text.toLowerCase();
+      // Limpiar sufijo del bot (ej. /buscar@mi_bot -> /buscar)
+      let cleanText = text;
+      if (text.startsWith("/")) {
+        const parts = text.split(" ");
+        const commandPart = parts[0];
+        if (commandPart.includes("@")) {
+          const cleanCommand = commandPart.split("@")[0];
+          parts[0] = cleanCommand;
+          cleanText = parts.join(" ");
+        }
+      }
+      const lowerText = cleanText.toLowerCase();
+
+      // Restringir comandos interactivos de múltiples pasos en grupos
+      if (!isPrivate) {
+        const cmd = lowerText.split(" ")[0];
+        const interactiveCommands = [
+          "/login", "/reportar", "/encontrado", "/censo", 
+          "/refugio", "/urgencia", "/sos", "/peligro", 
+          "/alerta", "/broadcast"
+        ];
+        if (interactiveCommands.includes(cmd)) {
+          await client.sendMessage(
+            chatId,
+            `⚠️ El comando <b>${cmd}</b> requiere interacción de varios pasos. Por favor, úsalo en un <b>chat privado</b> directo conmigo para no saturar el grupo.`
+          );
+          return;
+        }
+      }
+
       if (lowerText === "/start" || lowerText === "/help" || lowerText === "/ayuda") {
         await sendWelcomeMessage(client, chatId, isAuthorized, isAdmin);
         return;
       }
 
       if (lowerText.startsWith("/buscar")) {
-        const query = text.substring(7).trim();
+        const query = cleanText.substring(7).trim();
         await handleSearch(client, db, chatId, query);
         return;
       }
