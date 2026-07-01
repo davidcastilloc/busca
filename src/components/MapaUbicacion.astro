@@ -194,6 +194,8 @@
         
         latInput.value = fixedLat;
         lonInput.value = fixedLon;
+        latInput.dispatchEvent(new Event("input", { bubbles: true }));
+        lonInput.dispatchEvent(new Event("input", { bubbles: true }));
         
         if (marker) {
           marker.setLatLng([lat, lon]);
@@ -228,6 +230,7 @@
                 addressInput.value = data.display_name; // Guardar completo
                 // Disparar evento change para validaciones del formulario
                 addressInput.dispatchEvent(new Event("change"));
+                addressInput.dispatchEvent(new Event("input", { bubbles: true }));
               }
               if (searchInput) {
                 searchInput.value = shortAddress;
@@ -343,6 +346,7 @@
                 if (addressInput) {
                   addressInput.value = item.display_name;
                   addressInput.dispatchEvent(new Event("change"));
+                  addressInput.dispatchEvent(new Event("input", { bubbles: true }));
                 }
                 searchInput.value = item.display_name.split(",").slice(0, 3).join(",").trim();
                 

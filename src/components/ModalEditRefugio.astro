@@ -279,3 +279,818 @@ import { CATEGORIAS_INVENTARIO } from "../lib/items";
         </form>
       </div>
     </div>
+
+<script>
+  let editMap: any = null;
+  let editMarker: any = null;
+  let lastEditedCardId = "";
+
+  const ITEM_MAP: Record<string, string> = {
+    agua_potable: "Agua potable embotellada",
+    botellones_agua: "Botellones (Para cocina o hidratación masiva)",
+    pastillas_potabilizadoras: "Pastillas Potabilizadoras",
+    cloro_potabilizacion: "Cloro Líquido / Pastillas de Cloro (Para desinfección)",
+    tanques_envases: "Tanques / Envases Vacíos",
+    alimentos_enlatados: "Alimentos enlatados (atún, sardina, granos)",
+    arroz_harina: "Carbohidratos Secos (arroz, pasta, harina de maíz)",
+    pasta_granos: "Granos y Legumbres (caraotas, lentejas, arvejas)",
+    leche_polvo: "Proteína en Polvo / Larga Duración (Leche en polvo, embutidos)",
+    comida_lista: "Comida Lista para Consumo (Galletas, barras, frutos secos)",
+    aceite_comestible: "Aceite comestible",
+    azucar_sal: "Azúcar / Sal",
+    papillas_adultos_mayores: "Papillas y comida líquida para adultos mayores",
+    jabon_champu: "Jabón de baño / Champú",
+    crema_cepillo: "Crema dental / Cepillo de dientes",
+    papel_higienico: "Papel higiénico",
+    toallas_sanitarias: "Toallas sanitarias / Tampón",
+    desodorante: "Desodorante (unisex)",
+    toallitas_humedas: "Toallitas húmedas",
+    detergente_jabon: "Detergente para ropa / Jabón de platos",
+    cloro_desinfectante: "Desinfectante / Limpiador de pisos",
+    bolsas_basura: "Bolsas para basura de alta resistencia",
+    alcohol_oxigenada: "Alcohol / Agua oxigenada",
+    gasas_vendas: "Gasas / Vendas / Adhesivos médicos",
+    analgesicos: "Analgésicos (Paracetamol, Ibuprofeno)",
+    antialergicos: "Antialérgicos (Loratadina)",
+    medicos_cronicos: "Medicamentos crónicos (Presión, Diabetes)",
+    antibioticos: "Antibióticos de amplio espectro",
+    suero_hidratacion: "Suero de hidratación oral",
+    tapabocas_guantes: "Tapabocas / Guantes desechables",
+    termometros: "Termómetros",
+    agujas_inyectadoras: "Agujas / Inyectadoras",
+    panales_bebe: "Pañales desechables para bebés",
+    leche_formula: "Leche de fórmula infantil",
+    biberones: "Teteros / Biberones limpios",
+    papillas_compotas: "Papillas / Compotas",
+    ropa_bebe: "Ropa de bebé",
+    champu_jabon_bebe: "Champú y jabón especial para bebé",
+    pomadas_antipanalitis: "Pomadas antipañalitis",
+    corrales_cunas: "Cunas de viaje / Corrales plegables",
+    colchonetas_esterillas: "Colchonetas / Esterillas",
+    mantas_cobijas: "Mantas / Cobijas / Sábanas",
+    linternas_velas: "Linternas con pilas / Velas",
+    baterias_powerbanks: "Baterías portátiles (Powerbanks)",
+    repelente_mosquitos: "Repelente de mosquitos",
+    herramientas_basicas: "Kit de herramientas básicas",
+    fosforos_encendedores: "Fósforos / Encendedores",
+    toldos_carpas: "Toldos / Carpas / Lonas plásticas",
+    ropa_abrigo: "Ropa abrigada / Impermeables",
+    brazaletes_identificadores: "Brazaletes identificadores",
+    pulseras_gps: "Pulseras GPS",
+    papeleria: "Papelería (bolígrafos, cuadernos, marcadores)",
+    silbatos_pitos: "Silbatos y pitos",
+    comida_mascotas: "Comida para mascotas (Perros/Gatos)",
+    medicinas_mascotas: "Medicinas / Insumos veterinarios básicos",
+    entretenimiento_infantil: "Entretenimiento infantil",
+    actividades_culturales: "Actividades culturales",
+    baile_musica: "Baile y música",
+    veterinario: "Atención Veterinaria"
+  };
+
+  document.addEventListener('astro:page-load', () => {
+    // Limpieza de mapa de edición
+    if (editMap) {
+      try { editMap.remove(); } catch (e) {}
+      editMap = null;
+    }
+    editMarker = null;
+
+    const modal = document.getElementById("modal-edit-refugio");
+    const closeBtn = document.getElementById("btn-close-edit");
+    const form = document.getElementById("form-edit-refugio") as HTMLFormElement;
+    const errorDiv = document.getElementById("edit-refugio-error");
+
+    const inputId = document.getElementById("edit-refugio-id") as HTMLInputElement;
+    const selectTipo = document.getElementById("edit-tipo") as HTMLSelectElement;
+    const inputEncargado = document.getElementById("edit-encargado") as HTMLInputElement;
+    const inputDireccion = document.getElementById("edit-direccion") as HTMLInputElement;
+    const btnEditBuscarDireccion = document.getElementById("btn-edit-buscar-direccion");
+    const inputOcupacion = document.getElementById("edit-ocupacion") as HTMLInputElement;
+    const inputCapacidad = document.getElementById("edit-capacidad") as HTMLInputElement;
+    const inputNecesidades = document.getElementById("edit-necesidades") as HTMLTextAreaElement;
+    const inputContacto = document.getElementById("edit-contacto") as HTMLInputElement;
+    const editTitulo = document.getElementById("edit-refugio-titulo");
+
+    const inputNinos = document.getElementById("edit-ninos") as HTMLInputElement;
+    const inputBebes = document.getElementById("edit-bebes") as HTMLInputElement;
+    const inputMayores = document.getElementById("edit-mayores") as HTMLInputElement;
+    const inputProf = document.getElementById("edit-prof") as HTMLInputElement;
+    const inputVols = document.getElementById("edit-vols") as HTMLInputElement;
+
+    const latEditInput = document.getElementById("edit-latitud") as HTMLInputElement;
+    const lonEditInput = document.getElementById("edit-longitud") as HTMLInputElement;
+    const gpsEditStatus = document.getElementById("edit-gps-status");
+    const btnEditGps = document.getElementById("btn-edit-ref-gps");
+
+    const previewExistentes = document.getElementById("edit-preview-existentes");
+    const inputFotosNuevas = document.getElementById("edit-fotos-nuevas") as HTMLInputElement;
+    const previewNuevas = document.getElementById("edit-preview-nuevas");
+    
+    let existingFotos: string[] = [];
+    let newFilesToUpload: File[] = [];
+
+    function renderEditPreviews() {
+      if (previewExistentes) {
+        previewExistentes.innerHTML = "";
+        existingFotos.forEach((fotoKey, index) => {
+          const div = document.createElement("div");
+          div.className = "relative aspect-square rounded-lg overflow-hidden border border-canvas-soft bg-surface-pressed";
+          
+          const img = document.createElement("img");
+          img.src = `/api/upload?key=${fotoKey}`;
+          img.className = "w-full h-full object-cover";
+          
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.innerHTML = "✕";
+          removeBtn.className = "absolute top-1 right-1 bg-black/60 hover:bg-black text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-none cursor-pointer";
+          removeBtn.addEventListener("click", () => {
+            existingFotos.splice(index, 1);
+            renderEditPreviews();
+          });
+          
+          div.appendChild(img);
+          div.appendChild(removeBtn);
+          previewExistentes.appendChild(div);
+        });
+      }
+      
+      if (previewNuevas) {
+        previewNuevas.innerHTML = "";
+        newFilesToUpload.forEach((file, index) => {
+          const url = URL.createObjectURL(file);
+          const div = document.createElement("div");
+          div.className = "relative aspect-square rounded-lg overflow-hidden border border-canvas-soft bg-surface-pressed";
+          
+          const img = document.createElement("img");
+          img.src = url;
+          img.className = "w-full h-full object-cover";
+          
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.innerHTML = "✕";
+          removeBtn.className = "absolute top-1 right-1 bg-black/60 hover:bg-black text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-none cursor-pointer";
+          removeBtn.addEventListener("click", () => {
+            newFilesToUpload.splice(index, 1);
+            URL.revokeObjectURL(url);
+            renderEditPreviews();
+          });
+          
+          div.appendChild(img);
+          div.appendChild(removeBtn);
+          previewNuevas.appendChild(div);
+        });
+      }
+    }
+
+    inputFotosNuevas?.addEventListener("change", () => {
+      if (!inputFotosNuevas.files) return;
+      const newFiles = Array.from(inputFotosNuevas.files);
+      for (const file of newFiles) {
+        if (existingFotos.length + newFilesToUpload.length < 3) {
+          newFilesToUpload.push(file);
+        }
+      }
+      inputFotosNuevas.value = "";
+      renderEditPreviews();
+    });
+
+    function mostrarInfoGoogleModal(data: any) {
+      const container = document.getElementById("edit-google-place-info");
+      const content = document.getElementById("edit-gpi-content");
+      if (!container || !content) return;
+
+      const items: string[] = [];
+
+      if (data.name) {
+        items.push(`<div class="flex items-center gap-1"><span class="font-semibold text-ink">🏛️ ${data.name}</span></div>`);
+      }
+
+      if (data.estado_operativo || data.estado_label) {
+        const label = data.estado_label || data.estado || data.estado_operativo;
+        const isOpen = data.estado_operativo === "OPERATIONAL";
+        const isClosed = data.estado_operativo?.includes("CLOSED");
+        const color = isOpen ? "text-green-700 bg-green-100" : isClosed ? "text-red-700 bg-red-100" : "text-gray-700 bg-gray-100";
+        items.push(`<div><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${color}">${isOpen ? "🟢" : isClosed ? "🔴" : "⚪"} ${label}</span></div>`);
+      }
+
+      if (data.abierto_ahora !== undefined) {
+        const badge = data.abierto_ahora 
+          ? '<span class="text-green-700 font-semibold">✅ Abierto ahora</span>'
+          : '<span class="text-orange-600 font-semibold">🚫 Cerrado ahora</span>';
+        items.push(`<div>${badge}</div>`);
+      }
+
+      if (data.accesible !== undefined) {
+        items.push(`<div>${data.accesible ? "♿ Acceso para silla de ruedas" : "⚠️ Sin acceso confirmado para silla de ruedas"}</div>`);
+      }
+
+      if (data.horario && data.horario.length > 0) {
+        const horarioHtml = data.horario.map((h: string) => `<div class="pl-3 text-[10px]">${h}</div>`).join("");
+        items.push(`<details class="cursor-pointer"><summary class="font-semibold text-ink">🕐 Horario</summary><div class="mt-1 space-y-0.5">${horarioHtml}</div></details>`);
+      }
+
+      if (data.phone_international || data.phone) {
+        const tel = data.phone_international || data.phone;
+        items.push(`<div>📞 <a href="tel:${tel.replace(/\s/g, '')}" class="text-blue-600 underline font-semibold">${tel}</a></div>`);
+      }
+
+      if (data.website) {
+        const domain = data.website.replace(/^https?:\/\//, "").replace(/\/$/, "").substring(0, 40);
+        items.push(`<div>🌐 <a href="${data.website}" target="_blank" rel="noopener" class="text-blue-600 underline">${domain}</a></div>`);
+      }
+
+      if (data.google_maps_url) {
+        items.push(`<div>🗺️ <a href="${data.google_maps_url}" target="_blank" rel="noopener" class="text-blue-600 underline">Ver en Google Maps</a></div>`);
+      }
+
+      if (data.estado || data.municipio) {
+        const parts = [data.municipio, data.estado].filter(Boolean);
+        items.push(`<div>📌 ${parts.join(", ")}</div>`);
+      }
+
+      if (items.length > 0) {
+        content.innerHTML = items.join("");
+        window.dispatchEvent(new CustomEvent('show-gpi'));
+      } else {
+        window.dispatchEvent(new CustomEvent('hide-gpi'));
+      }
+    }
+
+    function initEditMap(lat: number, lon: number, zoom = 15) {
+      if (typeof (window as any).L === "undefined") return;
+      const L = (window as any).L;
+
+      if (!editMap) {
+        editMap = L.map("edit-gps-map", {
+          zoomControl: true,
+          attributionControl: false
+        }).setView([lat, lon], zoom);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 18,
+        }).addTo(editMap);
+
+        editMap.on("click", (e: any) => {
+          const clat = e.latlng.lat;
+          const clon = e.latlng.lng;
+          latEditInput.value = clat.toFixed(6);
+          lonEditInput.value = clon.toFixed(6);
+          
+          if (editMarker) {
+            editMarker.setLatLng(e.latlng);
+          } else {
+            editMarker = L.marker(e.latlng).addTo(editMap);
+          }
+
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = `Ubicación modificada: ${clat.toFixed(5)}, ${clon.toFixed(5)}`;
+            gpsEditStatus.className = "text-[11px] text-blue-600 font-uber-text italic font-medium";
+          }
+        });
+      }
+
+      if (editMarker) {
+        editMarker.setLatLng([lat, lon]);
+      } else {
+        editMarker = L.marker([lat, lon]).addTo(editMap);
+      }
+      editMap.setView([lat, lon], zoom);
+      
+      setTimeout(() => {
+        if (editMap) editMap.invalidateSize();
+      }, 200);
+    }
+
+    const editTabBtns = document.querySelectorAll(".edit-tab-btn");
+    editTabBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        editTabBtns.forEach((b) => {
+          b.classList.remove("bg-primary", "text-white", "border-primary");
+          b.classList.add("bg-canvas-soft", "text-ink", "border-transparent");
+        });
+        btn.classList.add("bg-primary", "text-white", "border-primary");
+        btn.classList.remove("bg-canvas-soft", "text-ink", "border-transparent");
+
+        document.querySelectorAll(".edit-tab-pane").forEach((pane) => pane.classList.add("hidden"));
+        const targetId = btn.getAttribute("data-target");
+        if (targetId) {
+          document.getElementById(targetId)?.classList.remove("hidden");
+        }
+      });
+    });
+
+    const tabEditGps = document.getElementById("tab-edit-gps");
+    const tabEditGmaps = document.getElementById("tab-edit-gmaps");
+    const tabEditMap = document.getElementById("tab-edit-map");
+
+    const panelEditGps = document.getElementById("panel-edit-gps");
+    const panelEditGmaps = document.getElementById("panel-edit-gmaps");
+    const panelEditMap = document.getElementById("panel-edit-map");
+
+    function deseleccionarEditTabs() {
+      [tabEditGps, tabEditGmaps, tabEditMap].forEach(tab => {
+        tab?.classList.remove("bg-primary", "text-white");
+        tab?.classList.add("bg-transparent", "text-ink");
+      });
+      [panelEditGps, panelEditGmaps, panelEditMap].forEach(panel => panel?.classList.add("hidden"));
+    }
+
+    tabEditGps?.addEventListener("click", () => {
+      deseleccionarEditTabs();
+      tabEditGps.classList.add("bg-primary", "text-white");
+      tabEditGps.classList.remove("bg-transparent", "text-ink");
+      panelEditGps?.classList.remove("hidden");
+    });
+
+    tabEditGmaps?.addEventListener("click", () => {
+      deseleccionarEditTabs();
+      tabEditGmaps.classList.add("bg-primary", "text-white");
+      tabEditGmaps.classList.remove("bg-transparent", "text-ink");
+      panelEditGmaps?.classList.remove("hidden");
+    });
+
+    tabEditMap?.addEventListener("click", () => {
+      deseleccionarEditTabs();
+      tabEditMap.classList.add("bg-primary", "text-white");
+      tabEditMap.classList.remove("bg-transparent", "text-ink");
+      panelEditMap?.classList.remove("hidden");
+    });
+
+    btnEditGps?.addEventListener("click", () => {
+      if (!navigator.geolocation) {
+        alert("Geolocalización no soportada.");
+        return;
+      }
+      if (gpsEditStatus) {
+        gpsEditStatus.textContent = "Detectando GPS...";
+        gpsEditStatus.className = "text-[11px] text-yellow-600 font-uber-text italic font-medium";
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          latEditInput.value = lat.toFixed(6);
+          lonEditInput.value = lon.toFixed(6);
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = `Ubicación GPS: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+            gpsEditStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
+          }
+          initEditMap(lat, lon, 15);
+        },
+        () => {
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = "No se pudo obtener ubicación.";
+            gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+          }
+        }
+      );
+    });
+
+    btnEditBuscarDireccion?.addEventListener("click", async () => {
+      const dir = inputDireccion.value.trim();
+      if (!dir) {
+        alert("Introduce una dirección.");
+        return;
+      }
+      if (gpsEditStatus) {
+        gpsEditStatus.textContent = "Buscando coordenadas...";
+        gpsEditStatus.className = "text-[11px] text-yellow-600 font-uber-text italic font-medium";
+      }
+
+      try {
+        const resp = await fetch(`/api/maps/geocode?address=${encodeURIComponent(dir)}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          const lat = data.lat;
+          const lon = data.lng;
+          latEditInput.value = lat.toFixed(6);
+          lonEditInput.value = lon.toFixed(6);
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = `Encontrado: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+            gpsEditStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
+          }
+          
+          if (data.formatted_address) {
+            inputDireccion.value = data.formatted_address;
+          }
+          if (data.phone && !inputContacto.value) {
+            inputContacto.value = data.phone;
+          }
+          if (data.tipo && selectTipo.value === "refugio") {
+            selectTipo.value = data.tipo;
+          }
+
+          mostrarInfoGoogleModal(data);
+          initEditMap(lat, lon, 15);
+        } else {
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = "No encontrado. Intenta con más detalles.";
+            gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+          }
+        }
+      } catch {
+        if (gpsEditStatus) {
+          gpsEditStatus.textContent = "Error al buscar dirección.";
+          gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+        }
+      }
+    });
+
+    const btnEditResolverGmaps = document.getElementById("btn-edit-resolver-gmaps");
+    const inputEditGmaps = document.getElementById("edit-gmaps-link") as HTMLInputElement;
+
+    btnEditResolverGmaps?.addEventListener("click", async () => {
+      const url = inputEditGmaps.value.trim();
+      if (!url) {
+        alert("Pega un enlace de Google Maps.");
+        return;
+      }
+      if (gpsEditStatus) {
+        gpsEditStatus.textContent = "Resolviendo enlace...";
+        gpsEditStatus.className = "text-[11px] text-yellow-600 font-uber-text italic font-medium";
+      }
+
+      try {
+        const resp = await fetch("/api/maps/resolve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          latEditInput.value = data.lat.toFixed(6);
+          lonEditInput.value = data.lng.toFixed(6);
+
+          if (data.formatted_address) {
+            inputDireccion.value = data.formatted_address;
+          }
+          if (data.phone && !inputContacto.value) {
+            inputContacto.value = data.phone;
+          }
+          if (data.tipo && selectTipo.value === "refugio") {
+            selectTipo.value = data.tipo;
+          }
+
+          mostrarInfoGoogleModal(data);
+
+          if (data.aproximado) {
+            if (gpsEditStatus) {
+              gpsEditStatus.textContent = `⚠️ Ubicación aproximada: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)} — Ajusta el pin tocando el mapa.`;
+              gpsEditStatus.className = "text-[11px] text-amber-600 font-uber-text italic font-semibold";
+            }
+            initEditMap(data.lat, data.lng, 16);
+          } else {
+            if (gpsEditStatus) {
+              gpsEditStatus.textContent = `Resuelto: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
+              gpsEditStatus.className = "text-[11px] text-success font-uber-text italic font-semibold";
+            }
+            initEditMap(data.lat, data.lng, 17);
+          }
+        } else {
+          const err = await resp.json();
+          if (gpsEditStatus) {
+            gpsEditStatus.textContent = `Error: ${err.error}`;
+            gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+          }
+        }
+      } catch {
+        if (gpsEditStatus) {
+          gpsEditStatus.textContent = "Error de conexión.";
+          gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+        }
+      }
+    });
+
+    document.querySelectorAll(".btn-edit-refugio").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const el = btn as HTMLElement;
+        const card = el.closest(".refugio-card");
+        lastEditedCardId = card ? card.id : "";
+        const tipo = el.dataset.tipo || "refugio";
+        
+        if (inputId) inputId.value = el.dataset.id || "";
+        if (selectTipo) selectTipo.value = tipo;
+        if (inputEncargado) inputEncargado.value = el.dataset.encargado || "";
+        if (inputDireccion) inputDireccion.value = el.dataset.direccion || "";
+
+        const editCapacitySec = document.getElementById("edit-capacity-section");
+        const editDemographicsSec = document.getElementById("edit-demographics-section");
+        const editInventorySec = document.getElementById("edit-inventory-section");
+
+        if (tipo === "refugio") {
+          editCapacitySec?.classList.remove("hidden");
+          editDemographicsSec?.classList.remove("hidden");
+          editInventorySec?.classList.remove("hidden");
+          
+          if (inputOcupacion) {
+            inputOcupacion.setAttribute("required", "true");
+            inputOcupacion.value = el.dataset.ocupacion || "0";
+          }
+          if (inputCapacidad) {
+            inputCapacidad.setAttribute("required", "true");
+            inputCapacidad.value = el.dataset.capacidad || "100";
+          }
+        } else if (tipo === "centro_acopio") {
+          editCapacitySec?.classList.add("hidden");
+          editDemographicsSec?.classList.add("hidden");
+          editInventorySec?.classList.remove("hidden");
+          
+          inputOcupacion?.removeAttribute("required");
+          inputCapacidad?.removeAttribute("required");
+        } else {
+          // hospital
+          editCapacitySec?.classList.add("hidden");
+          editDemographicsSec?.classList.add("hidden");
+          editInventorySec?.classList.add("hidden");
+          
+          inputOcupacion?.removeAttribute("required");
+          inputCapacidad?.removeAttribute("required");
+        }
+
+        existingFotos = [];
+        try {
+          if (el.dataset.fotos) {
+            existingFotos = JSON.parse(el.dataset.fotos);
+          }
+        } catch (err) {
+          console.error("Error al parsear fotos:", err);
+        }
+        newFilesToUpload = [];
+        if (inputFotosNuevas) inputFotosNuevas.value = "";
+        renderEditPreviews();
+        if (inputNecesidades) inputNecesidades.value = el.dataset.necesidades || "";
+        if (inputContacto) inputContacto.value = el.dataset.contacto || "";
+        if (editTitulo) editTitulo.textContent = `Actualizar: ${el.dataset.nombre}`;
+        
+        // Reset the submit button just in case
+        const form = document.getElementById("form-edit-refugio") as HTMLFormElement;
+        if (form) {
+          const btnSubmit = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Guardar Cambios";
+          }
+        }
+        
+        const gpiCard = document.getElementById("edit-google-place-info");
+        window.dispatchEvent(new CustomEvent('hide-gpi'));
+
+        if (inputNinos) inputNinos.value = el.dataset.ninos || "0";
+        if (inputBebes) inputBebes.value = el.dataset.bebes || "0";
+        if (inputMayores) inputMayores.value = el.dataset.mayores || "0";
+        if (inputProf) inputProf.value = el.dataset.prof || "0";
+        if (inputVols) inputVols.value = el.dataset.vols || "0";
+
+        const latRaw = el.dataset.lat || "";
+        const lngRaw = el.dataset.lng || "";
+        latEditInput.value = latRaw;
+        lonEditInput.value = lngRaw;
+
+        if (gpsEditStatus) {
+          if (latRaw && lngRaw) {
+            gpsEditStatus.textContent = `Coordenadas cargadas: ${parseFloat(latRaw).toFixed(5)}, ${parseFloat(lngRaw).toFixed(5)}`;
+            gpsEditStatus.className = "text-[11px] text-mute font-uber-text italic";
+          } else {
+            gpsEditStatus.textContent = "Ubicación no establecida.";
+            gpsEditStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+          }
+        }
+
+        deseleccionarEditTabs();
+        tabEditGps?.classList.add("bg-primary", "text-white");
+        panelEditGps?.classList.remove("hidden");
+        if (inputEditGmaps) inputEditGmaps.value = "";
+
+        const lat = latRaw ? parseFloat(latRaw) : 10.4806;
+        const lon = lngRaw ? parseFloat(lngRaw) : -66.9036;
+        const zoom = latRaw && lngRaw ? 15 : 12;
+        initEditMap(lat, lon, zoom);
+
+        let inventarioObj: Record<string, string> = {};
+        try {
+          if (el.dataset.inventario) {
+            inventarioObj = JSON.parse(el.dataset.inventario);
+          }
+        } catch (err) {
+          console.error("Error al parsear dataset de inventario:", err);
+        }
+
+        const radios = form.querySelectorAll('input[type="radio"]');
+        radios.forEach((r: any) => {
+          r.checked = false;
+          if (r.name.startsWith("edit-inv-")) {
+            const itemId = r.name.replace("edit-inv-", "");
+            const valorEsperado = inventarioObj[itemId] || "Estable";
+            if (r.value === valorEsperado) {
+              r.checked = true;
+            }
+          }
+        });
+
+        if (errorDiv) {
+          errorDiv.textContent = "";
+          errorDiv.classList.add("hidden");
+        }
+
+        window.dispatchEvent(new CustomEvent('open-edit-modal', { detail: { tipo } }));
+        document.body.style.overflow = "hidden";
+      });
+    });
+
+    function cerrarModal() {
+      window.dispatchEvent(new CustomEvent('close-edit-modal'));
+      document.body.style.overflow = "";
+    }
+
+    closeBtn?.addEventListener("click", cerrarModal);
+    modal?.addEventListener("click", (e) => {
+      if (e.target === modal) cerrarModal();
+    });
+
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = inputId.value;
+      const tipo = selectTipo.value || "refugio";
+      const encargado = inputEncargado.value.trim();
+      const direccion = inputDireccion.value.trim();
+      const ocupacion = tipo === "refugio" ? (parseInt(inputOcupacion.value, 10) || 0) : 0;
+      const capacidad = tipo === "refugio" ? (parseInt(inputCapacidad.value, 10) || 100) : 0;
+      const necesidades = inputNecesidades.value.trim();
+      const contacto = inputContacto.value.trim();
+      const lat = latEditInput.value;
+      const lon = lonEditInput.value;
+
+      const ninos = tipo === "refugio" ? (parseInt(inputNinos.value) || 0) : 0;
+      const bebes = tipo === "refugio" ? (parseInt(inputBebes.value) || 0) : 0;
+      const mayores = tipo === "refugio" ? (parseInt(inputMayores.value) || 0) : 0;
+      const prof = tipo === "refugio" ? (parseInt(inputProf.value) || 0) : 0;
+      const vols = tipo === "refugio" ? (parseInt(inputVols.value) || 0) : 0;
+
+      const sumaSubgrupos = ninos + bebes + mayores + prof + vols;
+
+      if (tipo === "refugio") {
+        if (ocupacion < sumaSubgrupos) {
+          window.dispatchEvent(new CustomEvent('show-warning'));
+          if (errorDiv) {
+            errorDiv.textContent = "Error: La Población Total no puede ser menor a la suma de niños, bebés, adultos mayores, profesionales y voluntarios.";
+            errorDiv.classList.remove("hidden");
+          }
+          return;
+        } else {
+          window.dispatchEvent(new CustomEvent('hide-warning'));
+        }
+
+        if (isNaN(ocupacion) || ocupacion < 0) {
+          alert("Ocupación inválida");
+          return;
+        }
+        if (isNaN(capacidad) || capacidad <= 0) {
+          alert("Capacidad inválida");
+          return;
+        }
+      }
+
+      if (errorDiv) errorDiv.classList.add("hidden");
+
+      const btnSubmit = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = "Subiendo imágenes...";
+      }
+
+      const fotosKeys = [...existingFotos];
+      if (newFilesToUpload.length > 0) {
+        for (const file of newFilesToUpload) {
+          const formData = new FormData();
+          formData.append("foto", file);
+          try {
+            const uploadResp = await fetch("/api/upload", {
+              method: "POST",
+              body: formData,
+            });
+            if (uploadResp.ok) {
+              const data = await uploadResp.json();
+              if (data.key) {
+                fotosKeys.push(data.key);
+              }
+            }
+          } catch (uploadErr) {
+            console.error("Error al subir imagen nueva:", uploadErr);
+          }
+        }
+      }
+
+      if (btnSubmit) {
+        btnSubmit.textContent = "Guardando cambios...";
+      }
+
+      const inventario: Record<string, string> = {};
+      const radios = form.querySelectorAll('input[type="radio"]:checked');
+      radios.forEach((radio: any) => {
+        if (radio.name.startsWith("edit-inv-")) {
+          const itemId = radio.name.replace("edit-inv-", "");
+          inventario[itemId] = radio.value;
+        }
+      });
+
+      const payload = {
+        ocupacion_actual: ocupacion,
+        capacidad_maxima: capacidad,
+        necesidades,
+        contacto,
+        tipo,
+        encargado,
+        direccion,
+        latitud: lat,
+        longitud: lon,
+        ninos,
+        bebes_lactantes: bebes,
+        adultos_mayores: mayores,
+        personal_profesional: prof,
+        voluntarios: vols,
+        inventario,
+        fotos: fotosKeys
+      };
+
+      try {
+        const resp = await fetch(`/api/refugios/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (resp.ok) {
+          const json = await resp.json();
+          const r = json.refugio;
+          cerrarModal();
+          
+          const itemsCriticos: string[] = [];
+          const itemsAlerta: string[] = [];
+          const invData = typeof r.inventario === 'string' ? JSON.parse(r.inventario) : (r.inventario || {});
+          for (const [itemId, estado] of Object.entries(invData)) {
+            const itemName = ITEM_MAP[itemId];
+            if (itemName) {
+              if (estado === "Crítico") itemsCriticos.push(itemName);
+              else if (estado === "Alerta") itemsAlerta.push(itemName);
+            }
+          }
+
+          let fechaActualizada = new Date().toLocaleString('es-VE', { 
+            dateStyle: 'short', 
+            timeStyle: 'short' 
+          }).replace(/\//g, "-");
+          if (r.updated_at) {
+            const d = new Date(r.updated_at);
+            if (!isNaN(d.getTime())) {
+              fechaActualizada = d.toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' }).replace(/\//g, "-");
+            }
+          }
+
+          let fotosParsed = [];
+          try { fotosParsed = typeof r.fotos === 'string' ? JSON.parse(r.fotos) : (r.fotos || []); } catch {}
+
+          const cardEl = document.getElementById(`refugio-${id}`);
+          if (cardEl) {
+            cardEl.dispatchEvent(new CustomEvent('update-refugio', {
+              detail: {
+                ...r,
+                fotos: fotosParsed,
+                inventario: invData,
+                itemsCriticos,
+                itemsAlerta,
+                fechaActualizada
+              }
+            }));
+          }
+
+          const toast = document.getElementById('index-success-toast');
+          if (toast) {
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+              toast.classList.add('hidden');
+            }, 3000);
+          }
+        } else {
+          const err = await resp.json();
+          if (errorDiv) {
+            errorDiv.textContent = `Error: ${err.error || "no se pudo actualizar"}`;
+            errorDiv.classList.remove("hidden");
+          }
+        }
+      } catch {
+        if (errorDiv) {
+          errorDiv.textContent = "Error de conexión con el servidor.";
+          errorDiv.classList.remove("hidden");
+        }
+      } finally {
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = "Guardar Cambios";
+        }
+      }
+    });
+  });
+</script>

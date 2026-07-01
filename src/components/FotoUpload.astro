@@ -75,6 +75,13 @@
     const removeBtn    = document.getElementById("btn-quitar-foto");
     const statusText   = document.getElementById("upload-status");
 
+    if (!hiddenInput) return;
+
+    function updateKey(val: string) {
+      hiddenInput.value = val;
+      hiddenInput.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
     // Compresión adaptativa: objetivo <400KB
     async function comprimirImagen(
       file: File,
@@ -141,7 +148,7 @@
             const res = await fetch("/api/upload", { method: "POST", body: fd });
             if (res.ok) {
               const data = await res.json();
-              hiddenInput.value = data.key;
+              updateKey(data.key);
               statusText.textContent = `✓ Lista (${fmt(fin)})`;
               statusText.className = "text-xs text-green-600 text-center font-uber-text font-bold mt-2";
             } else { throw new Error("Fallo upload"); }
@@ -164,7 +171,7 @@
             const res = await fetch("/api/upload", { method: "POST", body: fd });
             if (res.ok) {
               const data = await res.json();
-              hiddenInput.value = data.key;
+              updateKey(data.key);
               if (statusText) { statusText.textContent = "✓ Lista (sin comprimir)"; }
             }
           } catch { guardarBase64(file); }
@@ -174,7 +181,7 @@
 
     function guardarBase64(blob: Blob | File) {
       const reader = new FileReader();
-      reader.onload = (e) => { if (e.target?.result) hiddenInput.value = e.target.result as string; };
+      reader.onload = (e) => { if (e.target?.result) updateKey(e.target.result as string); };
       reader.readAsDataURL(blob);
     }
 
@@ -199,7 +206,7 @@
       const newRemoveBtn = removeBtn.cloneNode(true);
       removeBtn.parentNode?.replaceChild(newRemoveBtn, removeBtn);
       newRemoveBtn.addEventListener("click", () => {
-        hiddenInput.value = "";
+        updateKey("");
         previewImg.src = "";
         const ic = document.getElementById("foto-file-camara") as HTMLInputElement;
         const ig = document.getElementById("foto-file-galeria") as HTMLInputElement;
