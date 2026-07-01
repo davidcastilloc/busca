@@ -132,18 +132,18 @@ try {
 
       <!-- OTRAS ACCIONES: Voluntarios, Telegram -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 justify-center mb-6 px-4 max-w-lg mx-auto">
-        <a href="/ayudar" class="w-full btn bg-black text-white hover:bg-zinc-800 border-none font-uber-text uber-body-md-strong px-4 py-3 rounded-xl flex items-center justify-start gap-3 shadow-sm transition-transform active:scale-[0.98]">
+        <a href="/ayudar" class="w-full btn bg-black text-white hover:bg-zinc-800 border-none font-uber-text uber-body-md-strong px-4 py-3 rounded-full flex items-center justify-center gap-3 shadow-sm transition-transform active:scale-[0.98]">
           <div class="text-2xl">👷</div>
-          <div class="text-left leading-tight">
+          <div class="text-center leading-tight">
             <div class="font-bold text-sm">Ser Voluntario</div>
             <div class="text-[10px] text-zinc-300 font-normal">Apoya la logística</div>
           </div>
         </a>
-        <a href="https://t.me/DondeEstanBot" target="_blank" rel="noopener noreferrer" class="w-full btn bg-[#2481cc] text-white hover:bg-[#1d6ba8] border-none font-uber-text uber-body-md-strong px-4 py-3 rounded-xl flex items-center justify-start gap-3 shadow-sm transition-transform active:scale-[0.98]">
+        <a href="https://t.me/DondeEstanBot" target="_blank" rel="noopener noreferrer" class="w-full btn bg-[#2481cc] text-white hover:bg-[#1d6ba8] border-none font-uber-text uber-body-md-strong px-4 py-3 rounded-full flex items-center justify-center gap-3 shadow-sm transition-transform active:scale-[0.98]">
           <div class="text-2xl w-6 flex items-center justify-center">
             <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.892-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
           </div>
-          <div class="text-left leading-tight">
+          <div class="text-center leading-tight">
             <div class="font-bold text-sm">Usar Telegram</div>
             <div class="text-[10px] text-blue-100 font-normal">Reporta vía Bot</div>
           </div>
@@ -152,7 +152,7 @@ try {
     </div>
 
     <!-- SECCIÓN DE REFUGIOS Y CENTROS DE ACOPIO (MIGRADO) -->
-    <div id="refugios-seccion" class="max-w-4xl mx-auto mt-10 mb-10 px-2 animate-fade-in">
+    <div id="refugios-seccion" class="max-w-4xl mx-auto mt-10 mb-10 px-2 animate-fade-in" x-data="{ query: '', filtro: 'todos' }">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h2 class="font-uber-display text-2xl sm:text-3xl text-ink tracking-tight">
@@ -183,7 +183,7 @@ try {
       </div>
 
       <!-- Filtros Rápidos y Buscador -->
-      <div class="space-y-4 mb-6" x-data="{ query: '', filtro: 'todos' }">
+      <div class="space-y-4 mb-6">
         <!-- Filtros por tipo -->
         <div class="flex flex-wrap gap-2 overflow-x-auto pb-1 scrollbar-none" id="tipo-filtros">
           <button type="button" @click="filtro = 'todos'" :class="filtro === 'todos' ? 'bg-primary text-white' : 'bg-canvas text-ink hover:bg-canvas-soft border-canvas-soft'" class="px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border cursor-pointer transition-all">
@@ -408,32 +408,32 @@ try {
 
                 <!-- Botones de Acción -->
                 <div class="flex flex-wrap sm:justify-between items-center gap-2 pt-2 border-t border-canvas-soft">
-                  <div class="flex gap-2">
+                  <div class="flex flex-wrap gap-2">
                     <button 
-                      class="btn-ver-en-mapa py-1.5 px-4 rounded-full bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-xs text-ink font-semibold cursor-pointer"
+                      class="btn-ver-en-mapa py-1.5 px-3.5 rounded-full bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-xs text-ink font-semibold cursor-pointer whitespace-nowrap"
                       data-lat={r.latitud || ""}
                       data-lng={r.longitud || ""}
                       data-id={r.id}
                     >
-                      🗺️ Ver en Mapa
+                      🗺️ Ver mapa
                     </button>
                     {r.contacto && (
                       <a 
                         href={`tel:${r.contacto}`} 
-                        class="py-1.5 px-4 rounded-full bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-xs text-ink font-semibold flex items-center justify-center"
+                        class="py-1.5 px-3.5 rounded-full bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-xs text-ink font-semibold flex items-center justify-center whitespace-nowrap"
                       >
                         📞 Llamar
                       </a>
                     )}
                     <ShareButton 
-                      buttonText="Compartir Ficha"
+                      buttonText="Compartir"
                       url={`https://dondeestan.org/r/${r.id}`}
                       text={`📍 Ayuda en ${r.nombre}:`}
                     />
                   </div>
                   {esVoluntario && (
                     <button 
-                      class="btn-edit-refugio py-1.5 px-4 rounded-full bg-black text-white hover:bg-zinc-800 text-xs font-semibold cursor-pointer"
+                      class="btn-edit-refugio py-1.5 px-3.5 rounded-full bg-black text-white hover:bg-zinc-800 text-xs font-semibold cursor-pointer whitespace-nowrap"
                       data-id={r.id}
                       data-nombre={r.nombre}
                       data-direccion={r.direccion || ""}
