@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
 import { TelegramClient } from "../../lib/telegram/client";
+import { FlyerSchema } from "../../lib/validators";
 
 export const prerender = false;
 
@@ -61,14 +62,9 @@ export const POST: APIRoute = async (context) => {
     const { DB, FOTOS_BUCKET } = cfEnv;
 
     const body = await context.request.json();
-    const { title, description, photo, foto_key: input_foto_key, phones, socials, registrarEnBusca, tipo } = body;
-
-    if (!title || !description) {
-      return new Response(JSON.stringify({ error: "Título y descripción son obligatorios" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
+    const validated = FlyerSchema.parse(body);
+    const { title, description, foto_key: input_foto_key, phones, socials, registrarEnBusca, tipo } = validated;
+    const photo = body.photo;
 
     let foto_key = input_foto_key || "";
 
@@ -165,8 +161,9 @@ export const POST: APIRoute = async (context) => {
     });
   } catch (error: any) {
     console.error("Error al crear flyer:", error);
-    return new Response(JSON.stringify({ error: error.message || "Error interno del servidor" }), {
-      status: 500,
+    const isValidationError = error.name === "ZodError";
+    return new Response(JSON.stringify({ error: isValidationError ? "Datos de cartel inválidos" : (error.message || "Error interno del servidor") }), {
+      status: isValidationError ? 400 : 500,
       headers: { "Content-Type": "application/json" }
     });
   }

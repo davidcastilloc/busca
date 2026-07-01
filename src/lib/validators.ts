@@ -60,3 +60,15 @@ export const NecesidadSchema = z.object({
 });
 
 export type NecesidadInput = z.infer<typeof NecesidadSchema>;
+
+export const FlyerSchema = z.object({
+  title: z.string().min(1, "El título es obligatorio").trim(),
+  description: z.string().min(5, "La descripción es muy corta").trim(),
+  foto_key: z.string().trim().nullable().optional().transform(v => v === "" ? null : v),
+  phones: z.array(z.string()).default([]),
+  socials: z.array(z.string()).default([]),
+  tipo: z.enum(["desaparecido", "encontrado", "refugio", "necesidad"]),
+  registrarEnBusca: z.boolean().default(false)
+});
+
+export type FlyerInput = z.infer<typeof FlyerSchema>;
