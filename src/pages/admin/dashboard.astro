@@ -489,6 +489,14 @@ const formatFecha = (fechaStr: string) => {
                         <td>
                           <div class="font-uber-text uber-body-sm-strong text-ink">{r.reportante_nombre || "Anónimo"}</div>
                           <div class="text-xs text-body font-uber-text truncate max-w-xs">{r.reportante_contacto || "-"}</div>
+                          {r.reportante_contacto && r.reportante_contacto.match(/(?:User|Telegram)\s*ID:\s*(\d+)/i) && (
+                            <button 
+                              class="btn-reply-tg text-xs mt-1 text-blue-600 hover:text-blue-800 font-semibold underline flex items-center gap-1"
+                              data-chat-id={r.reportante_contacto.match(/(?:User|Telegram)\s*ID:\s*(\d+)/i)[1]}
+                            >
+                              <span>💬 Responder vía Bot</span>
+                            </button>
+                          )}
                         </td>
                         <td class="text-xs text-body font-uber-text">
                           {formatFecha(r.updated_at)}
@@ -504,9 +512,30 @@ const formatFecha = (fechaStr: string) => {
       </div>
     </div>
   </main>
+
+  <!-- Modal para Enviar Mensaje vía Telegram -->
+  <dialog id="modalTgMessage" class="modal">
+    <div class="modal-box bg-canvas">
+      <h3 class="font-bold text-lg text-ink">Enviar Mensaje vía Telegram Bot</h3>
+      <p class="py-2 text-sm text-body">
+        Este mensaje le llegará a la persona a través del bot oficial.
+      </p>
+      <input type="hidden" id="tgChatId" />
+      <div class="form-control">
+        <textarea id="tgMessageText" class="textarea textarea-bordered h-24" placeholder="Escribe el mensaje..."></textarea>
+      </div>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" onclick="modalTgMessage.close()">Cancelar</button>
+        <button type="button" class="btn btn-primary bg-black text-white hover:bg-neutral-800" id="btnSendTgMessage">Enviar Mensaje</button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
 </Layout>
 
-<!-- Script de acciones del administrador para moderar reportes de localizado -->
+<!-- Script de acciones del administrador para moderar reportes de localizado y enviar mensajes TG -->
 <script>
   document.addEventListener("astro:page-load", () => {
     const botonesAprobar = document.querySelectorAll(".btn-aprobar");
@@ -576,13 +605,69 @@ const formatFecha = (fechaStr: string) => {
             target.disabled = false;
             target.textContent = "Rechazar";
           }
-        } catch {
-          alert("Error de conexión");
+        } catch (error) {
+          console.error(error);
+          alert("Error al procesar la solicitud.");
+        } finally {
           target.disabled = false;
-          target.textContent = "Rechazar";
         }
       });
     });
+
+    // Telegram Bot Message Handler
+    const modalTg = document.getElementById("modalTgMessage") as HTMLDialogElement;
+    const tgChatIdInput = document.getElementById("tgChatId") as HTMLInputElement;
+    const tgMessageTextInput = document.getElementById("tgMessageText") as HTMLTextAreaElement;
+    const btnSendTgMessage = document.getElementById("btnSendTgMessage") as HTMLButtonElement;
+
+    document.querySelectorAll(".btn-reply-tg").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const target = e.currentTarget as HTMLButtonElement;
+        const chatId = target.getAttribute("data-chat-id");
+        if (chatId && modalTg) {
+          tgChatIdInput.value = chatId;
+          tgMessageTextInput.value = "";
+          modalTg.showModal();
+        }
+      });
+    });
+
+    if (btnSendTgMessage) {
+      btnSendTgMessage.addEventListener("click", async () => {
+        const chatId = tgChatIdInput.value;
+        const text = tgMessageTextInput.value.trim();
+
+        if (!chatId || !text) {
+          alert("El mensaje no puede estar vacío.");
+          return;
+        }
+
+        btnSendTgMessage.disabled = true;
+        btnSendTgMessage.textContent = "Enviando...";
+
+        try {
+          const resp = await fetch("/api/admin/telegram-msg", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, text: text })
+          });
+
+          if (!resp.ok) {
+            const data = await resp.json();
+            throw new Error(data.error || "Error al enviar mensaje");
+          }
+
+          alert("Mensaje enviado exitosamente.");
+          modalTg.close();
+        } catch (error: any) {
+          console.error(error);
+          alert("Error: " + error.message);
+        } finally {
+          btnSendTgMessage.disabled = false;
+          btnSendTgMessage.textContent = "Enviar Mensaje";
+        }
+      });
+    }
   });
 </script>
 
