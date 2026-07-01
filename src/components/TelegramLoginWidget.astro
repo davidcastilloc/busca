@@ -25,6 +25,6 @@ const {
     data-size={size}
     data-radius={radius}
     data-auth-url={authUrl}
-    data-request-access={requestAccess || ""}
+    data-request-access={requestAccess === "write" ? "write" : undefined}
   ></script>
 </div>

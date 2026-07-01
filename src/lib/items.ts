@@ -30,7 +30,8 @@ export const CATEGORIAS_INVENTARIO: CategoriaInventario[] = [
       { id: "leche_polvo", nombre: "Proteína en Polvo / Larga Duración (Leche en polvo, embutidos)", unidad_medida: "Kg", es_critico: false },
       { id: "comida_lista", nombre: "Comida Lista para Consumo (Galletas, barras, frutos secos)", unidad_medida: "Unidades", es_critico: false },
       { id: "aceite_comestible", nombre: "Aceite comestible", unidad_medida: "Litros", es_critico: false },
-      { id: "azucar_sal", nombre: "Azúcar / Sal", unidad_medida: "Kg", es_critico: false }
+      { id: "azucar_sal", nombre: "Azúcar / Sal", unidad_medida: "Kg", es_critico: false },
+      { id: "papillas_adultos_mayores", nombre: "Papillas y comida líquida para adultos mayores", unidad_medida: "Unidades", es_critico: false }
     ]
   },
   {
@@ -86,7 +87,11 @@ export const CATEGORIAS_INVENTARIO: CategoriaInventario[] = [
       { id: "herramientas_basicas", nombre: "Kit de herramientas básicas", unidad_medida: "Unidades" },
       { id: "fosforos_encendedores", nombre: "Fósforos / Encendedores", unidad_medida: "Unidades" },
       { id: "toldos_carpas", nombre: "Toldos / Carpas / Lonas plásticas", unidad_medida: "Unidades" },
-      { id: "ropa_abrigo", nombre: "Ropa abrigada / Impermeables", unidad_medida: "Piezas" }
+      { id: "ropa_abrigo", nombre: "Ropa abrigada / Impermeables", unidad_medida: "Piezas" },
+      { id: "brazaletes_identificadores", nombre: "Brazaletes identificadores", unidad_medida: "Unidades" },
+      { id: "pulseras_gps", nombre: "Pulseras GPS", unidad_medida: "Unidades" },
+      { id: "papeleria", nombre: "Papelería (bolígrafos, cuadernos, marcadores)", unidad_medida: "Unidades" },
+      { id: "silbatos_pitos", nombre: "Silbatos y pitos", unidad_medida: "Unidades" }
     ]
   },
   {
@@ -94,6 +99,15 @@ export const CATEGORIAS_INVENTARIO: CategoriaInventario[] = [
     items: [
       { id: "comida_mascotas", nombre: "Comida para mascotas (Perros/Gatos)", unidad_medida: "Kg" },
       { id: "medicinas_mascotas", nombre: "Medicinas / Insumos veterinarios básicos", unidad_medida: "Unidades", es_critico: true }
+    ]
+  },
+  {
+    nombre: "Servicio Voluntario",
+    items: [
+      { id: "entretenimiento_infantil", nombre: "Entretenimiento infantil", unidad_medida: "Horas/Personas" },
+      { id: "actividades_culturales", nombre: "Actividades culturales", unidad_medida: "Horas/Personas" },
+      { id: "baile_musica", nombre: "Baile y música", unidad_medida: "Horas/Personas" },
+      { id: "veterinario", nombre: "Atención Veterinaria", unidad_medida: "Horas/Personas" }
     ]
   }
 ];
