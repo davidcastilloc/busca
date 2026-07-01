@@ -13,7 +13,8 @@ export async function startPeligro(
   const keyboard = {
     keyboard: [
       [{ text: "🚧 Bloqueo de vía" }, { text: "⛰️ Derrumbe" }],
-      [{ text: "🌊 Inundación" }],
+      [{ text: "🌊 Inundación" }, { text: "⚠️ Piquete" }],
+      [{ text: "🤜 Altercado" }, { text: "💔 Saqueo" }],
       [{ text: "/cancelar" }]
     ],
     resize_keyboard: true,
@@ -58,6 +59,9 @@ export async function handlePeligroState(
     if (text.includes("Bloqueo")) tipo = "bloqueo";
     else if (text.includes("Derrumbe")) tipo = "derrumbe";
     else if (text.includes("Inundación")) tipo = "inundacion";
+    else if (text.includes("Piquete")) tipo = "piquete";
+    else if (text.includes("Altercado")) tipo = "altercado";
+    else if (text.includes("Saqueo")) tipo = "saqueo";
     
     if (!tipo) {
       await client.sendMessage(chatId, "⚠️ Opción no válida. Elige del teclado:");
@@ -178,7 +182,10 @@ async function notificarVoluntariosCercanos(
     const emojiMap: Record<string, string> = {
       bloqueo: "🚧 Bloqueo de vía",
       derrumbe: "⛰️ Derrumbe",
-      inundacion: "🌊 Inundación"
+      inundacion: "🌊 Inundación",
+      piquete: "⚠️ Piquete Policial/Militar",
+      altercado: "🤜 Altercado / Conflicto civil",
+      saqueo: "💔 Saqueo"
     };
 
     const alertMessage = `⚠️ <b>¡NUEVO PELIGRO REPORTADO EN TU ZONA!</b> ⚠️\n\n` +

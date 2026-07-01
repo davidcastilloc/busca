@@ -14,6 +14,7 @@ let totalRefugios = 0;
 let totalNecesidades = 0;
 let necesidadesCriticas: any[] = [];
 let refugiosIniciales: any[] = [];
+let zonasPeligro: any[] = [];
 
 try {
   const { DB } = env;
@@ -31,6 +32,12 @@ try {
     const resCriticas = await DB.prepare("SELECT * FROM necesidades WHERE estado = 'abierta' AND gravedad LIKE '%alta%' ORDER BY created_at DESC LIMIT 4").all();
     if (resCriticas && resCriticas.results) {
       necesidadesCriticas = resCriticas.results;
+    }
+
+    let zonasPeligro: any[] = [];
+    const resZonas = await DB.prepare("SELECT * FROM zonas_peligro WHERE activo = 1 ORDER BY created_at DESC LIMIT 5").all();
+    if (resZonas && resZonas.results) {
+      zonasPeligro = resZonas.results;
     }
 
     const queryUnified = `
@@ -61,6 +68,23 @@ try {
 <Layout title="Portal de Coordinación de Emergencia - dondeestan.org">
   <Navbar />
   
+  {zonasPeligro && zonasPeligro.length > 0 && (
+    <div class="bg-red-600 text-white font-uber-text font-bold text-xs py-2 px-4 shadow-md w-full relative z-40 flex overflow-hidden">
+      <div class="whitespace-nowrap animate-[marquee_15s_linear_infinite] flex items-center min-w-full">
+        {zonasPeligro.map((z: any) => (
+          <span class="mx-4 flex items-center gap-1">
+            <span class="text-sm">⚠️</span> {z.tipo_peligro.toUpperCase()}: {z.descripcion} 
+          </span>
+        ))}
+        {zonasPeligro.map((z: any) => (
+          <span class="mx-4 flex items-center gap-1" aria-hidden="true">
+            <span class="text-sm">⚠️</span> {z.tipo_peligro.toUpperCase()}: {z.descripcion} 
+          </span>
+        ))}
+      </div>
+    </div>
+  )}
+
   <main class="flex-grow py-4 sm:py-12 px-4 bg-canvas">
     <!-- Hero Section (estilo hero-band-light de Uber) -->
     <div class="text-center max-w-2xl mx-auto mb-6 sm:mb-10 pt-4">
@@ -797,6 +821,16 @@ try {
       </div>
     </div>
   </main>
+
+  <style>
+    @keyframes marquee {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-50%); }
+    }
+    .animate-\\[marquee_15s_linear_infinite\\] {
+      animation: marquee 15s linear infinite;
+    }
+  </style>
 
   <style is:global>
     /* Marcadores personalizados para el mapa de emergencia */
