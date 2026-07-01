@@ -1,4 +1,3 @@
-import { extraerEntidades, generarEmbedding } from "./ai";
 import { 
   upsertPersona, 
   insertReporte, 
@@ -26,68 +25,85 @@ export async function procesarCola(
       // 2. Procesar Reporte Individual
       // ═══════════════════════════════════════════════════════════
       else if (type === "reporte") {
-        const reporteId = await insertReporte(env.DB, data);
+        if (data.tipo === "necesidad") {
+          // Insertar en la tabla necesidades
+          const result = await env.DB.prepare(`
+            INSERT INTO necesidades (
+              categoria, gravedad, descripcion, ubicacion_nombre, 
+              latitud, longitud, telefono, foto_key, refugio_id, centro_acopio_id, hospital_id, reportante_nombre, reportante_contacto, estado
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'abierta')
+            RETURNING id
+          `).bind(
+            "General",
+            "Alta (Riesgo de vida)",
+            data.descripcion,
+            data.ubicacion_nombre || null,
+            data.latitud || null,
+            data.longitud || null,
+            data.reportante_contacto || null,
+            data.foto_key || null,
+            data.refugio_id || null,
+            data.centro_acopio_id || null,
+            data.hospital_id || null,
+            data.reportante_nombre || "Voluntario SOS",
+            data.reportante_contacto || null
+          ).first<{ id: number }>();
 
-        if (reporteId) {
-          // Notificar administradores por Telegram
-          try {
-            const alertMsg = `🚨 <b>Nuevo Reporte Recibido (#${reporteId})</b>\n\n` +
-              `• <b>Nombre buscado:</b> ${data.nombre_buscado || "Sin identificar"}\n` +
-              `• <b>Cédula:</b> ${data.cedula_buscado || "No especificada"}\n` +
-              `• <b>Tipo:</b> ${data.tipo}\n` +
-              `• <b>Ubicación:</b> ${data.ubicacion_nombre || "No especificada"}\n\n` +
-              `📝 <b>Descripción:</b> <i>"${data.descripcion}"</i>\n\n` +
-              `🔗 <a href="https://dondeestan.org/admin/dashboard">Ir al Panel de Moderación</a>`;
-            await notifyAdmins(env, alertMsg);
-          } catch (err) {
-            console.error("Error al notificar admin por Telegram:", err);
-          }
-          // Notificar a usuarios de Telegram cercanos
-          try {
-            if (data.latitud && data.longitud) {
-              const msg = `🚨 <b>NUEVO REPORTE EN TU ZONA</b>\n\n` +
-                          `• Tipo: ${data.tipo}\n` +
-                          `• Detalle: ${data.descripcion}\n\n` +
-                          `🔗 <a href="https://dondeestan.org">Ver en el mapa</a>`;
-              await notificarCercanos(env, data.latitud, data.longitud, msg);
+          const necesidadId = result?.id;
+          if (necesidadId) {
+            // Notificar administradores por Telegram
+            try {
+              const alertMsg = `🚨 <b>Nueva Necesidad SOS Recibida (#${necesidadId})</b>\n\n` +
+                `• <b>Ubicación:</b> ${data.ubicacion_nombre || "No especificada"}\n\n` +
+                `📝 <b>Descripción:</b> <i>"${data.descripcion}"</i>\n\n` +
+                `🔗 <a href="https://dondeestan.org/mapa?tipo=necesidad&id=${necesidadId}">Ver en el mapa</a>`;
+              await notifyAdmins(env, alertMsg);
+            } catch (err) {
+              console.error("Error al notificar admin por Telegram:", err);
             }
-          } catch (e) {
-            console.error("Error al notificar a usuarios cercanos por Telegram:", e);
-          }
-          
-          // Si el reporte es de tipo 'encontrado', la resolución en cascada de desaparecidos se realiza al aprobar en el panel.
-          
-          // Extraer entidades y guardar embeddings en Vectorize
-          try {
-            const entidades = await extraerEntidades(env, data.descripcion);
-            
-            const partes = [
-              entidades.nombre || data.nombre_buscado || "",
-              entidades.apellido || "",
-              entidades.edad ? `${entidades.edad} años` : "",
-              entidades.sexo || "",
-              entidades.vestimenta || "",
-              entidades.ubicacion || data.ubicacion_nombre || "",
-              entidades.señas_particulares || ""
-            ].filter(Boolean).join(", ");
-
-            const textoEmbedding = partes || data.descripcion;
-            const embedding = await generarEmbedding(env, textoEmbedding);
-
-            await env.VECTOR_INDEX.upsert([
-              {
-                id: `reporte-${reporteId}`,
-                values: embedding,
-                metadata: {
-                  tipo: data.tipo,
-                  estado: "abierto",
-                  reporte_id: reporteId,
-                  descripcion: data.descripcion.substring(0, 500)
-                }
+            // Notificar a usuarios de Telegram cercanos
+            try {
+              if (data.latitud && data.longitud) {
+                const msg = `🚨 <b>NUEVA NECESIDAD SOS EN TU ZONA</b>\n\n` +
+                            `• Detalle: ${data.descripcion}\n\n` +
+                            `🔗 <a href="https://dondeestan.org/mapa?tipo=necesidad&id=${necesidadId}">Ver en el mapa</a>`;
+                await notificarCercanos(env, data.latitud, data.longitud, msg);
               }
-            ]);
-          } catch (aiError) {
-            console.error(`Error procesando IA para reporte ${reporteId}:`, aiError);
+            } catch (e) {
+              console.error("Error al notificar a usuarios cercanos por Telegram:", e);
+            }
+          }
+        } else {
+          const reporteId = await insertReporte(env.DB, data);
+
+          if (reporteId) {
+            // Notificar administradores por Telegram
+            try {
+              const alertMsg = `🚨 <b>Nuevo Reporte Recibido (#${reporteId})</b>\n\n` +
+                `• <b>Nombre buscado:</b> ${data.nombre_buscado || "Sin identificar"}\n` +
+                `• <b>Cédula:</b> ${data.cedula_buscado || "No especificada"}\n` +
+                `• <b>Tipo:</b> ${data.tipo}\n` +
+                `• <b>Ubicación:</b> ${data.ubicacion_nombre || "No especificada"}\n\n` +
+                `📝 <b>Descripción:</b> <i>"${data.descripcion}"</i>\n\n` +
+                `🔗 <a href="https://dondeestan.org/admin/dashboard">Ir al Panel de Moderación</a>`;
+              await notifyAdmins(env, alertMsg);
+            } catch (err) {
+              console.error("Error al notificar admin por Telegram:", err);
+            }
+            // Notificar a usuarios de Telegram cercanos
+            try {
+              if (data.latitud && data.longitud) {
+                const msg = `🚨 <b>NUEVO REPORTE EN TU ZONA</b>\n\n` +
+                            `• Tipo: ${data.tipo}\n` +
+                            `• Detalle: ${data.descripcion}\n\n` +
+                            `🔗 <a href="https://dondeestan.org">Ver en el mapa</a>`;
+                await notificarCercanos(env, data.latitud, data.longitud, msg);
+              }
+            } catch (e) {
+              console.error("Error al notificar a usuarios cercanos por Telegram:", e);
+            }
+            
+            // Si el reporte es de tipo 'encontrado', la resolución en cascada de desaparecidos se realiza al aprobar en el panel.
           }
         }
       }
