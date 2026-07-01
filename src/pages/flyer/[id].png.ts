@@ -228,7 +228,7 @@ export const GET: APIRoute = async (context) => {
     }
 
     // 6. Generar diseño HTML/CSS para ImageResponse
-    const response = await ImageResponse.create(
+    const rawImageResponse = await ImageResponse.create(
       {
         type: "div",
         props: {
@@ -506,6 +506,13 @@ export const GET: APIRoute = async (context) => {
         },
       }
     );
+
+    // Convertir a una Response nativa estándar para evitar native subclassing prototypes limitations
+    const response = new Response(rawImageResponse.body, {
+      status: rawImageResponse.status,
+      statusText: rawImageResponse.statusText,
+      headers: rawImageResponse.headers
+    });
 
     // 7. Guardar en la caché de Cloudflare para futuras visitas inmediatas
     if (cache) {
