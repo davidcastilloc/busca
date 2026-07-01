@@ -718,6 +718,7 @@ try {
   const marcadores = new Map<string, any>();
   let userMarker: any = null;
   let esVoluntario = false;
+  let lastEditedCardId = "";
 
   document.addEventListener('astro:page-load', () => {
     // Limpieza de mapas e instancias previas
@@ -1424,6 +1425,8 @@ try {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         const el = btn as HTMLElement;
+        const card = el.closest(".refugio-card");
+        lastEditedCardId = card ? card.id : "";
         const tipo = el.dataset.tipo || "refugio";
         
         if (inputId) inputId.value = el.dataset.id || "";
@@ -1669,7 +1672,8 @@ try {
         if (resp.ok) {
           cerrarModal();
           sessionStorage.setItem('refugio_updated', 'true');
-          navigate(window.location.pathname + '?t=' + Date.now() + '#refugio-' + id, { history: 'replace' });
+          const anchor = lastEditedCardId ? `#${lastEditedCardId}` : "";
+          navigate(window.location.pathname + '?t=' + Date.now() + anchor, { history: 'replace' });
         } else {
           const err = await resp.json();
           if (errorDiv) {
