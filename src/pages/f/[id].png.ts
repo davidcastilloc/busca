@@ -160,17 +160,10 @@ export const GET: APIRoute = async (context) => {
     const rawDate = flyer.created_at || "";
     if (rawDate) {
       try {
-        const cleanFecha = rawDate.replace("T", " ");
-        if (cleanFecha.includes(" ")) {
-          const [dPart, tPart] = cleanFecha.split(" ");
-          const [yy, mm, dd] = dPart.split("-");
-          const [hh, mmm] = tPart.split(":");
-          let h = parseInt(hh, 10);
-          const am = h >= 12 ? "p.m." : "a.m.";
-          h = h % 12;
-          if (h === 0) h = 12;
-          dateStrText = `${dd}/${mm}/${yy} a las ${h}:${mmm} ${am}`;
-        }
+        const d = new Date(rawDate.replace("T", " ") + " UTC");
+        const dateStr = d.toLocaleDateString("es-ES", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" });
+        const timeStr = d.toLocaleTimeString("es-ES", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: true });
+        dateStrText = `${dateStr} a las ${timeStr}`;
       } catch (e) {}
     }
 
