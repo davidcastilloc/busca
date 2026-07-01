@@ -1,0 +1,109 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Navbar from "../components/Navbar.astro";
+import { env } from "cloudflare:workers";
+
+export const prerender = false;
+
+let flyers: any[] = [];
+
+try {
+  const { DB } = env;
+  if (DB) {
+    const result = await DB.prepare(`
+      SELECT * FROM flyers 
+      WHERE tipo = 'desaparecido' 
+      ORDER BY created_at DESC 
+      LIMIT 100
+    `).all();
+    
+    if (result && result.results) {
+      flyers = result.results;
+    }
+  }
+} catch (error) {
+  console.error("Error al cargar galería de desaparecidos:", error);
+}
+
+const formatFecha = (fechaStr: string) => {
+  try {
+    const d = new Date(fechaStr + " UTC");
+    return d.toLocaleDateString("es-ES", { 
+      timeZone: "America/Caracas",
+      month: 'short',
+      day: 'numeric'
+    });
+  } catch (e) {
+    return fechaStr;
+  }
+};
+---
+
+<Layout title="Galería de Desaparecidos - dondeestan.org">
+  <Navbar />
+  
+  <main class="flex-grow py-8 px-4 max-w-7xl mx-auto w-full">
+    <div class="text-center max-w-2xl mx-auto mb-10 pt-4">
+      <h1 class="font-uber-display text-4xl sm:text-5xl text-ink tracking-tight mb-3">
+        Personas Desaparecidas
+      </h1>
+      <p class="text-base text-body font-uber-text max-w-xl mx-auto">
+        Ayúdanos a encontrar a estas personas compartiendo sus carteles de búsqueda.
+      </p>
+    </div>
+
+    {flyers.length === 0 ? (
+      <div class="text-center py-20 text-body font-uber-text bg-canvas-soft rounded-2xl border border-canvas-soft">
+        <p class="text-4xl mb-4">🔍</p>
+        <p class="text-lg">No hay reportes de desaparecidos con carteles públicos.</p>
+      </div>
+    ) : (
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+        {flyers.map((flyer) => (
+          <a href={`/flyer/${flyer.id}`} class="group flex flex-col bg-canvas border border-canvas-soft rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
+            <div class="aspect-[3/4] w-full bg-canvas-soft relative overflow-hidden flex items-center justify-center">
+              {flyer.foto_key ? (
+                <img 
+                  src={`/api/upload?key=${encodeURIComponent(flyer.foto_key)}`} 
+                  alt={flyer.title}
+                  class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+              ) : (
+                <div class="flex flex-col items-center justify-center text-mute">
+                  <span class="text-5xl mb-2">👤</span>
+                  <span class="text-[10px] font-bold uppercase tracking-widest text-mute px-4 text-center">Sin Foto</span>
+                </div>
+              )}
+              
+              <!-- Gradiente oscuro en la parte inferior para que el texto sea legible -->
+              <div class="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none"></div>
+              
+              <!-- Info superpuesta -->
+              <div class="absolute bottom-0 left-0 right-0 p-3 text-white pointer-events-none">
+                <h3 class="font-uber-display text-sm sm:text-base font-semibold truncate shadow-black drop-shadow-md">
+                  {flyer.title.replace("SE BUSCA: ", "")}
+                </h3>
+                <div class="flex justify-between items-center mt-1 text-[10px] sm:text-xs font-uber-text opacity-90">
+                  <span class="truncate pr-2 drop-shadow-md">{flyer.id}</span>
+                  <span class="shrink-0 drop-shadow-md bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-sm">
+                    {formatFecha(flyer.created_at)}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="p-3 bg-canvas border-t border-canvas-soft">
+              <p class="text-xs text-body font-uber-text line-clamp-2">
+                {flyer.description.replace(/\[.*?\]/g, "").trim()}
+              </p>
+              <div class="mt-2 text-[10px] font-bold text-primary uppercase tracking-widest group-hover:underline">
+                Ver Detalles →
+              </div>
+            </div>
+          </a>
+        ))}
+      </div>
+    )}
+  </main>
+</Layout>
