@@ -353,9 +353,12 @@ try {
 
 <script>
   import { encolarRegistro } from "../lib/offline-queue";
+  (window as any).encolarRegistro = encolarRegistro;
+</script>
 
-  function setup() {
-    const Alpine = (window as any).Alpine;
+<script is:inline>
+  function setupFormReporteAlpine() {
+    const Alpine = window.Alpine;
     if (Alpine) {
       if (!Alpine.data('formReporteAlpine')) {
         Alpine.data('formReporteAlpine', formReporteAlpine);
@@ -368,15 +371,12 @@ try {
           console.error("Error al forzar inicialización de Alpine:", e);
         }
       }
-    } else {
-      document.addEventListener('alpine:init', () => {
-        (window as any).Alpine.data('formReporteAlpine', formReporteAlpine);
-      });
     }
   }
 
-  setup();
-  document.addEventListener('astro:page-load', setup);
+  setupFormReporteAlpine();
+  document.addEventListener('alpine:init', setupFormReporteAlpine);
+  document.addEventListener('astro:page-load', setupFormReporteAlpine);
 
   function formReporteAlpine() {
     return {
@@ -734,7 +734,7 @@ try {
       async guardarOffline(payload) {
         try {
           const queueType = payload.tipo === "necesidad" ? "necesidad" : "reporte";
-          await encolarRegistro(queueType, payload);
+          await window.encolarRegistro(queueType, payload);
           this.showToast("⚠️ Guardado localmente sin red. Se sincronizará automáticamente.", "border-yellow-500/30");
           document.getElementById("form-reporte").reset();
           document.getElementById("btn-quitar-foto")?.click();
