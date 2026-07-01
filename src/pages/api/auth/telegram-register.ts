@@ -45,10 +45,14 @@ export const POST: APIRoute = async (context) => {
 
     // 2. Obtener datos del formulario
     const data = await context.request.json();
-    const { telefono, pin, rol } = data;
+    const { telefono, pin, rol, aceptarTerminos } = data;
 
     if (!telefono || !pin || pin.length !== 4) {
       return new Response(JSON.stringify({ error: "Datos incompletos o PIN inválido (debe ser de 4 dígitos)." }), { status: 400 });
+    }
+
+    if (!aceptarTerminos) {
+      return new Response(JSON.stringify({ error: "Debes aceptar los Términos y Condiciones y la Política de Privacidad." }), { status: 400 });
     }
 
     // Limpiar teléfono
