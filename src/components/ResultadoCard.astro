@@ -131,7 +131,7 @@ const formatFecha = (fechaStr: string) => {
 
     <div class="flex flex-wrap items-center justify-between text-xs text-base-content/50 border-t border-base-200 pt-2.5 mt-auto">
       <div>Fuente: <span class="font-bold capitalize">{persona.fuente || "web"}</span></div>
-      <div>Actualizado: <span class="font-semibold">{formatFecha(persona.updated_at)}</span></div>
+      <div class="inline-flex items-center gap-1 bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded-md text-[10px] font-bold shadow-sm" title="Última actualización">⏱️ Act: {formatFecha(persona.updated_at)}</div>
     </div>
   </div>
 </div>

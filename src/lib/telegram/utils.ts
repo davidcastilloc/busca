@@ -217,3 +217,46 @@ export async function verifyTelegramInitData(initData: string, botToken: string)
   }
 }
 
+// Validar auth del Widget de Telegram Web Login
+export async function verifyTelegramWidgetAuth(data: Record<string, string>, botToken: string): Promise<boolean> {
+  try {
+    const hash = data.hash;
+    if (!hash) return false;
+
+    // Crear arreglo de strings "key=value" omitiendo el "hash"
+    const dataCheckArr: string[] = [];
+    for (const key of Object.keys(data).sort()) {
+      if (key !== "hash" && data[key]) {
+        dataCheckArr.push(`${key}=${data[key]}`);
+      }
+    }
+    const dataCheckString = dataCheckArr.join("\n");
+
+    const encoder = new TextEncoder();
+    
+    // El secreto es el SHA-256 del token del bot
+    const botTokenBuffer = encoder.encode(botToken);
+    const secretHashBuffer = await crypto.subtle.digest("SHA-256", botTokenBuffer);
+    
+    const hmacKey = await crypto.subtle.importKey(
+      "raw",
+      secretHashBuffer,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+
+    const dataCheckBuffer = encoder.encode(dataCheckString);
+    const signatureBuffer = await crypto.subtle.sign("HMAC", hmacKey, dataCheckBuffer);
+
+    // Convertir a hex
+    const signatureArray = Array.from(new Uint8Array(signatureBuffer));
+    const calculatedHash = signatureArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+    return calculatedHash === hash;
+  } catch (err) {
+    console.error("Error al validar Telegram Widget Auth:", err);
+    return false;
+  }
+}
+
