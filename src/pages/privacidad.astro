@@ -1,0 +1,66 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Navbar from "../components/Navbar.astro";
+
+export const prerender = true;
+---
+
+<Layout title="Política de Privacidad - dondeestan.org">
+  <Navbar />
+  
+  <main class="flex-grow py-12 px-4 bg-canvas max-w-2xl mx-auto w-full">
+    <article class="prose prose-slate font-uber-text text-body max-w-none space-y-6">
+      <header class="mb-8">
+        <h1 class="font-uber-display text-3xl sm:text-4xl text-ink tracking-tight">Política de Privacidad</h1>
+        <p class="text-xs text-mute mt-2">Última actualización: 1 de Julio de 2026</p>
+      </header>
+
+      <section class="space-y-3">
+        <h2 class="font-uber-display text-xl text-ink font-semibold mt-6">1. Información General</h2>
+        <p class="text-sm leading-relaxed">
+          Esta plataforma (dondeestan.org) es una iniciativa de coordinación civil y humanitaria para el censo, búsqueda y apoyo en situaciones de emergencia. Nos comprometemos a proteger la privacidad de los datos personales suministrados.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="font-uber-display text-xl text-ink font-semibold mt-6">2. Datos Recopilados</h2>
+        <p class="text-sm leading-relaxed">
+          Recopilamos información indispensable para la búsqueda de personas, coordinación de refugios y organización de voluntarios:
+        </p>
+        <ul class="list-disc list-inside text-sm pl-4 space-y-1">
+          <li><strong>Voluntarios:</strong> Nombre completo, número de teléfono, especialidad/rol y ID de Telegram (si se vincula).</li>
+          <li><strong>Censo y Búsquedas:</strong> Nombres, edades, estados de ubicación, datos de contacto de familiares y fotografías provistas voluntariamente para reconocimiento.</li>
+        </ul>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="font-uber-display text-xl text-ink font-semibold mt-6">3. Uso de la Información</h2>
+        <p class="text-sm leading-relaxed">
+          Los datos se utilizan estrictamente para:
+        </p>
+        <ul class="list-disc list-inside text-sm pl-4 space-y-1">
+          <li>Facilitar la localización de personas desaparecidas o incomunicadas.</li>
+          <li>Coordinar la logística de refugios y centros de acopio en tiempo real.</li>
+          <li>Validar y autenticar la identidad de los voluntarios autorizados para editar información crítica.</li>
+        </ul>
+        <p class="text-sm leading-relaxed italic">
+          Bajo ninguna circunstancia comercializaremos, venderemos o alquilaremos datos personales a terceros.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="font-uber-display text-xl text-ink font-semibold mt-6">4. Seguridad y Retención</h2>
+        <p class="text-sm leading-relaxed">
+          Implementamos medidas de seguridad para proteger la base de datos contra accesos no autorizados. Los datos de censo y reportes de emergencia se conservarán únicamente durante el tiempo necesario para resolver la situación de contingencia y ayudar a los afectados.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="font-uber-display text-xl text-ink font-semibold mt-6">5. Consentimiento y Derechos</h2>
+        <p class="text-sm leading-relaxed">
+          Al registrarte o reportar información en esta plataforma, aceptas el tratamiento de los datos conforme a esta política. Puedes solicitar la rectificación o eliminación de tus datos o los de tus familiares contactando a los administradores del sistema.
+        </p>
+      </section>
+    </article>
+  </main>
+</Layout>

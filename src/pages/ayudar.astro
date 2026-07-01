@@ -356,6 +356,18 @@ const formatFecha = (fechaStr: string) => {
             </select>
           </div>
 
+          <div class="flex items-start gap-2.5 my-2">
+            <input 
+              type="checkbox" 
+              id="reg-terminos" 
+              required 
+              class="checkbox mt-0.5"
+            />
+            <label class="text-xs text-body font-uber-text cursor-pointer select-none" for="reg-terminos">
+              Acepto los <a href="/terminos" target="_blank" class="text-primary hover:underline font-semibold">Términos y Condiciones</a> y la <a href="/privacidad" target="_blank" class="text-primary hover:underline font-semibold">Política de Privacidad</a> *
+            </label>
+          </div>
+
           <div id="reg-error" class="hidden text-xs text-red-500 font-uber-text bg-red-500/5 border border-red-500/20 p-3 rounded-lg"></div>
 
           <button type="submit" id="btn-submit-reg" class="btn bg-primary text-white w-full font-uber-text font-semibold py-3 rounded-xl cursor-pointer">
@@ -404,6 +416,18 @@ const formatFecha = (fechaStr: string) => {
                 <option value="rescate">Rescate en Terreno</option>
                 <option value="logistica">Logística y Refugios</option>
               </select>
+            </div>
+
+            <div class="flex items-start gap-2.5 my-2">
+              <input 
+                type="checkbox" 
+                id="tg-terminos" 
+                required 
+                class="checkbox mt-0.5"
+              />
+              <label class="text-xs text-body font-uber-text cursor-pointer select-none" for="tg-terminos">
+                Acepto los <a href="/terminos" target="_blank" class="text-primary hover:underline font-semibold">Términos y Condiciones</a> y la <a href="/privacidad" target="_blank" class="text-primary hover:underline font-semibold">Política de Privacidad</a> *
+              </label>
             </div>
 
             <div id="tg-error" class="hidden text-xs text-red-500 font-uber-text bg-red-500/5 border border-red-500/20 p-3 rounded-lg"></div>
@@ -501,8 +525,17 @@ const formatFecha = (fechaStr: string) => {
       const telefono = (document.getElementById("reg-telefono") as HTMLInputElement).value;
       const pin = (document.getElementById("reg-pin") as HTMLInputElement).value;
       const rol = (document.getElementById("reg-rol") as HTMLSelectElement).value;
+      const aceptarTerminos = (document.getElementById("reg-terminos") as HTMLInputElement).checked;
       const errorDiv = document.getElementById("reg-error");
       const btnSubmit = document.getElementById("btn-submit-reg") as HTMLButtonElement;
+
+      if (!aceptarTerminos) {
+        if (errorDiv) {
+          errorDiv.textContent = "Error: Debes aceptar los Términos y la Política de Privacidad.";
+          errorDiv.classList.remove("hidden");
+        }
+        return;
+      }
 
       if (errorDiv) errorDiv.classList.add("hidden");
       if (btnSubmit) btnSubmit.disabled = true;
@@ -511,7 +544,7 @@ const formatFecha = (fechaStr: string) => {
         const resp = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nombre, telefono, pin, rol })
+          body: JSON.stringify({ nombre, telefono, pin, rol, aceptarTerminos })
         });
 
         if (resp.ok) {
@@ -540,8 +573,17 @@ const formatFecha = (fechaStr: string) => {
       const telefono = (document.getElementById("tg-telefono") as HTMLInputElement).value;
       const pin = (document.getElementById("tg-pin") as HTMLInputElement).value;
       const rol = (document.getElementById("tg-rol") as HTMLSelectElement).value;
+      const aceptarTerminos = (document.getElementById("tg-terminos") as HTMLInputElement).checked;
       const errorDiv = document.getElementById("tg-error");
       const btnSubmit = document.getElementById("btn-submit-tg") as HTMLButtonElement;
+
+      if (!aceptarTerminos) {
+        if (errorDiv) {
+          errorDiv.textContent = "Error: Debes aceptar los Términos y la Política de Privacidad.";
+          errorDiv.classList.remove("hidden");
+        }
+        return;
+      }
 
       if (errorDiv) errorDiv.classList.add("hidden");
       if (btnSubmit) btnSubmit.disabled = true;
@@ -550,7 +592,7 @@ const formatFecha = (fechaStr: string) => {
         const resp = await fetch("/api/auth/telegram-register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ telefono, pin, rol })
+          body: JSON.stringify({ telefono, pin, rol, aceptarTerminos })
         });
 
         if (resp.ok) {

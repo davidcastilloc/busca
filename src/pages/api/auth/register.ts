@@ -15,11 +15,18 @@ export const POST: APIRoute = async (context) => {
     }
 
     const body = await context.request.json();
-    const { nombre, telefono, pin, rol } = body;
+    const { nombre, telefono, pin, rol, aceptarTerminos } = body;
 
     // Validar requeridos
     if (!nombre || !telefono || !pin) {
       return new Response(JSON.stringify({ error: "Nombre, teléfono y PIN son obligatorios." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    if (!aceptarTerminos) {
+      return new Response(JSON.stringify({ error: "Debes aceptar los Términos y Condiciones y la Política de Privacidad." }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
       });
