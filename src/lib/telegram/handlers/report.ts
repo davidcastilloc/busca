@@ -9,10 +9,20 @@ export async function startReport(
   telegramId: string | number
 ): Promise<void> {
   // Inicializar flujo
-  await setSession(db, telegramId, chatId, "rep_reporter_name", {});
+  await setSession(db, telegramId, chatId, "rep_contacto", {});
   await client.sendMessage(
     chatId,
-    "🔍 <b>Reportar Persona Desaparecida</b>\n\nPara comenzar, indícame tu <b>Nombre y Apellido</b> (de ti, que estás reportando):\n\n<i>/cancelar para salir.</i>"
+    "🔍 <b>Reportar Persona Desaparecida</b>\n\nPara comenzar, necesitamos tu <b>número de teléfono de contacto</b>.\nEscríbelo o pulsa el botón abajo para compartirlo:\n\n<i>/cancelar para salir.</i>",
+    {
+      reply_markup: {
+        keyboard: [
+          [{ text: "📱 Compartir mi número", request_contact: true }],
+          [{ text: "/cancelar" }]
+        ],
+        resize_keyboard: true,
+        one_time_keyboard: true
+      }
+    }
   );
 }
 
@@ -38,30 +48,6 @@ export async function handleReportState(
     return;
   }
 
-  // 1. Esperando Nombre del Reportante
-  if (currentStep === "rep_reporter_name") {
-    if (!text || text.trim().length < 3 || text.trim().startsWith("/")) {
-      await client.sendMessage(chatId, "⚠️ Nombre no válido. Envía tu Nombre y Apellido:");
-      return;
-    }
-    data.reportante_nombre = text.trim();
-    await setSession(db, telegramId, chatId, "rep_contacto", data);
-    await client.sendMessage(
-      chatId,
-      `Bien, ${data.reportante_nombre}. Ahora escribe tu <b>número de teléfono de contacto</b> o pulsa el botón abajo para compartirlo:`,
-      {
-        reply_markup: {
-          keyboard: [
-            [{ text: "📱 Compartir mi número", request_contact: true }],
-            [{ text: "/cancelar" }]
-          ],
-          resize_keyboard: true,
-          one_time_keyboard: true
-        }
-      }
-    );
-    return;
-  }
 
   // 2. Esperando Contacto
   if (currentStep === "rep_contacto") {
