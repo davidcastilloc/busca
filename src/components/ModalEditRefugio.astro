@@ -1,0 +1,266 @@
+---
+import { CATEGORIAS_INVENTARIO } from "../lib/items";
+---
+<div id="modal-edit-refugio" class="fixed inset-0 z-50 bg-black/60 hidden flex items-end sm:items-center justify-center animate-fade-in" style="backdrop-filter:blur(4px)">
+      <div class="bg-canvas w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl p-6 space-y-4 max-h-[95vh] overflow-y-auto border border-canvas-soft shadow-xl">
+        <div class="flex justify-between items-center">
+          <h3 class="font-uber-display text-lg text-ink font-semibold" id="edit-refugio-titulo">Actualizar Centro</h3>
+          <button id="btn-close-edit" class="w-8 h-8 rounded-full bg-canvas-soft flex items-center justify-center text-ink text-sm hover:bg-surface-pressed cursor-pointer">✕</button>
+        </div>
+
+        <form id="form-edit-refugio" class="space-y-4">
+          <input type="hidden" id="edit-refugio-id" />
+          
+          <div>
+            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-tipo">Tipo de Centro *</label>
+            <select id="edit-tipo" required class="select w-full font-uber-text uber-body-md">
+              <option value="refugio">Refugio / Albergue</option>
+              <option value="centro_acopio">Centro de Acopio</option>
+              <option value="hospital">Hospital / Puesto de Salud</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-encargado">Encargado *</label>
+            <input 
+              type="text" 
+              id="edit-encargado" 
+              required
+              class="input w-full font-uber-text uber-body-md" 
+            />
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-direccion">Dirección / Sector *</label>
+            <div class="flex gap-2 mb-3">
+              <input 
+                type="text" 
+                id="edit-direccion" 
+                required 
+                class="input flex-grow font-uber-text uber-body-md" 
+                placeholder="Ej: Sector La Lucha, Caracas"
+              />
+              <button type="button" id="btn-edit-buscar-direccion" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed border border-canvas-soft font-uber-text font-semibold px-3 py-2 rounded-xl text-xs shrink-0 cursor-pointer">
+                📍 Ubicar
+              </button>
+            </div>
+
+            <!-- Bloque de ubicación integrado para edicion -->
+            <div class="p-3.5 bg-canvas-soft rounded-xl flex flex-col gap-3 border border-canvas-soft">
+              <span class="text-[10px] font-bold text-mute uppercase tracking-wider font-uber-text">📍 Método de Ubicación GPS *</span>
+              
+              <!-- Tabs de selección de método -->
+              <div class="flex gap-1 bg-canvas p-1 rounded-lg border border-canvas-soft">
+                <button type="button" id="tab-edit-gps" class="flex-1 text-center py-1.5 px-2 text-[10px] font-bold font-uber-text rounded-md bg-primary text-white border-none cursor-pointer">
+                  GPS Móvil
+                </button>
+                <button type="button" id="tab-edit-gmaps" class="flex-1 text-center py-1.5 px-2 text-[10px] font-bold font-uber-text rounded-md bg-transparent text-ink border-none cursor-pointer">
+                  Pegar Enlace
+                </button>
+                <button type="button" id="tab-edit-map" class="flex-1 text-center py-1.5 px-2 text-[10px] font-bold font-uber-text rounded-md bg-transparent text-ink border-none cursor-pointer">
+                  Mapa Manual
+                </button>
+              </div>
+
+              <!-- Inputs ocultos para lat/lng -->
+              <input type="hidden" id="edit-latitud" />
+              <input type="hidden" id="edit-longitud" />
+
+              <!-- Panel 1: GPS Móvil -->
+              <div id="panel-edit-gps" class="flex items-center justify-between gap-2">
+                <span class="text-[10px] text-body font-uber-text">Obtén la ubicación actual del dispositivo.</span>
+                <button id="btn-edit-ref-gps" type="button" class="btn btn-xs bg-primary text-white font-uber-text px-3 py-1.5 rounded-lg text-[10px] cursor-pointer shrink-0">
+                  Detectar GPS
+                </button>
+              </div>
+
+              <!-- Panel 2: Pegar Enlace -->
+              <div id="panel-edit-gmaps" class="space-y-2 hidden">
+                <div class="flex gap-2">
+                  <input 
+                    type="url" 
+                    id="edit-gmaps-link" 
+                    class="input flex-grow font-uber-text text-xs p-2.5 min-h-[36px]" 
+                    placeholder="Pegar enlace de Google Maps..."
+                  />
+                  <button type="button" id="btn-edit-resolver-gmaps" class="btn bg-primary text-white font-uber-text font-semibold px-3 py-1.5 rounded-lg text-[10px] shrink-0 cursor-pointer">
+                    Extraer
+                  </button>
+                </div>
+              </div>
+
+              <!-- Panel 3: Mapa Manual -->
+              <div id="panel-edit-map" class="text-[10px] text-mute font-uber-text italic hidden">
+                Toca el mapa abajo para ajustar el marcador manualmente.
+              </div>
+
+              <!-- Contenedor del mapa (común) -->
+              <div id="edit-gps-map" class="w-full h-40 rounded-lg overflow-hidden border border-canvas-soft bg-canvas"></div>
+              
+              <!-- Tarjeta de Info de Google Places en Modal (oculta por defecto) -->
+              <div id="edit-google-place-info" class="hidden mt-2 p-3 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/80 to-indigo-50/60 space-y-2">
+                <div class="flex items-center gap-1.5 text-[11px] font-uber-text font-bold text-blue-700 uppercase tracking-wider">
+                  <span>📍</span> Datos del lugar (Google)
+                </div>
+                <div id="edit-gpi-content" class="grid gap-1.5 text-[11px] font-uber-text text-body">
+                </div>
+              </div>
+
+              <!-- Estatus de Ubicación -->
+              <div id="edit-gps-status" class="text-[11px] text-mute font-uber-text italic">Ubicación cargada.</div>
+            </div>
+          </div>
+
+          <div id="edit-capacity-section" class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-capacidad">Capacidad Máxima *</label>
+              <input 
+                type="number" 
+                id="edit-capacidad" 
+                required 
+                min="1"
+                class="input w-full font-uber-text uber-body-md" 
+              />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-ocupacion">Población Total *</label>
+              <input 
+                type="number" 
+                id="edit-ocupacion" 
+                required 
+                min="0"
+                class="input w-full font-uber-text uber-body-md" 
+              />
+            </div>
+          </div>
+
+          <div id="edit-demographics-section" class="bg-canvas border border-canvas-soft p-3 rounded-xl space-y-2">
+            <span class="text-xs font-semibold text-ink font-uber-text block">👥 Desglose de Población</span>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block text-[9px] font-bold text-mute uppercase font-uber-text" for="edit-ninos">Niños</label>
+                <input type="number" id="edit-ninos" min="0" class="input w-full font-uber-text text-xs p-2 min-h-[36px]" />
+              </div>
+              <div>
+                <label class="block text-[9px] font-bold text-mute uppercase font-uber-text" for="edit-bebes">Bebés</label>
+                <input type="number" id="edit-bebes" min="0" class="input w-full font-uber-text text-xs p-2 min-h-[36px]" />
+              </div>
+              <div>
+                <label class="block text-[9px] font-bold text-mute uppercase font-uber-text" for="edit-mayores">Adultos M.</label>
+                <input type="number" id="edit-mayores" min="0" class="input w-full font-uber-text text-xs p-2 min-h-[36px]" />
+              </div>
+              <div>
+                <label class="block text-[9px] font-bold text-mute uppercase font-uber-text" for="edit-prof">Prof. Salud</label>
+                <input type="number" id="edit-prof" min="0" class="input w-full font-uber-text text-xs p-2 min-h-[36px]" />
+              </div>
+              <div>
+                <label class="block text-[9px] font-bold text-mute uppercase font-uber-text" for="edit-vols">Voluntarios</label>
+                <input type="number" id="edit-vols" min="0" class="input w-full font-uber-text text-xs p-2 min-h-[36px]" />
+              </div>
+            </div>
+            <div id="edit-demografia-warning" class="hidden text-[10px] text-red-500 font-uber-text font-medium bg-red-500/5 p-2 rounded">
+              ⚠️ La Población Total debe ser mayor o igual a la suma de los subgrupos.
+            </div>
+          </div>
+
+          <div id="edit-inventory-section" class="bg-canvas border border-canvas-soft p-3 rounded-xl space-y-3">
+            <span class="text-xs font-semibold text-ink font-uber-text block">📋 Estado del Inventario (43 Ítems)</span>
+            
+            <div class="flex gap-1 overflow-x-auto pb-1.5 border-b border-canvas-soft scrollbar-none" id="edit-tabs-container">
+              {CATEGORIAS_INVENTARIO.map((cat, idx) => (
+                <button 
+                  type="button" 
+                  class={`edit-tab-btn font-uber-text text-[11px] whitespace-nowrap px-2.5 py-1 rounded-lg border ${idx === 0 ? 'bg-primary text-white border-primary' : 'bg-canvas-soft text-ink border-transparent'} cursor-pointer`}
+                  data-target={`edit-tab-${idx}`}
+                >
+                  {cat.nombre}
+                </button>
+              ))}
+            </div>
+
+            <div class="edit-tab-contents max-h-48 overflow-y-auto">
+              {CATEGORIAS_INVENTARIO.map((cat, idx) => (
+                <div id={`edit-tab-${idx}`} class={`edit-tab-pane space-y-2 ${idx === 0 ? '' : 'hidden'}`}>
+                  {cat.items.map((item) => (
+                    <div class="flex flex-col gap-1 py-1 border-b border-canvas-soft last:border-b-0">
+                      <span class="text-[11px] font-uber-text text-ink font-medium">{item.nombre}</span>
+                      <div class="flex gap-0.5 bg-canvas-soft p-0.5 rounded-lg w-full overflow-x-auto">
+                        {["Crítico", "Alerta", "Estable", "Excedente"].map((est) => {
+                          let activeClass = "";
+                          if (est === "Crítico") activeClass = "has-[:checked]:bg-red-500 has-[:checked]:text-white";
+                          else if (est === "Alerta") activeClass = "has-[:checked]:bg-amber-500 has-[:checked]:text-white";
+                          else if (est === "Estable") activeClass = "has-[:checked]:bg-green-600 has-[:checked]:text-white";
+                          else if (est === "Excedente") activeClass = "has-[:checked]:bg-blue-600 has-[:checked]:text-white";
+
+                          return (
+                            <label class={`flex-grow text-center py-1 text-[9px] rounded-md cursor-pointer transition-all font-semibold font-uber-text select-none border border-transparent hover:bg-surface-pressed ${activeClass}`}>
+                              <input 
+                                type="radio" 
+                                name={`edit-inv-${item.id}`} 
+                                value={est} 
+                                class="hidden" 
+                              />
+                              {est}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-necesidades">Notas Adicionales de Necesidades (Texto Libre)</label>
+            <textarea 
+              id="edit-necesidades" 
+              rows="2"
+              class="textarea w-full font-uber-text uber-body-md" 
+              placeholder="Ej: Agua mineral, mantas, leche de fórmula..."
+            ></textarea>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="edit-contacto">Teléfono o Datos de Contacto</label>
+            <input 
+              type="text" 
+              id="edit-contacto" 
+              class="input w-full font-uber-text uber-body-md" 
+              placeholder="Ej: 0412-1234567"
+            />
+          </div>
+
+          <div class="bg-canvas border border-canvas-soft p-3 rounded-xl space-y-3">
+            <span class="text-xs font-semibold text-ink font-uber-text block">📸 Fotos del Centro</span>
+            
+            <!-- Fotos Existentes -->
+            <div id="edit-preview-existentes" class="grid grid-cols-3 gap-2 empty:hidden">
+              <!-- Cargadas por JS -->
+            </div>
+            
+            <!-- Subir nuevas -->
+            <div class="flex flex-col gap-2 border-t border-canvas-soft pt-2">
+              <span class="text-[10px] font-bold text-mute uppercase font-uber-text">Subir nuevas fotos (Máx 3 en total)</span>
+              <input 
+                type="file" 
+                id="edit-fotos-nuevas" 
+                multiple 
+                accept="image/*" 
+                class="block w-full text-xs text-mute font-uber-text file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover cursor-pointer"
+              />
+              <div id="edit-preview-nuevas" class="grid grid-cols-3 gap-2 mt-2">
+                <!-- Nuevas previsualizaciones -->
+              </div>
+            </div>
+          </div>
+
+          <div id="edit-refugio-error" class="hidden text-xs text-red-500 font-uber-text bg-red-500/5 border border-red-500/20 p-3 rounded-lg"></div>
+
+          <button type="submit" class="btn bg-primary text-white w-full font-uber-text font-semibold py-2.5 rounded-xl">
+            Guardar Cambios
+          </button>
+        </form>
+      </div>
+    </div>
