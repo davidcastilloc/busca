@@ -1669,7 +1669,7 @@ try {
         if (resp.ok) {
           cerrarModal();
           sessionStorage.setItem('refugio_updated', 'true');
-          navigate(window.location.pathname + '?t=' + Date.now(), { history: 'replace' });
+          navigate(window.location.pathname + '?t=' + Date.now() + '#refugio-' + id, { history: 'replace' });
         } else {
           const err = await resp.json();
           if (errorDiv) {
@@ -1694,8 +1694,8 @@ try {
             toast.classList.add('hidden');
           }, 3000);
         }
-        // Clean URL timestamp query param smoothly
-        const cleanUrl = window.location.pathname;
+        // Clean URL timestamp query param smoothly, preserving the anchor hash
+        const cleanUrl = window.location.pathname + window.location.hash;
         window.history.replaceState({}, '', cleanUrl);
       }
     });
