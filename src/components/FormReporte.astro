@@ -30,22 +30,22 @@ try {
 }
 ---
 
-<div x-data="formReporteAlpine" id="form-reporte-container" class="max-w-2xl mx-auto px-4 py-4 sm:py-6">
+<div x-data="formReporteAlpine" data-estado={JSON.stringify({ reportante_nombre: volunteerName, reportante_contacto: volunteerPhone })} id="form-reporte-container" class="max-w-2xl mx-auto px-4 py-4 sm:py-6">
   <!-- Cabecera de Progreso -->
   <div class="mb-8 flex justify-between items-center px-2">
     <div class="flex items-center space-x-2">
-      <div id="step-ind-1" class="w-8 h-8 rounded-full flex items-center justify-center bg-primary text-white font-uber-display text-sm transition-colors">1</div>
-      <span id="step-txt-1" class="text-xs font-uber-text font-bold text-ink transition-colors">Tipo</span>
+      <div :class="step > 1 ? 'bg-green-500 text-white' : (step === 1 ? 'bg-primary text-white' : 'bg-canvas-soft text-mute')" class="w-8 h-8 rounded-full flex items-center justify-center font-uber-display text-sm transition-colors" x-text="step > 1 ? '✓' : '1'">1</div>
+      <span :class="step >= 1 ? 'font-bold text-ink' : 'text-body'" class="text-xs font-uber-text transition-colors">Tipo</span>
     </div>
     <div class="flex-grow h-0.5 bg-canvas-soft mx-2"></div>
     <div class="flex items-center space-x-2">
-      <div id="step-ind-2" class="w-8 h-8 rounded-full flex items-center justify-center bg-canvas-soft text-mute font-uber-display text-sm transition-colors">2</div>
-      <span id="step-txt-2" class="text-xs font-uber-text text-body transition-colors">Detalles</span>
+      <div :class="step > 2 ? 'bg-green-500 text-white' : (step === 2 ? 'bg-primary text-white' : 'bg-canvas-soft text-mute')" class="w-8 h-8 rounded-full flex items-center justify-center font-uber-display text-sm transition-colors" x-text="step > 2 ? '✓' : '2'">2</div>
+      <span :class="step >= 2 ? 'font-bold text-ink' : 'text-body'" class="text-xs font-uber-text transition-colors">Detalles</span>
     </div>
     <div class="flex-grow h-0.5 bg-canvas-soft mx-2"></div>
     <div class="flex items-center space-x-2">
-      <div id="step-ind-3" class="w-8 h-8 rounded-full flex items-center justify-center bg-canvas-soft text-mute font-uber-display text-sm transition-colors">3</div>
-      <span id="step-txt-3" class="text-xs font-uber-text text-body transition-colors">Confirmar</span>
+      <div :class="step > 3 ? 'bg-green-500 text-white' : (step === 3 ? 'bg-primary text-white' : 'bg-canvas-soft text-mute')" class="w-8 h-8 rounded-full flex items-center justify-center font-uber-display text-sm transition-colors" x-text="step > 3 ? '✓' : '3'">3</div>
+      <span :class="step >= 3 ? 'font-bold text-ink' : 'text-body'" class="text-xs font-uber-text transition-colors">Confirmar</span>
     </div>
   </div>
 
@@ -57,7 +57,12 @@ try {
     </div>
   )}
 
-  <form id="form-reporte" class="space-y-6" @submit.prevent="submitForm">
+  <form 
+    id="form-reporte" 
+    class="space-y-6" 
+    @submit.prevent="submitForm"
+    @input="if ($event.target.id === 'foto_key') formData.foto_key = $event.target.value; if ($event.target.id === 'latitud') formData.latitud = $event.target.value; if ($event.target.id === 'longitud') formData.longitud = $event.target.value;"
+  >
     <!-- PASO 1: TIPO DE REPORTE -->
     <div id="pane-step-1" class="step-pane space-y-6" x-show="step === 1" x-transition>
       <div class="text-center mb-6">
@@ -66,7 +71,7 @@ try {
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <button type="button" class="type-card text-left p-5 border rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" :class="tipo === \'desaparecido\' ? \'border-primary bg-canvas-softer scale-98\' : \'border-canvas-soft bg-canvas\'" @click="setTipo(\'desaparecido\')">
+        <button type="button" class="type-card text-left p-5 border rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" :class="tipo === 'desaparecido' ? 'border-primary bg-canvas-softer scale-98' : 'border-canvas-soft bg-canvas'" @click="setTipo('desaparecido')">
           <div>
             <span class="text-3xl block mb-2">🔍</span>
             <h3 class="font-uber-display text-base text-ink">Persona Desaparecida</h3>
@@ -74,14 +79,14 @@ try {
           </div>
         </button>
         {isVolunteer && (
-          <button type="button" class="type-card text-left p-5 border rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" :class="tipo === \'encontrado\' ? \'border-primary bg-canvas-softer scale-98\' : \'border-canvas-soft bg-canvas\'" @click="setTipo(\'encontrado\')">
+          <button type="button" class="type-card text-left p-5 border rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" :class="tipo === 'encontrado' ? 'border-primary bg-canvas-softer scale-98' : 'border-canvas-soft bg-canvas'" @click="setTipo('encontrado')">
             <div>
               <span class="text-3xl block mb-2">🤝</span>
               <h3 class="font-uber-display text-base text-ink">Persona Encontrada</h3>
               <p class="text-xs text-body font-uber-text mt-1">Reporta a alguien localizado pero que aún no está identificado.</p>
             </div>
           </button>
-          <button type="button" class="type-card text-left p-5 border rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" :class="tipo === \'refugio\' ? \'border-primary bg-canvas-softer scale-98\' : \'border-canvas-soft bg-canvas\'" @click="setTipo(\'refugio\')">
+          <button type="button" class="type-card text-left p-5 border rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" :class="tipo === 'refugio' ? 'border-primary bg-canvas-softer scale-98' : 'border-canvas-soft bg-canvas'" @click="setTipo('refugio')">
             <div>
               <span class="text-3xl block mb-2">🏠</span>
               <h3 class="font-uber-display text-base text-ink">Reportar Refugio</h3>
@@ -89,7 +94,7 @@ try {
             </div>
           </button>
         )}
-        <button type="button" class="type-card text-left p-5 border rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" :class="tipo === \'necesidad\' ? \'border-primary bg-canvas-softer scale-98\' : \'border-canvas-soft bg-canvas\'" @click="setTipo(\'necesidad\')">
+        <button type="button" class="type-card text-left p-5 border rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" :class="tipo === 'necesidad' ? 'border-primary bg-canvas-softer scale-98' : 'border-canvas-soft bg-canvas'" @click="setTipo('necesidad')">
           <div>
             <span class="text-3xl block mb-2">🚨</span>
             <h3 class="font-uber-display text-base text-ink">Necesidad Crítica</h3>
@@ -116,11 +121,14 @@ try {
         <div id="campos-tipo-persona" class="space-y-4" x-show="tipo === 'desaparecido' || tipo === 'encontrado'">
           <div>
             <label id="label-nombre-buscado" class="block font-uber-text uber-body-sm-strong text-body mb-1" x-text="tipo === 'desaparecido' ? 'Nombre de Persona Involucrada *' : 'Nombre de Persona Encontrada'"></label>
-            <input type="text" name="nombre_buscado" class="input w-full font-uber-text uber-body-md" placeholder="Nombres y apellidos completos" />
+            <input type="text" name="nombre_buscado" x-model="formData.nombre_buscado" :class="errors.nombre_buscado ? 'border-red-500 focus:border-red-500 ring-1 ring-red-500' : ''" class="input w-full font-uber-text uber-body-md" placeholder="Nombres y apellidos completos" />
+            <template x-if="errors.nombre_buscado">
+              <span class="text-xs text-red-500 mt-1 block font-uber-text font-semibold" x-text="errors.nombre_buscado"></span>
+            </template>
           </div>
           <div>
             <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Cédula de Persona Involucrada</label>
-            <input type="text" name="cedula_buscado" class="input w-full font-uber-text uber-body-md" placeholder="Opcional (si se conoce)" />
+            <input type="text" name="cedula_buscado" x-model="formData.cedula_buscado" class="input w-full font-uber-text uber-body-md" placeholder="Opcional (si se conoce)" />
           </div>
 
           <!-- Campos adicionales específicos para desaparecido -->
@@ -129,24 +137,39 @@ try {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Estado (Última ubicación) *</label>
-                <input type="text" name="extra_estado" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Distrito Capital" />
+                <input type="text" name="extra_estado" x-model="formData.extra_estado" :class="errors.extra_estado ? 'border-red-500 focus:border-red-500 ring-1 ring-red-500' : ''" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Distrito Capital" />
+                <template x-if="errors.extra_estado">
+                  <span class="text-xs text-red-500 mt-1 block font-uber-text font-semibold" x-text="errors.extra_estado"></span>
+                </template>
               </div>
               <div>
                 <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Ciudad *</label>
-                <input type="text" name="extra_ciudad" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Caracas" />
+                <input type="text" name="extra_ciudad" x-model="formData.extra_ciudad" :class="errors.extra_ciudad ? 'border-red-500 focus:border-red-500 ring-1 ring-red-500' : ''" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Caracas" />
+                <template x-if="errors.extra_ciudad">
+                  <span class="text-xs text-red-500 mt-1 block font-uber-text font-semibold" x-text="errors.extra_ciudad"></span>
+                </template>
               </div>
               <div>
                 <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Sector / Zona *</label>
-                <input type="text" name="extra_sector" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Los Palos Grandes" />
+                <input type="text" name="extra_sector" x-model="formData.extra_sector" :class="errors.extra_sector ? 'border-red-500 focus:border-red-500 ring-1 ring-red-500' : ''" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Los Palos Grandes" />
+                <template x-if="errors.extra_sector">
+                  <span class="text-xs text-red-500 mt-1 block font-uber-text font-semibold" x-text="errors.extra_sector"></span>
+                </template>
               </div>
             </div>
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Fecha y Hora de Último Contacto *</label>
-              <input type="datetime-local" name="extra_ultimo_contacto" class="input w-full font-uber-text uber-body-md" />
+              <input type="datetime-local" name="extra_ultimo_contacto" x-model="formData.extra_ultimo_contacto" :class="errors.extra_ultimo_contacto ? 'border-red-500 focus:border-red-500 ring-1 ring-red-500' : ''" class="input w-full font-uber-text uber-body-md" />
+              <template x-if="errors.extra_ultimo_contacto">
+                <span class="text-xs text-red-500 mt-1 block font-uber-text font-semibold" x-text="errors.extra_ultimo_contacto"></span>
+              </template>
             </div>
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Señas Particulares y Vestimenta *</label>
-              <textarea name="extra_senas" class="textarea w-full h-20 font-uber-text uber-body-md" placeholder="Ej: Cicatriz en la ceja izquierda, vestía camisa azul y jean oscuro..."></textarea>
+              <textarea name="extra_senas" x-model="formData.extra_senas" :class="errors.extra_senas ? 'border-red-500 focus:border-red-500 ring-1 ring-red-500' : ''" class="textarea w-full h-20 font-uber-text uber-body-md" placeholder="Ej: Cicatriz en la ceja izquierda, vestía camisa azul y jean oscuro..."></textarea>
+              <template x-if="errors.extra_senas">
+                <span class="text-xs text-red-500 mt-1 block font-uber-text font-semibold" x-text="errors.extra_senas"></span>
+              </template>
             </div>
           </div>
         </div>
@@ -166,12 +189,15 @@ try {
                 <option value="Otro">Otro / Varios</option>
               </select>
               <div id="wrapper-necesidad-otro" class="mt-2" x-show="necesidadCategoria === 'Otro'" style="display: none;">
-                <input type="text" name="necesidad_categoria_otro" id="necesidad_categoria_otro" placeholder="Especifica la necesidad (ej: Pañales, linternas...)" class="input w-full font-uber-text uber-body-md" />
+                <input type="text" name="necesidad_categoria_otro" x-model="formData.necesidad_categoria_otro" :class="errors.necesidad_categoria_otro ? 'border-red-500 focus:border-red-500 ring-1 ring-red-500' : ''" placeholder="Especifica la necesidad (ej: Pañales, linternas...)" class="input w-full font-uber-text uber-body-md" />
+                <template x-if="errors.necesidad_categoria_otro">
+                  <span class="text-xs text-red-500 mt-1 block font-uber-text font-semibold" x-text="errors.necesidad_categoria_otro"></span>
+                </template>
               </div>
             </div>
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Urgencia / Gravedad *</label>
-              <select name="necesidad_gravedad" class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent">
+              <select name="necesidad_gravedad" x-model="formData.necesidad_gravedad" class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent">
                 <option value="Alta (Riesgo de vida)">Alta (Riesgo de vida)</option>
                 <option value="Media (Urgente)">Media (Urgente)</option>
                 <option value="Baja (Soporte)">Baja (Soporte / Prevención)</option>
@@ -181,18 +207,21 @@ try {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Personas Afectadas (Aproximado)</label>
-              <input type="number" name="necesidad_afectados" min="1" placeholder="Ej: 15" class="input w-full font-uber-text uber-body-md" />
+              <input type="number" name="necesidad_afectados" x-model="formData.necesidad_afectados" min="1" placeholder="Ej: 15" class="input w-full font-uber-text uber-body-md" />
             </div>
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">📞 Teléfono para Coordinar Ayuda *</label>
-              <input type="tel" name="necesidad_telefono" class="input w-full font-uber-text uber-body-md" placeholder="Ej: 0412-123-4567" />
+              <input type="tel" name="necesidad_telefono" x-model="formData.necesidad_telefono" :class="errors.necesidad_telefono ? 'border-red-500 focus:border-red-500 ring-1 ring-red-500' : ''" class="input w-full font-uber-text uber-body-md" placeholder="Ej: 0412-123-4567" />
+              <template x-if="errors.necesidad_telefono">
+                <span class="text-xs text-red-500 mt-1 block font-uber-text font-semibold" x-text="errors.necesidad_telefono"></span>
+              </template>
               <span class="text-xs text-mute mt-1 block font-uber-text">Quién puede recibir la ayuda o coordinar el suministro.</span>
             </div>
           </div>
           {isVolunteer && (
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Asociar a Refugio (Opcional - Solo Voluntarios)</label>
-              <select name="refugio_id" id="select_refugio_id" class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent">
+              <select name="refugio_id" x-model="formData.refugio_id" id="select_refugio_id" class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent">
                 <option value="">Ninguno / Ubicación Manual en Mapa</option>
                 {refugios.map((r: any) => (
                   <option value={`${r.tipo}:${r.id}`} data-lat={r.latitud} data-lng={r.longitud} data-nombre={r.nombre}>
@@ -209,11 +238,14 @@ try {
         <div id="campos-tipo-refugio" class="space-y-4" x-show="tipo === 'refugio'" style="display: none;">
           <div>
             <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Nombre del Refugio / Acopio *</label>
-            <input type="text" name="refugio_nombre" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Albergue Polideportivo Petare" />
+            <input type="text" name="refugio_nombre" x-model="formData.refugio_nombre" :class="errors.refugio_nombre ? 'border-red-500 focus:border-red-500 ring-1 ring-red-500' : ''" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Albergue Polideportivo Petare" />
+            <template x-if="errors.refugio_nombre">
+              <span class="text-xs text-red-500 mt-1 block font-uber-text font-semibold" x-text="errors.refugio_nombre"></span>
+            </template>
           </div>
           <div>
             <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Tipo de Centro *</label>
-            <select name="refugio_tipo" class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent">
+            <select name="refugio_tipo" x-model="formData.refugio_tipo" class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent">
               <option value="Refugio temporal">Refugio / Albergue temporal</option>
               <option value="Centro de acopio">Centro de acopio de insumos</option>
               <option value="Puesto de salud">Puesto de salud / socorro médico</option>
@@ -222,16 +254,16 @@ try {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Población Alojada (Pers.)</label>
-              <input type="number" name="refugio_ocupacion" min="0" placeholder="Ej: 45" class="input w-full font-uber-text uber-body-md" />
+              <input type="number" name="refugio_ocupacion" x-model="formData.refugio_ocupacion" min="0" placeholder="Ej: 45" class="input w-full font-uber-text uber-body-md" />
             </div>
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Capacidad Máxima (Pers.)</label>
-              <input type="number" name="refugio_capacidad" min="1" placeholder="Ej: 100" class="input w-full font-uber-text uber-body-md" />
+              <input type="number" name="refugio_capacidad" x-model="formData.refugio_capacidad" min="1" placeholder="Ej: 100" class="input w-full font-uber-text uber-body-md" />
             </div>
           </div>
           <div>
             <label class="block font-uber-text uber-body-sm-strong text-body mb-1">📞 Teléfono del Encargado / Coordinador</label>
-            <input type="tel" name="refugio_telefono" class="input w-full font-uber-text uber-body-md" placeholder="Ej: 0414-987-6543" />
+            <input type="tel" name="refugio_telefono" x-model="formData.refugio_telefono" class="input w-full font-uber-text uber-body-md" placeholder="Ej: 0414-987-6543" />
             <span class="text-xs text-mute mt-1 block font-uber-text">Para que voluntarios puedan contactar directamente al encargado del refugio.</span>
           </div>
         </div>
@@ -241,10 +273,15 @@ try {
           <label id="label-descripcion" class="block font-uber-text uber-body-sm-strong text-body mb-1" x-text="labelDescripcion"></label>
           <textarea 
             name="descripcion" 
+            x-model="formData.descripcion"
             id="input-descripcion"
+            :class="errors.descripcion ? 'border-red-500 focus:border-red-500 ring-1 ring-red-500' : ''"
             class="textarea w-full h-24 font-uber-text uber-body-md" 
             placeholder="Ej: Detalles de la desaparición o situación..."
           ></textarea>
+          <template x-if="errors.descripcion">
+            <span class="text-xs text-red-500 mt-1 block font-uber-text font-semibold" x-text="errors.descripcion"></span>
+          </template>
           <span id="help-descripcion" class="text-xs text-mute mt-1 block font-uber-text" x-text="helpDescripcion"></span>
         </div>
       </fieldset>
@@ -255,7 +292,7 @@ try {
         <div class="space-y-4">
           <div>
             <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Dirección / Lugar de Avistamiento</label>
-            <input type="text" name="ubicacion_nombre" class="input w-full font-uber-text uber-body-md" placeholder="Sector, calle o punto de referencia" />
+            <input type="text" name="ubicacion_nombre" x-model="formData.ubicacion_nombre" class="input w-full font-uber-text uber-body-md" placeholder="Sector, calle o punto de referencia" />
           </div>
           <MapaUbicacion />
         </div>
@@ -270,11 +307,11 @@ try {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Tu Nombre (Reportante)</label>
-              <input type="text" name="reportante_nombre" class="input w-full font-uber-text uber-body-md" placeholder="Opcional" value={volunteerName} />
+              <input type="text" name="reportante_nombre" x-model="formData.reportante_nombre" class="input w-full font-uber-text uber-body-md" placeholder="Opcional" />
             </div>
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Tu Contacto (Teléfono/Email)</label>
-              <input type="text" name="reportante_contacto" class="input w-full font-uber-text uber-body-md" placeholder="Para coordinar rescate" value={volunteerPhone} />
+              <input type="text" name="reportante_contacto" x-model="formData.reportante_contacto" class="input w-full font-uber-text uber-body-md" placeholder="Para coordinar rescate" />
             </div>
           </div>
         </div>
@@ -299,21 +336,22 @@ try {
 
       <!-- Resumen del reporte para revisión visual -->
       <div class="border border-canvas-soft bg-canvas-soft p-5 rounded-xl space-y-3 font-uber-text uber-body-sm">
-        <p><strong class="text-ink">Tipo de Reporte:</strong> <span id="summary-tipo">-</span></p>
-        <p id="summary-row-nombre"><strong class="text-ink">Involucrado:</strong> <span id="summary-nombre">-</span></p>
-        <p><strong class="text-ink">Descripción:</strong> <span id="summary-descripcion">-</span></p>
-        <p><strong class="text-ink">Ubicación:</strong> <span id="summary-ubicacion">-</span></p>
-        <p><strong class="text-ink">Foto adjunta:</strong> <span id="summary-foto">No</span></p>
+        <p><strong class="text-ink">Tipo de Reporte:</strong> <span x-text="tipoLabel">-</span></p>
+        <template x-if="tipo === 'refugio' || tipo === 'desaparecido' || tipo === 'encontrado'">
+          <p><strong class="text-ink">Involucrado:</strong> <span x-text="tipo === 'refugio' ? formData.refugio_nombre : formData.nombre_buscado">-</span></p>
+        </template>
+        <p><strong class="text-ink">Descripción:</strong> <span x-text="formData.descripcion">-</span></p>
+        <p><strong class="text-ink">Ubicación:</strong> <span x-text="formData.ubicacion_nombre || 'Ubicación GPS/Mapa'">-</span></p>
+        <p><strong class="text-ink">Foto adjunta:</strong> <span x-text="formData.foto_key ? '✓ Sí, adjunta' : 'No'">No</span></p>
       </div>
 
       <!-- Opción de Flyer de Emergencia (sólo para desaparecido con foto) -->
-      <div id="flyer-opt-in" class="hidden border border-canvas-soft bg-canvas p-5 rounded-xl shadow-sm">
+      <div x-show="tipo === 'desaparecido' && formData.foto_key" class="border border-canvas-soft bg-canvas p-5 rounded-xl shadow-sm">
         <label class="cursor-pointer flex items-start gap-4 select-none">
           <input 
             type="checkbox" 
             name="generar_flyer" 
-            id="generar-flyer-chk" 
-            checked 
+            x-model="formData.generar_flyer" 
             class="w-5 h-5 rounded-md border-2 border-primary bg-canvas text-primary focus:ring-0 focus:ring-offset-0 mt-0.5 accent-black" 
           />
           <div class="flex-grow">
@@ -328,7 +366,7 @@ try {
       </div>
 
       <!-- Tip de flyer si tipo desaparecido pero sin foto -->
-      <div id="flyer-no-photo-tip" class="hidden border border-amber-500/20 bg-amber-500/5 p-4 rounded-xl font-uber-text text-xs text-body">
+      <div x-show="tipo === 'desaparecido' && !formData.foto_key" class="border border-amber-500/20 bg-amber-500/5 p-4 rounded-xl font-uber-text text-xs text-body">
         💡 <strong>Tip:</strong> Si deseas generar un cartel de búsqueda descargable para WhatsApp y redes, puedes regresar al paso anterior y subir una foto de la persona desaparecida.
       </div>
 
@@ -355,4 +393,3 @@ try {
   import { encolarRegistro } from "../lib/offline-queue";
   (window as any).encolarRegistro = encolarRegistro;
 </script>
-

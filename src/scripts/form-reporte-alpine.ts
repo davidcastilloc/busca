@@ -23,6 +23,48 @@ function formReporteAlpine() {
     tipo: "",
     necesidadCategoria: "Agua potable",
     toast: { visible: false, message: "", borderClass: "border-blue-500/30" },
+    errors: {} as Record<string, string>,
+    formData: {
+      nombre_buscado: "",
+      cedula_buscado: "",
+      extra_estado: "",
+      extra_ciudad: "",
+      extra_sector: "",
+      extra_ultimo_contacto: "",
+      extra_senas: "",
+      necesidad_categoria: "Agua potable",
+      necesidad_categoria_otro: "",
+      necesidad_gravedad: "Alta (Riesgo de vida)",
+      necesidad_afectados: "",
+      necesidad_telefono: "",
+      refugio_id: "",
+      refugio_nombre: "",
+      refugio_tipo: "Refugio temporal",
+      refugio_ocupacion: "",
+      refugio_capacidad: "",
+      refugio_telefono: "",
+      descripcion: "",
+      ubicacion_nombre: "",
+      latitud: "",
+      longitud: "",
+      foto_key: "",
+      reportante_nombre: "",
+      reportante_contacto: "",
+      generar_flyer: true
+    },
+
+    init() {
+      // Inyección de estado SSR limpia usando dataset
+      if (this.$el.dataset.estado) {
+        try {
+          const initData = JSON.parse(this.$el.dataset.estado);
+          if (initData.reportante_nombre) this.formData.reportante_nombre = initData.reportante_nombre;
+          if (initData.reportante_contacto) this.formData.reportante_contacto = initData.reportante_contacto;
+        } catch (e) {
+          console.error("Error al parsear estado inicial:", e);
+        }
+      }
+    },
 
     get labelDescripcion() {
       if (this.tipo === "desaparecido") return "Detalles adicionales y contexto *";
@@ -42,8 +84,17 @@ function formReporteAlpine() {
       return "";
     },
 
+    get tipoLabel() {
+      if (this.tipo === "desaparecido") return "Persona Desaparecida";
+      if (this.tipo === "encontrado") return "Persona Encontrada";
+      if (this.tipo === "refugio") return "Refugio / Centro";
+      if (this.tipo === "necesidad") return "Necesidad Crítica";
+      return "";
+    },
+
     setTipo(t: string) {
       this.tipo = t;
+      this.errors = {};
       setTimeout(() => this.goToStep(2), 350);
     },
 
@@ -66,37 +117,6 @@ function formReporteAlpine() {
           } catch (e) {}
         }, 150);
       }
-
-      if (s === 3) {
-        this.actualizarResumen();
-      }
-
-      this.updateStepIndicators();
-    },
-
-    updateStepIndicators() {
-      for (let i = 1; i <= 3; i++) {
-        const ind = document.getElementById(`step-ind-${i}`);
-        const txt = document.getElementById(`step-txt-${i}`);
-        if (ind && txt) {
-          if (i < this.step) {
-            ind.className =
-              "w-8 h-8 rounded-full flex items-center justify-center bg-green-500 text-white font-uber-display text-sm transition-colors";
-            ind.innerHTML = "✓";
-            txt.className = "text-xs font-uber-text font-bold text-ink transition-colors";
-          } else if (i === this.step) {
-            ind.className =
-              "w-8 h-8 rounded-full flex items-center justify-center bg-primary text-white font-uber-display text-sm transition-colors";
-            ind.innerHTML = String(i);
-            txt.className = "text-xs font-uber-text font-bold text-ink transition-colors";
-          } else {
-            ind.className =
-              "w-8 h-8 rounded-full flex items-center justify-center bg-canvas-soft text-mute font-uber-display text-sm transition-colors";
-            ind.innerHTML = String(i);
-            txt.className = "text-xs font-uber-text text-body transition-colors";
-          }
-        }
-      }
     },
 
     showToast(msg: string, borderClass: string) {
@@ -106,82 +126,36 @@ function formReporteAlpine() {
       }, 5000);
     },
 
-    mostrarError(inputName: string, msg: string) {
-      const form = document.getElementById("form-reporte");
-      if (!form) return;
-      const input = form.querySelector(`[name="${inputName}"]`);
-      if (!input) return;
-      input.classList.add("border-red-500", "focus:border-red-500", "ring-1", "ring-red-500");
-      let errorSpan = input.parentNode?.querySelector(".input-error-msg");
-      if (!errorSpan) {
-        errorSpan = document.createElement("span");
-        errorSpan.className =
-          "input-error-msg text-xs text-red-500 mt-1 block font-uber-text font-semibold";
-        input.parentNode?.appendChild(errorSpan);
-      }
-      errorSpan.textContent = msg;
-    },
-
-    limpiarErrores() {
-      const form = document.getElementById("form-reporte");
-      if (!form) return;
-      form.querySelectorAll(".border-red-500").forEach((el) => {
-        el.classList.remove("border-red-500", "focus:border-red-500", "ring-1", "ring-red-500");
-      });
-      form.querySelectorAll(".input-error-msg").forEach((el) => el.remove());
-    },
-
     validarPaso2() {
-      this.limpiarErrores();
-      const form = document.getElementById("form-reporte") as HTMLFormElement;
-      if (!form) return false;
-      const formData = new FormData(form);
-      const data = Object.fromEntries(formData.entries());
+      this.errors = {};
       let esValido = true;
 
       if (this.tipo === "desaparecido") {
-        if (!data.nombre_buscado) {
-          this.mostrarError("nombre_buscado", "Requerido");
-          esValido = false;
-        }
-        if (!data.extra_estado) {
-          this.mostrarError("extra_estado", "Requerido");
-          esValido = false;
-        }
-        if (!data.extra_ciudad) {
-          this.mostrarError("extra_ciudad", "Requerido");
-          esValido = false;
-        }
-        if (!data.extra_sector) {
-          this.mostrarError("extra_sector", "Requerido");
-          esValido = false;
-        }
-        if (!data.extra_ultimo_contacto) {
-          this.mostrarError("extra_ultimo_contacto", "Requerido");
-          esValido = false;
-        }
-        if (!data.extra_senas) {
-          this.mostrarError("extra_senas", "Requerido");
-          esValido = false;
-        }
-        if (!document.getElementById("foto_key")?.getAttribute("value") && !(document.getElementById("foto_key") as HTMLInputElement)?.value) {
+        if (!this.formData.nombre_buscado.trim()) { this.errors.nombre_buscado = "Requerido"; esValido = false; }
+        if (!this.formData.extra_estado.trim()) { this.errors.extra_estado = "Requerido"; esValido = false; }
+        if (!this.formData.extra_ciudad.trim()) { this.errors.extra_ciudad = "Requerido"; esValido = false; }
+        if (!this.formData.extra_sector.trim()) { this.errors.extra_sector = "Requerido"; esValido = false; }
+        if (!this.formData.extra_ultimo_contacto.trim()) { this.errors.extra_ultimo_contacto = "Requerido"; esValido = false; }
+        if (!this.formData.extra_senas.trim()) { this.errors.extra_senas = "Requerido"; esValido = false; }
+        if (!this.formData.foto_key) {
           this.showToast("❌ La foto de la persona desaparecida es requerida.", "border-red-500/30");
           esValido = false;
         }
       } else if (this.tipo === "refugio") {
-        if (!data.refugio_nombre) {
-          this.mostrarError("refugio_nombre", "Requerido");
+        if (!this.formData.refugio_nombre.trim()) { this.errors.refugio_nombre = "Requerido"; esValido = false; }
+      } else if (this.tipo === "necesidad") {
+        if (this.necesidadCategoria === "Otro" && !this.formData.necesidad_categoria_otro.trim()) {
+          this.errors.necesidad_categoria_otro = "Requerido";
           esValido = false;
         }
-      } else if (this.tipo === "necesidad") {
-        if (this.necesidadCategoria === "Otro" && !data.necesidad_categoria_otro) {
-          this.mostrarError("necesidad_categoria_otro", "Requerido");
+        if (!this.formData.necesidad_telefono.trim()) {
+          this.errors.necesidad_telefono = "Requerido";
           esValido = false;
         }
       }
 
-      if (String(data.descripcion || "").length < 10) {
-        this.mostrarError("descripcion", "Debe tener al menos 10 caracteres");
+      if (String(this.formData.descripcion || "").trim().length < 10) {
+        this.errors.descripcion = "Debe tener al menos 10 caracteres";
         esValido = false;
       }
 
@@ -191,65 +165,7 @@ function formReporteAlpine() {
       return esValido;
     },
 
-    actualizarResumen() {
-      const form = document.getElementById("form-reporte") as HTMLFormElement;
-      if (!form) return;
-      const formData = new FormData(form);
-      const data = Object.fromEntries(formData.entries());
-
-      const summaryTipo = document.getElementById("summary-tipo");
-      const summaryNombre = document.getElementById("summary-nombre");
-      const summaryDescripcion = document.getElementById("summary-descripcion");
-      const summaryUbicacion = document.getElementById("summary-ubicacion");
-      const summaryFoto = document.getElementById("summary-foto");
-      const rowNombre = document.getElementById("summary-row-nombre");
-      const flyerOptIn = document.getElementById("flyer-opt-in");
-      const flyerNoPhotoTip = document.getElementById("flyer-no-photo-tip");
-
-      let tipoText = this.tipo;
-      if (this.tipo === "desaparecido") tipoText = "Persona Desaparecida";
-      else if (this.tipo === "encontrado") tipoText = "Persona Encontrada";
-      else if (this.tipo === "refugio") tipoText = "Refugio / Centro";
-      else if (this.tipo === "necesidad") tipoText = "Necesidad Crítica";
-
-      if (summaryTipo) summaryTipo.textContent = tipoText;
-
-      const nombre = this.tipo === "refugio" ? data.refugio_nombre : data.nombre_buscado;
-      if (nombre && summaryNombre && rowNombre) {
-        rowNombre.classList.remove("hidden");
-        summaryNombre.textContent = nombre as string;
-      } else if (rowNombre) {
-        rowNombre.classList.add("hidden");
-      }
-
-      const desc = String(data.descripcion || "");
-      if (summaryDescripcion)
-        summaryDescripcion.textContent =
-          desc.substring(0, 100) + (desc.length > 100 ? "..." : "");
-      if (summaryUbicacion)
-        summaryUbicacion.textContent = (data.ubicacion_nombre as string) || "Ubicación GPS/Mapa";
-
-      const tieneFoto = !!(document.getElementById("foto_key") as HTMLInputElement)?.value;
-      if (summaryFoto) summaryFoto.textContent = tieneFoto ? "✓ Sí, adjunta" : "No";
-
-      if (flyerOptIn && flyerNoPhotoTip) {
-        if (this.tipo === "desaparecido") {
-          if (tieneFoto) {
-            flyerOptIn.classList.remove("hidden");
-            flyerNoPhotoTip.classList.add("hidden");
-          } else {
-            flyerOptIn.classList.add("hidden");
-            flyerNoPhotoTip.classList.remove("hidden");
-          }
-        } else {
-          flyerOptIn.classList.remove("hidden");
-          flyerNoPhotoTip.classList.add("hidden");
-        }
-      }
-    },
-
     async submitForm() {
-      this.limpiarErrores();
       if (!this.tipo) {
         this.showToast("❌ Selecciona un tipo.", "border-red-500/30");
         this.goToStep(1);
@@ -260,19 +176,15 @@ function formReporteAlpine() {
         return;
       }
 
-      const form = document.getElementById("form-reporte") as HTMLFormElement;
-      if (!form) return;
-      const formData = new FormData(form);
-      const data = Object.fromEntries(formData.entries());
-      let descConcatenada = String(data.descripcion).trim();
+      let descConcatenada = String(this.formData.descripcion).trim();
       let payload: any = {};
       let endpointUrl = "/api/reportes";
 
       let refugio_id = null;
       let hospital_id = null;
       let centro_acopio_id = null;
-      if (data.refugio_id) {
-        const [tipo, idStr] = String(data.refugio_id).split(":");
+      if (this.formData.refugio_id) {
+        const [tipo, idStr] = String(this.formData.refugio_id).split(":");
         const id = parseInt(idStr, 10);
         if (tipo === "hospital") hospital_id = id;
         else if (tipo === "centro_acopio") centro_acopio_id = id;
@@ -280,21 +192,21 @@ function formReporteAlpine() {
       }
 
       if (this.tipo === "desaparecido") {
-        const fechaContacto = String(data.extra_ultimo_contacto).replace("T", " ");
-        const ubicacion = `${String(data.extra_estado).trim()}, ${String(data.extra_ciudad).trim()}, Sector ${String(data.extra_sector).trim()}`;
-        const senas = String(data.extra_senas).trim();
+        const fechaContacto = String(this.formData.extra_ultimo_contacto).replace("T", " ");
+        const ubicacion = `${String(this.formData.extra_estado).trim()}, ${String(this.formData.extra_ciudad).trim()}, Sector ${String(this.formData.extra_sector).trim()}`;
+        const senas = String(this.formData.extra_senas).trim();
         descConcatenada = `[FECHA ÚLTIMO CONTACTO: ${fechaContacto}]\n[UBICACIÓN: ${ubicacion}]\n[SEÑAS: ${senas}]\n\n${descConcatenada}`;
         payload = {
           tipo: "desaparecido",
-          nombre_buscado: data.nombre_buscado || null,
-          cedula_buscado: data.cedula_buscado || null,
+          nombre_buscado: this.formData.nombre_buscado || null,
+          cedula_buscado: this.formData.cedula_buscado || null,
           descripcion: descConcatenada,
-          reportante_nombre: data.reportante_nombre || null,
-          reportante_contacto: data.reportante_contacto || null,
-          ubicacion_nombre: data.ubicacion_nombre || null,
-          latitud: data.latitud ? parseFloat(data.latitud as string) : null,
-          longitud: data.longitud ? parseFloat(data.longitud as string) : null,
-          foto_key: data.foto_key || null,
+          reportante_nombre: this.formData.reportante_nombre || null,
+          reportante_contacto: this.formData.reportante_contacto || null,
+          ubicacion_nombre: this.formData.ubicacion_nombre || null,
+          latitud: this.formData.latitud ? parseFloat(this.formData.latitud as string) : null,
+          longitud: this.formData.longitud ? parseFloat(this.formData.longitud as string) : null,
+          foto_key: this.formData.foto_key || null,
           refugio_id,
           hospital_id,
           centro_acopio_id,
@@ -302,57 +214,57 @@ function formReporteAlpine() {
       } else if (this.tipo === "encontrado") {
         payload = {
           tipo: "encontrado",
-          nombre_buscado: data.nombre_buscado || null,
-          cedula_buscado: data.cedula_buscado || null,
+          nombre_buscado: this.formData.nombre_buscado || null,
+          cedula_buscado: this.formData.cedula_buscado || null,
           descripcion: descConcatenada,
-          reportante_nombre: data.reportante_nombre || null,
-          reportante_contacto: data.reportante_contacto || null,
-          ubicacion_nombre: data.ubicacion_nombre || null,
-          latitud: data.latitud ? parseFloat(data.latitud as string) : null,
-          longitud: data.longitud ? parseFloat(data.longitud as string) : null,
-          foto_key: data.foto_key || null,
+          reportante_nombre: this.formData.reportante_nombre || null,
+          reportante_contacto: this.formData.reportante_contacto || null,
+          ubicacion_nombre: this.formData.ubicacion_nombre || null,
+          latitud: this.formData.latitud ? parseFloat(this.formData.latitud as string) : null,
+          longitud: this.formData.longitud ? parseFloat(this.formData.longitud as string) : null,
+          foto_key: this.formData.foto_key || null,
           refugio_id,
           hospital_id,
           centro_acopio_id,
         };
       } else if (this.tipo === "necesidad") {
         endpointUrl = "/api/necesidades";
-        let categoriaFinal = String(data.necesidad_categoria);
+        let categoriaFinal = this.necesidadCategoria;
         if (categoriaFinal === "Otro")
-          categoriaFinal = String(data.necesidad_categoria_otro || "").trim() || "Otro";
+          categoriaFinal = String(this.formData.necesidad_categoria_otro || "").trim() || "Otro";
         payload = {
           tipo: "necesidad",
           categoria: categoriaFinal,
-          gravedad: String(data.necesidad_gravedad),
-          afectados: data.necesidad_afectados ? parseInt(data.necesidad_afectados as string, 10) : null,
+          gravedad: String(this.formData.necesidad_gravedad),
+          afectados: this.formData.necesidad_afectados ? parseInt(this.formData.necesidad_afectados as string, 10) : null,
           descripcion: descConcatenada,
-          ubicacion_nombre: data.ubicacion_nombre || null,
-          latitud: data.latitud ? parseFloat(data.latitud as string) : null,
-          longitud: data.longitud ? parseFloat(data.longitud as string) : null,
-          telefono: data.necesidad_telefono || null,
-          foto_key: data.foto_key || null,
+          ubicacion_nombre: this.formData.ubicacion_nombre || null,
+          latitud: this.formData.latitud ? parseFloat(this.formData.latitud as string) : null,
+          longitud: this.formData.longitud ? parseFloat(this.formData.longitud as string) : null,
+          telefono: this.formData.necesidad_telefono || null,
+          foto_key: this.formData.foto_key || null,
           refugio_id,
           hospital_id,
           centro_acopio_id,
-          reportante_nombre: data.reportante_nombre || null,
-          reportante_contacto: data.reportante_contacto || null,
+          reportante_nombre: this.formData.reportante_nombre || null,
+          reportante_contacto: this.formData.reportante_contacto || null,
         };
       } else if (this.tipo === "refugio") {
-        const centroTipo = String(data.refugio_tipo);
-        const ocupacion = data.refugio_ocupacion ? `${data.refugio_ocupacion} pers.` : "0 pers.";
-        const capacidad = data.refugio_capacidad ? `${data.refugio_capacidad} pers.` : "100 pers.";
+        const centroTipo = String(this.formData.refugio_tipo);
+        const ocupacion = this.formData.refugio_ocupacion ? `${this.formData.refugio_ocupacion} pers.` : "0 pers.";
+        const capacidad = this.formData.refugio_capacidad ? `${this.formData.refugio_capacidad} pers.` : "100 pers.";
         descConcatenada = `[TIPO CENTRO: ${centroTipo}]\n[OCUPACIÓN: ${ocupacion} / ${capacidad}]\n\n${descConcatenada}`;
         payload = {
           tipo: "refugio",
-          nombre_buscado: data.refugio_nombre || "Refugio sin nombre",
+          nombre_buscado: this.formData.refugio_nombre || "Refugio sin nombre",
           cedula_buscado: null,
           descripcion: descConcatenada,
-          reportante_nombre: data.reportante_nombre || null,
-          reportante_contacto: data.reportante_contacto || null,
-          ubicacion_nombre: data.ubicacion_nombre || null,
-          latitud: data.latitud ? parseFloat(data.latitud as string) : null,
-          longitud: data.longitud ? parseFloat(data.longitud as string) : null,
-          foto_key: data.foto_key || null,
+          reportante_nombre: this.formData.reportante_nombre || null,
+          reportante_contacto: this.formData.reportante_contacto || null,
+          ubicacion_nombre: this.formData.ubicacion_nombre || null,
+          latitud: this.formData.latitud ? parseFloat(this.formData.latitud as string) : null,
+          longitud: this.formData.longitud ? parseFloat(this.formData.longitud as string) : null,
+          foto_key: this.formData.foto_key || null,
           refugio_id,
           hospital_id,
           centro_acopio_id,
@@ -371,8 +283,7 @@ function formReporteAlpine() {
 
           if (response.ok) {
             const resData = await response.json();
-            const generarFlyerChk = document.getElementById("generar-flyer-chk") as HTMLInputElement;
-            const quiereFlyer = generarFlyerChk && generarFlyerChk.checked;
+            const quiereFlyer = this.formData.generar_flyer;
 
             if (quiereFlyer) {
               this.showToast("Reporte creado. Generando cartel de emergencia...", "border-blue-500/30");
@@ -383,9 +294,7 @@ function formReporteAlpine() {
                 else if (payload.tipo === "encontrado")
                   flyerTitle = `PERSONA ENCONTRADA: ${payload.nombre_buscado || "No identificada"}`;
                 else if (payload.tipo === "necesidad") {
-                  const catMatch = payload.descripcion.match(/\[TIPO NECESIDAD: (.*?)\]/);
-                  const categoria = catMatch ? catMatch[1] : "Necesidad Urgente";
-                  flyerTitle = `EMERGENCIA: ${categoria.toUpperCase()}`;
+                  flyerTitle = `EMERGENCIA: ${payload.categoria.toUpperCase()}`;
                 } else if (payload.tipo === "refugio")
                   flyerTitle = `REFUGIO ACTIVO: ${payload.nombre_buscado}`;
 
@@ -402,9 +311,9 @@ function formReporteAlpine() {
                     const phones = [];
                     const tipoTel =
                       payload.tipo === "necesidad"
-                        ? (data.necesidad_telefono || "")
+                        ? (this.formData.necesidad_telefono || "")
                         : payload.tipo === "refugio"
-                          ? (data.refugio_telefono || "")
+                          ? (this.formData.refugio_telefono || "")
                           : "";
                     if (tipoTel) phones.push(tipoTel);
                     const repTel = payload.reportante_contacto || "";
@@ -431,14 +340,11 @@ function formReporteAlpine() {
                   return;
                 }
               } catch (e) {
-                console.error(e);
+                console.error("Error generating flyer:", e);
               }
             }
             this.showToast("✓ Reporte emitido con éxito.", "border-green-500/30");
-            form.reset();
-            document.getElementById("btn-quitar-foto")?.click();
-            this.tipo = "";
-            this.goToStep(1);
+            this.resetForm();
           } else {
             const errData = await response.json();
             this.showToast("❌ " + (errData.error || "Error"), "border-red-500/30");
@@ -451,6 +357,41 @@ function formReporteAlpine() {
       }
     },
 
+    resetForm() {
+      this.formData = {
+        nombre_buscado: "",
+        cedula_buscado: "",
+        extra_estado: "",
+        extra_ciudad: "",
+        extra_sector: "",
+        extra_ultimo_contacto: "",
+        extra_senas: "",
+        necesidad_categoria: "Agua potable",
+        necesidad_categoria_otro: "",
+        necesidad_gravedad: "Alta (Riesgo de vida)",
+        necesidad_afectados: "",
+        necesidad_telefono: "",
+        refugio_id: "",
+        refugio_nombre: "",
+        refugio_tipo: "Refugio temporal",
+        refugio_ocupacion: "",
+        refugio_capacidad: "",
+        refugio_telefono: "",
+        descripcion: "",
+        ubicacion_nombre: "",
+        latitud: "",
+        longitud: "",
+        foto_key: "",
+        reportante_nombre: "",
+        reportante_contacto: "",
+        generar_flyer: true
+      };
+
+      document.getElementById("btn-quitar-foto")?.click();
+      this.tipo = "";
+      this.goToStep(1);
+    },
+
     async guardarOffline(payload: any) {
       try {
         const queueType = payload.tipo === "necesidad" ? "necesidad" : "reporte";
@@ -459,10 +400,7 @@ function formReporteAlpine() {
           "⚠️ Guardado localmente sin red. Se sincronizará automáticamente.",
           "border-yellow-500/30"
         );
-        (document.getElementById("form-reporte") as HTMLFormElement).reset();
-        document.getElementById("btn-quitar-foto")?.click();
-        this.tipo = "";
-        this.goToStep(1);
+        this.resetForm();
         window.dispatchEvent(new CustomEvent("offline-record-added"));
       } catch (e: any) {
         this.showToast("❌ Error al guardar localmente: " + e.message, "border-red-500/30");

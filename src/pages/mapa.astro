@@ -335,6 +335,7 @@ const isVolunteer = !!voluntario;
   let refreshInterval: any = null;
   let isPopupOpen = false;
   let lastUpdateTimestamp: string | null = null;
+  let isInitialLoad = true;
 
   // Haversine
   function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -385,6 +386,7 @@ const isVolunteer = !!voluntario;
     radarHighlights = [];
     selectedEntity = null;
     sheetState = "colapsado";
+    isInitialLoad = true;
 
     // Iniciar
     waitForLeaflet(async () => {
@@ -688,7 +690,7 @@ const isVolunteer = !!voluntario;
       ...dataStore.peligros
     ];
     
-    if (allPoints.length > 0) {
+    if (isInitialLoad && allPoints.length > 0) {
       let maxCount = -1;
       let bestCenter = allPoints[0];
 
@@ -722,6 +724,7 @@ const isVolunteer = !!voluntario;
       
       // Ajustar la vista: menos padding y maxZoom=16 para que la cámara baje más
       map.fitBounds(bounds.pad(0.05), { maxZoom: 16 });
+      isInitialLoad = false;
     }
   }
 
