@@ -843,6 +843,7 @@ try {
         }
 
         payload = {
+          tipo: "necesidad",
           categoria: categoriaFinal,
           gravedad: String(data.necesidad_gravedad),
           afectados: data.necesidad_afectados ? parseInt(String(data.necesidad_afectados), 10) : null,
