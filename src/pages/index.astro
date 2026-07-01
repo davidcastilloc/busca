@@ -289,10 +289,10 @@ try {
                 x-data={`{
                   ocupacion: ${ocupacion},
                   capacidad: ${capacidad},
-                  encargado: '${(r.encargado || "").replace(/'/g, "\\'")}',
-                  direccion: '${(r.direccion || "").replace(/'/g, "\\'")}',
-                  contacto: '${(r.contacto || "").replace(/'/g, "\\'")}',
-                  necesidades: '${(r.necesidades || "").replace(/'/g, "\\'").replace(/\n/g, "\\n")}',
+                  encargado: ${JSON.stringify(r.encargado || "")},
+                  direccion: ${JSON.stringify(r.direccion || "")},
+                  contacto: ${JSON.stringify(r.contacto || "")},
+                  necesidades: ${JSON.stringify(r.necesidades || "")},
                   ninos: ${r.ninos || 0},
                   bebes: ${r.bebes_lactantes || 0},
                   mayores: ${r.adultos_mayores || 0},
@@ -300,7 +300,7 @@ try {
                   vols: ${r.voluntarios || 0},
                   itemsCriticos: ${JSON.stringify(itemsCriticos)},
                   itemsAlerta: ${JSON.stringify(itemsAlerta)},
-                  fechaActualizada: '${fechaActualizada || ""}'
+                  fechaActualizada: ${JSON.stringify(fechaActualizada || "")}
                 }`}
                 @refugio-updated-${r.id}.window="
                   ocupacion = $event.detail.ocupacion_actual;
@@ -1835,6 +1835,11 @@ try {
         if (errorDiv) {
           errorDiv.textContent = "Error de conexión con el servidor.";
           errorDiv.classList.remove("hidden");
+        }
+      } finally {
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = "Guardar Cambios";
         }
       }
     });
