@@ -67,8 +67,9 @@ try {
 
 const formatFecha = (fechaStr: string) => {
   try {
-    const d = new Date(fechaStr + " UTC");
-    return d.toLocaleString("es-ES", { timeZone: "America/Caracas" });
+    if (!fechaStr) return "";
+    const d = new Date(fechaStr.replace("T", " ") + " UTC");
+    return d.toLocaleString("es-ES", { timeZone: "UTC" });
   } catch (e) {
     return fechaStr;
   }
@@ -132,7 +133,7 @@ const formatFecha = (fechaStr: string) => {
               </div>
             </div>
             <div class="text-[10px] text-mute font-uber-text mt-4">
-              Registrado: {new Date(voluntario.created_at).toLocaleDateString()}
+              Registrado: {voluntario.created_at ? new Date(voluntario.created_at.replace("T", " ") + " UTC").toLocaleDateString("es-ES", { timeZone: "UTC" }) : ""}
             </div>
           </div>
         </div>

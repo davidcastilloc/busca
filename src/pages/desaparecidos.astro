@@ -27,9 +27,10 @@ try {
 
 const formatFecha = (fechaStr: string) => {
   try {
-    const d = new Date(fechaStr + " UTC");
+    if (!fechaStr) return "";
+    const d = new Date(fechaStr.replace("T", " ") + " UTC");
     return d.toLocaleDateString("es-ES", { 
-      timeZone: "America/Caracas",
+      timeZone: "UTC",
       month: 'short',
       day: 'numeric'
     });
