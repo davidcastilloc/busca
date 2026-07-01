@@ -1698,6 +1698,18 @@ try {
             toast.classList.add('hidden');
           }, 3000);
         }
+        
+        // Centrar elemento editado en pantalla
+        const hash = window.location.hash;
+        if (hash) {
+          const el = document.querySelector(hash);
+          if (el) {
+            setTimeout(() => {
+              el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }, 150);
+          }
+        }
+
         // Clean URL timestamp query param smoothly, preserving the anchor hash
         const cleanUrl = window.location.pathname + window.location.hash;
         window.history.replaceState({}, '', cleanUrl);
