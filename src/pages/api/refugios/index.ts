@@ -191,6 +191,19 @@ export const POST: APIRoute = async (context) => {
         INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
         VALUES (?, 'CREAR', ?, ?, datetime('now', '-4 hours'))
       `).bind(voluntario.id, currentTable, res.id).run();
+
+      // Notificar a usuarios cercanos
+      try {
+        const { notificarCercanos } = await import("../../../lib/telegram/notify");
+        const msg = `📢 <b>NUEVO CENTRO CERCANO: ${nombre}</b>\n\n` +
+                    `• Tipo: ${tipo}\n` +
+                    `• Dirección: ${direccion}\n` +
+                    (necesidades ? `• Necesidades: ${necesidades}\n\n` : `\n`) +
+                    `🔗 <a href="https://dondeestan.org/r/${res.id}">Ver detalles</a>`;
+        context.waitUntil(notificarCercanos(env, lat, lon, msg));
+      } catch (err) {
+        console.error("Error al notificar centro cercano:", err);
+      }
     }
 
     return new Response(JSON.stringify({ success: true, id: res?.id }), {

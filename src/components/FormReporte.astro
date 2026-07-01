@@ -389,6 +389,28 @@ try {
 
     let currentStep = 1;
 
+    const tg = (window as any).Telegram?.WebApp;
+    const isTWA = !!(tg && tg.initData);
+
+    function handleTelegramMainClick() {
+      if (currentStep === 2) {
+        if (validarPaso2()) {
+          goToStep(3);
+        }
+      } else if (currentStep === 3) {
+        tg.MainButton.showProgress();
+        form.requestSubmit();
+      }
+    }
+
+    if (isTWA) {
+      // Ocultar botones de navegación web
+      form.querySelectorAll('.flex.justify-between.pt-4, .flex.justify-end.pt-4').forEach(el => {
+        el.classList.add('hidden');
+      });
+      tg.MainButton.onClick(handleTelegramMainClick);
+    }
+
     function toggleCamposEspecificos(tipo: string) {
       const camposPersona = document.getElementById("campos-tipo-persona");
       const camposNecesidad = document.getElementById("campos-tipo-necesidad");
@@ -632,6 +654,27 @@ try {
 
       currentStep = step;
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      if (isTWA) {
+        tg.MainButton.hideProgress();
+        if (step === 1) {
+          tg.MainButton.hide();
+          tg.BackButton.show();
+          tg.BackButton.onClick(() => {
+            window.history.back();
+          });
+        } else {
+          tg.BackButton.show();
+          tg.BackButton.onClick(() => {
+            goToStep(step - 1);
+          });
+          if (step === 2) {
+            tg.MainButton.setText("Siguiente").show();
+          } else if (step === 3) {
+            tg.MainButton.setText("Enviar reporte de emergencia").show();
+          }
+        }
+      }
     }
 
     // Eventos de selección de cartas Paso 1
@@ -939,6 +982,7 @@ try {
             try {
               const zodErrors = JSON.parse(rawError);
               if (Array.isArray(zodErrors)) {
+                if (isTWA) tg.MainButton.hideProgress();
                 zodErrors.forEach(err => {
                   const fieldName = err.path[0];
                   // Si es descripción concatenada, mapear a textarea descripción
@@ -965,10 +1009,12 @@ try {
               // No era un ZodError parseable, usar fallback
             }
 
+            if (isTWA) tg.MainButton.hideProgress();
             throw new Error(rawError || "Error al procesar en servidor");
           }
         } catch (err: any) {
           console.error("Fallo de red o servidor:", err);
+          if (isTWA) tg.MainButton.hideProgress();
           // Solo guardar offline si es realmente un problema de conexion o red
           if (!navigator.onLine) {
             await guardarOffline(payload);
@@ -982,6 +1028,7 @@ try {
     });
 
     async function guardarOffline(payload: any) {
+      if (isTWA) tg.MainButton.hideProgress();
       try {
         const queueType = data.tipo === "necesidad" ? "necesidad" : "reporte";
         await encolarRegistro(queueType, payload);

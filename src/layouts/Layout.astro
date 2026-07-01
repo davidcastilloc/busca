@@ -22,7 +22,7 @@ const {
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="preconnect" href="https://api.qrserver.com" />
     <meta name="generator" content={Astro.generator} />
@@ -158,10 +158,52 @@ const {
         const tg = (window as any).Telegram?.WebApp;
         if (!tg) return;
 
+        // Limpiar estado y listeners para evitar fugas entre páginas de Astro
+        try {
+          tg.MainButton.hide();
+          tg.MainButton.offClick();
+          tg.BackButton.hide();
+          tg.BackButton.offClick();
+        } catch (e) {
+          console.error("Error al resetear botones de Telegram:", e);
+        }
+
+        // Avisar a Telegram que la app está lista
+        tg.ready();
+        
         // Expandir la aplicación
         tg.expand();
 
-        // Si tenemos initData y no hemos intentado el login automático en esta sesión
+        // Aplicar theming dinámico basado en Telegram
+        document.documentElement.style.setProperty('--tg-theme-bg-color', tg.backgroundColor || '#000000');
+        document.documentElement.style.setProperty('--tg-theme-text-color', tg.textColor || '#ffffff');
+        tg.setHeaderColor(tg.themeParams.bg_color || tg.backgroundColor || '#000000');
+        tg.setBackgroundColor(tg.themeParams.secondary_bg_color || tg.backgroundColor || '#000000');
+
+        // Control del BackButton de Telegram
+        if (window.location.pathname !== '/') {
+          tg.BackButton.show();
+          tg.BackButton.onClick(() => {
+            window.history.back();
+          });
+        } else {
+          tg.BackButton.hide();
+        }
+
+        // Ruteo dinámico según start_param de Telegram
+        const startParam = tg.initDataUnsafe?.start_param;
+        if (startParam && !sessionStorage.getItem('tg_routed')) {
+          sessionStorage.setItem('tg_routed', 'true');
+          if (startParam === 'buscar' && window.location.pathname !== '/buscar') {
+            window.location.href = '/buscar';
+            return;
+          } else if (startParam === 'reportar' && window.location.pathname !== '/reportar') {
+            window.location.href = '/reportar';
+            return;
+          }
+        }
+
+        // Auto-login con initData
         const initData = tg.initData;
         if (initData && !sessionStorage.getItem('tg_auth_attempted')) {
           console.log("Telegram MiniApp detectada. Intentando autenticación automática...");
@@ -178,7 +220,6 @@ const {
           .then(data => {
             if (data.success) {
               console.log(`Autenticado automáticamente como voluntario: ${data.nombre}`);
-              // Recargar la página actual para aplicar los permisos de voluntario
               window.location.reload();
             } else {
               console.warn("No se pudo autenticar automáticamente como voluntario:", data.error);
