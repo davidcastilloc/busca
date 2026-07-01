@@ -21,10 +21,24 @@ export const POST: APIRoute = async (context) => {
       }
     }
 
-    await env.CENSO_QUEUE.send({
-      type: "reporte",
-      data: validated
-    });
+    if (import.meta.env.DEV) {
+      const { procesarCola } = await import("../../lib/queue-processor");
+      const mockBatch = {
+        messages: [{
+          body: {
+            type: "reporte",
+            data: validated
+          },
+          ack: () => {}
+        }]
+      };
+      await procesarCola(mockBatch as any, env);
+    } else {
+      await env.CENSO_QUEUE.send({
+        type: "reporte",
+        data: validated
+      });
+    }
 
     return new Response(JSON.stringify({ success: true, message: "Reporte de emergencia encolado" }), {
       status: 202,
