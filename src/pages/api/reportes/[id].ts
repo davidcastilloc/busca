@@ -134,12 +134,16 @@ export const PATCH: APIRoute = async (context) => {
       // Notificar administradores por Telegram
       try {
         const { notifyAdmins } = await import("../../../lib/telegram/notify");
+        const mapLink = existente.persona_id
+          ? `https://dondeestan.org/mapa?tipo=persona&id=${existente.persona_id}`
+          : "https://dondeestan.org/admin/dashboard";
+
         const alertMsg = `⚠️ <b>Nueva Evidencia de Reporte Resuelto (Localizado)</b>\n\n` +
           `• <b>Persona:</b> ${existente.nombre_buscado || "Sin identificar"}\n` +
           `• <b>Cédula:</b> ${existente.cedula_buscado || "No especificada"}\n` +
           `• <b>Contacto reportante:</b> ${body.contacto}\n` +
           `• <b>Notas:</b> <i>"${body.notes || body.notas || "Sin comentarios"}"</i>\n\n` +
-          `🔗 <a href="https://dondeestan.org/admin/dashboard">Verificar en Panel de Rescatistas</a>`;
+          `🔗 <a href="${mapLink}">Ver en el mapa</a>`;
         
         const cfContext = context.locals.cfContext || context.locals.runtime?.ctx;
         if (cfContext?.waitUntil) {
