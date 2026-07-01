@@ -116,8 +116,8 @@ export const POST: APIRoute = async (context) => {
 
     // Insertar en D1
     await DB.prepare(`
-      INSERT INTO flyers (id, title, description, foto_key, phones, socials, tipo, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+      INSERT INTO flyers (id, title, description, foto_key, phones, socials, tipo, necesidad_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
     `).bind(
       friendlyId,
       title,
@@ -125,7 +125,8 @@ export const POST: APIRoute = async (context) => {
       foto_key,
       JSON.stringify(phones || []),
       JSON.stringify(socials || []),
-      tipoFinal
+      tipoFinal,
+      body.necesidad_id ?? null
     ).run();
 
     // Si el usuario seleccionó registrar, encolamos automáticamente el reporte de búsqueda

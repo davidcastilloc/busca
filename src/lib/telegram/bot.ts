@@ -126,6 +126,8 @@ export async function processTelegramUpdate(
           if (res.meta.changes > 0) {
             // Actualizar también ayudas en camino a entregadas
             await db.prepare("UPDATE ayudas_en_camino SET estatus = 'entregado' WHERE necesidad_id = ? AND estatus = 'en_ruta'").bind(necesidadId).run();
+            // Eliminar flyer asociado a esta necesidad para que deje de circular como activa
+            await db.prepare("DELETE FROM flyers WHERE necesidad_id = ?").bind(necesidadId).run();
             await client.sendMessage(chatId, `✅ <b>¡Necesidad #${necesidadId} marcada como satisfecha!</b>`);
             await client.editMessageReplyMarkup(chatId, messageId, { inline_keyboard: [] });
           } else {

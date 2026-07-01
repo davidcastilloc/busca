@@ -895,6 +895,7 @@ try {
           });
 
           if (response.ok) {
+            const resData = await response.json();
             const generarFlyerChk = document.getElementById("generar-flyer-chk") as HTMLInputElement;
             const quiereFlyer = generarFlyerChk && generarFlyerChk.checked;
 
@@ -940,7 +941,8 @@ try {
                     return phones;
                   })(),
                   socials: [],
-                  registrarEnBusca: false
+                  registrarEnBusca: false,
+                  necesidad_id: (payload.tipo === "necesidad" && resData.id) ? resData.id : undefined
                 };
 
                 const flyerResponse = await fetch("/api/flyers", {

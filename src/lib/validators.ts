@@ -68,7 +68,8 @@ export const FlyerSchema = z.object({
   phones: z.array(z.string()).default([]),
   socials: z.array(z.string()).default([]),
   tipo: z.enum(["desaparecido", "encontrado", "refugio", "necesidad"]),
-  registrarEnBusca: z.boolean().default(false)
+  registrarEnBusca: z.boolean().default(false),
+  necesidad_id: z.coerce.number().int().optional()
 });
 
 export type FlyerInput = z.infer<typeof FlyerSchema>;
