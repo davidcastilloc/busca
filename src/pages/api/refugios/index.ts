@@ -14,17 +14,20 @@ export const GET: APIRoute = async (context) => {
     let sql = `
       SELECT id, nombre, direccion, latitud, longitud, contacto, necesidades, 'refugio' as tipo, 
              capacidad_maxima, ocupacion_actual, ninos, bebes_lactantes, adultos_mayores, 
-             personal_profesional, voluntarios, inventario, fecha_registro, created_at, updated_at, fotos, created_by, updated_by
+             personal_profesional, voluntarios, inventario, fecha_registro, created_at, updated_at, fotos, created_by, updated_by,
+             encargado
       FROM refugios
       UNION ALL
       SELECT id, nombre, direccion, latitud, longitud, contacto, necesidades, 'centro_acopio' as tipo, 
              NULL as capacidad_maxima, NULL as ocupacion_actual, NULL as ninos, NULL as bebes_lactantes, NULL as adultos_mayores,
-             NULL as personal_profesional, NULL as voluntarios, inventario, fecha_registro, created_at, updated_at, fotos, created_by, updated_by
+             NULL as personal_profesional, NULL as voluntarios, inventario, fecha_registro, created_at, updated_at, fotos, created_by, updated_by,
+             encargado
       FROM centros_acopio
       UNION ALL
       SELECT id, nombre, direccion, latitud, longitud, contacto, necesidades, 'hospital' as tipo, 
              NULL as capacidad_maxima, NULL as ocupacion_actual, NULL as ninos, NULL as bebes_lactantes, NULL as adultos_mayores,
-             NULL as personal_profesional, NULL as voluntarios, NULL as inventario, fecha_registro, created_at, updated_at, fotos, created_by, updated_by
+             NULL as personal_profesional, NULL as voluntarios, NULL as inventario, fecha_registro, created_at, updated_at, fotos, created_by, updated_by,
+             NULL as encargado
       FROM hospitales
     `;
     const params: any[] = [];
@@ -120,7 +123,7 @@ export const POST: APIRoute = async (context) => {
           nombre, direccion, latitud, longitud, contacto, necesidades, 
           inventario, encargado, fotos, fecha_registro, updated_at, created_by
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'), ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?)
         RETURNING id
       `).bind(
         nombre.trim(),
@@ -138,9 +141,9 @@ export const POST: APIRoute = async (context) => {
       res = await DB.prepare(`
         INSERT INTO hospitales (
           nombre, direccion, latitud, longitud, contacto, necesidades, 
-          encargado, fotos, fecha_registro, updated_at, created_by
+          fotos, fecha_registro, updated_at, created_by
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'), ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?)
         RETURNING id
       `).bind(
         nombre.trim(),
@@ -149,7 +152,6 @@ export const POST: APIRoute = async (context) => {
         lon,
         contacto ? contacto.trim() : null,
         necesidades ? necesidades.trim() : null,
-        encargado ? encargado.trim() : null,
         fotos ? (typeof fotos === 'string' ? fotos : JSON.stringify(fotos)) : null,
         voluntario.id
       ).first<{ id: number }>();
@@ -162,7 +164,7 @@ export const POST: APIRoute = async (context) => {
           adultos_mayores, personal_profesional, voluntarios, inventario, 
           fotos, fecha_registro, updated_at, created_by
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'), ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), ?)
         RETURNING id
       `).bind(
         nombre.trim(),
@@ -189,7 +191,7 @@ export const POST: APIRoute = async (context) => {
     if (res?.id) {
       await DB.prepare(`
         INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
-        VALUES (?, 'CREAR', ?, ?, datetime('now', '-4 hours'))
+        VALUES (?, 'CREAR', ?, ?, datetime('now'))
       `).bind(voluntario.id, currentTable, res.id).run();
 
       // Notificar a usuarios cercanos

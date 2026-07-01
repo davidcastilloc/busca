@@ -125,7 +125,7 @@ export const PATCH: APIRoute = async (context) => {
         return ["nombre", "direccion", "latitud", "longitud", "contacto", "necesidades", "inventario", "encargado", "fotos"].includes(fieldName);
       }
       if (table === "hospitales") {
-        return ["nombre", "direccion", "latitud", "longitud", "contacto", "necesidades", "encargado", "fotos"].includes(fieldName);
+        return ["nombre", "direccion", "latitud", "longitud", "contacto", "necesidades", "fotos"].includes(fieldName);
       }
       return false;
     };
@@ -203,8 +203,8 @@ export const PATCH: APIRoute = async (context) => {
     }
 
     // Agregar fecha de censo y de actualización automáticas
-    fields.push("fecha_registro = datetime('now', '-4 hours')");
-    fields.push("updated_at = datetime('now', '-4 hours')");
+    fields.push("fecha_registro = datetime('now')");
+    fields.push("updated_at = datetime('now')");
     fields.push("updated_by = ?");
     params.push(voluntario.id);
 
@@ -217,12 +217,12 @@ export const PATCH: APIRoute = async (context) => {
     // Loguear actividad
     await DB.prepare(`
       INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
-      VALUES (?, 'EDITAR', ?, ?, datetime('now', '-4 hours'))
+      VALUES (?, 'EDITAR', ?, ?, datetime('now'))
     `).bind(voluntario.id, table, id).run();
 
     // Enviar notificación push si hay cambio significativo
     try {
-      const PUSH_QUEUE = (env as any).PUSH_QUEUE;
+      const PUSH_QUEUE = env.PUSH_QUEUE;
       if (PUSH_QUEUE) {
         // Obtener refugio actualizado para determinar alertas
         let selectFields = "nombre";
