@@ -228,7 +228,7 @@ export const GET: APIRoute = async (context) => {
     }
 
     // 6. Generar diseño HTML/CSS para ImageResponse
-    const response = ImageResponse.create(
+    const response = await ImageResponse.create(
       {
         type: "div",
         props: {
