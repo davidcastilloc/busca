@@ -43,6 +43,19 @@ export async function procesarCola(
           } catch (err) {
             console.error("Error al notificar admin por Telegram:", err);
           }
+          // Notificar a usuarios de Telegram cercanos
+          try {
+            const { notificarCercanos } = await import("./telegram/notify");
+            if (data.latitud && data.longitud) {
+              const msg = `🚨 <b>NUEVO REPORTE EN TU ZONA</b>\n\n` +
+                          `• Tipo: ${data.tipo}\n` +
+                          `• Detalle: ${data.descripcion}\n\n` +
+                          `🔗 <a href="https://dondeestan.org">Ver en el mapa</a>`;
+              ctx.waitUntil(notificarCercanos(env, data.latitud, data.longitud, msg));
+            }
+          } catch (e) {
+            console.error("Error al notificar a usuarios cercanos por Telegram:", e);
+          }
           
           // Si el reporte es de tipo 'encontrado', la resolución en cascada de desaparecidos se realiza al aprobar en el panel.
           

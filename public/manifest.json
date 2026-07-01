@@ -1,6 +1,8 @@
 {
   "short_name": "BUSCA",
   "name": "BUSCA - Censo y Búsqueda de Emergencia",
+  "description": "Plataforma de censo de víctimas, refugios y reporte de personas desaparecidas.",
+  "categories": ["utilities", "social"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -17,5 +19,21 @@
   "background_color": "#000000",
   "theme_color": "#000000",
   "display": "standalone",
-  "orientation": "portrait"
+  "orientation": "portrait",
+  "shortcuts": [
+    {
+      "name": "Buscar Personas",
+      "short_name": "Buscar",
+      "description": "Busca personas reportadas",
+      "url": "/buscar",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Reportar Persona",
+      "short_name": "Reportar",
+      "description": "Reporta a alguien desaparecido",
+      "url": "/reportar",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
 }

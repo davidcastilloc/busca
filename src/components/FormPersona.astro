@@ -111,6 +111,22 @@ import FotoUpload from "./FotoUpload.astro";
       const newForm = form.cloneNode(true) as HTMLFormElement;
       form.parentNode?.replaceChild(newForm, form);
 
+      const tg = (window as any).Telegram?.WebApp;
+      const isTWA = !!(tg && tg.initData);
+
+      if (isTWA) {
+        // Ocultar botón HTML
+        const submitBtn = newForm.querySelector('button[type="submit"]') as HTMLElement;
+        if (submitBtn) submitBtn.classList.add('hidden');
+
+        // Configurar MainButton
+        tg.MainButton.setText("Registrar en censo").show();
+        tg.MainButton.onClick(() => {
+          tg.MainButton.showProgress();
+          newForm.requestSubmit();
+        });
+      }
+
       // Autocompletar desde URL params si existen
       const urlParams = new URLSearchParams(window.location.search);
       const paramNombre = urlParams.get("nombre");
@@ -169,15 +185,18 @@ import FotoUpload from "./FotoUpload.astro";
             });
 
             if (response.ok) {
+              if (isTWA) tg.MainButton.hideProgress();
               mostrarToast("✓ Registro enviado con éxito.", "border-green-500/30");
               newForm.reset();
               document.getElementById("btn-quitar-foto")?.click();
             } else {
               const errData = await response.json();
+              if (isTWA) tg.MainButton.hideProgress();
               throw new Error(errData.error || "Error de validación del servidor");
             }
           } catch (err: any) {
             console.error(err);
+            if (isTWA) tg.MainButton.hideProgress();
             await guardarOffline(payload);
           }
         } else {
@@ -186,6 +205,7 @@ import FotoUpload from "./FotoUpload.astro";
       });
 
       async function guardarOffline(payload: any) {
+        if (isTWA) tg.MainButton.hideProgress();
         try {
           await encolarRegistro("persona", payload);
           mostrarToast("⚠️ Guardado localmente sin red. Se sincronizará automáticamente.", "border-yellow-500/30");

@@ -18,7 +18,13 @@ try {
 }
 ---
 
-<div class="w-full bg-canvas border-b border-canvas-soft sticky top-0 z-50 py-4 px-4 sm:px-8">
+<div id="web-navbar" class="w-full bg-canvas border-b border-canvas-soft sticky top-0 z-50 py-4 px-4 sm:px-8">
+  <script is:inline>
+    // Ocultar Navbar en Telegram MiniApp para usar el Header nativo
+    if (window.Telegram?.WebApp?.initData) {
+      document.getElementById('web-navbar').style.display = 'none';
+    }
+  </script>
   <div class="max-w-7xl mx-auto flex items-center justify-between">
     <!-- Logo -->
     <div class="flex-shrink-0 min-w-0">

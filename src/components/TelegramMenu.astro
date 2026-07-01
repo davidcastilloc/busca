@@ -1,0 +1,201 @@
+---
+// src/components/TelegramMenu.astro
+// Este componente está diseñado para imitar la UI nativa de Telegram (iOS/Android)
+// usando variables CSS inyectadas por Telegram Mini App.
+
+const { isVoluntario } = Astro.props;
+---
+
+<div id="twa-menu" class="w-full max-w-md mx-auto hidden pb-10">
+  
+  <!-- Header / Perfil Usuario -->
+  <div class="flex flex-col items-center justify-center pt-8 pb-6 bg-[var(--tg-theme-bg-color,white)] mb-2">
+    <div class="relative w-20 h-20 rounded-full bg-[var(--tg-theme-button-color,#2481cc)] overflow-hidden flex items-center justify-center mb-3 shadow-sm">
+      <img id="twa-user-photo" src="" alt="Profile" class="w-full h-full object-cover hidden" />
+      <span id="twa-user-initial" class="text-3xl text-[var(--tg-theme-button-text-color,white)] font-uber-display font-bold"></span>
+    </div>
+    <h2 id="twa-user-name" class="font-uber-display text-xl font-bold text-[var(--tg-theme-text-color,black)]">Cargando...</h2>
+    <p id="twa-user-username" class="font-uber-text text-sm text-[var(--tg-theme-hint-color,gray)]"></p>
+    
+    <div id="twa-volunteer-badge" class={`mt-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-bold font-uber-text border border-green-200 shadow-sm ${isVoluntario ? 'flex' : 'hidden'} items-center gap-1`}>
+      <span class="text-sm">👷</span> Voluntario Activo
+    </div>
+  </div>
+
+  <!-- Menú Principal (Estilo Listado Nativo) -->
+  <div class="px-4 space-y-4">
+    
+    <!-- Bloque 1: Acciones Críticas -->
+    <div class="bg-[var(--tg-theme-secondary-bg-color,#f4f4f5)] rounded-2xl overflow-hidden shadow-sm border border-[var(--tg-theme-hint-color,transparent)]/20">
+      <a href="/reportar" class="twa-menu-item flex items-center gap-4 p-4 active:bg-[var(--tg-theme-hint-color,gray)]/20 transition-colors border-b border-[var(--tg-theme-hint-color,gray)]/10">
+        <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-lg">⚠️</div>
+        <div class="flex-grow">
+          <div class="font-uber-display font-semibold text-[var(--tg-theme-text-color,black)]">Reportar Emergencia</div>
+          <div class="font-uber-text text-xs text-[var(--tg-theme-hint-color,gray)]">Desaparecidos, rescates, ayuda médica</div>
+        </div>
+        <div class="text-[var(--tg-theme-hint-color,gray)] opacity-50">›</div>
+      </a>
+      
+      <a href="/mapa" class="twa-menu-item flex items-center gap-4 p-4 active:bg-[var(--tg-theme-hint-color,gray)]/20 transition-colors">
+        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-lg">🗺️</div>
+        <div class="flex-grow">
+          <div class="font-uber-display font-semibold text-[var(--tg-theme-text-color,black)]">Ver Mapa</div>
+          <div class="font-uber-text text-xs text-[var(--tg-theme-hint-color,gray)]">Refugios y zonas de peligro</div>
+        </div>
+        <div class="text-[var(--tg-theme-hint-color,gray)] opacity-50">›</div>
+      </a>
+    </div>
+
+    <!-- Bloque 2: Información -->
+    <div class="bg-[var(--tg-theme-secondary-bg-color,#f4f4f5)] rounded-2xl overflow-hidden shadow-sm border border-[var(--tg-theme-hint-color,transparent)]/20">
+      <a href="/?f=refugios" class="twa-menu-item flex items-center gap-4 p-4 active:bg-[var(--tg-theme-hint-color,gray)]/20 transition-colors border-b border-[var(--tg-theme-hint-color,gray)]/10">
+        <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-lg">🏠</div>
+        <div class="flex-grow">
+          <div class="font-uber-display font-semibold text-[var(--tg-theme-text-color,black)]">Buscar Refugios</div>
+          <div class="font-uber-text text-xs text-[var(--tg-theme-hint-color,gray)]">Albergues y estado de ocupación</div>
+        </div>
+        <div class="text-[var(--tg-theme-hint-color,gray)] opacity-50">›</div>
+      </a>
+      
+      <a href="/?f=acopio" class="twa-menu-item flex items-center gap-4 p-4 active:bg-[var(--tg-theme-hint-color,gray)]/20 transition-colors border-b border-[var(--tg-theme-hint-color,gray)]/10">
+        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-lg">📦</div>
+        <div class="flex-grow">
+          <div class="font-uber-display font-semibold text-[var(--tg-theme-text-color,black)]">Centros de Acopio</div>
+          <div class="font-uber-text text-xs text-[var(--tg-theme-hint-color,gray)]">Dónde donar insumos</div>
+        </div>
+        <div class="text-[var(--tg-theme-hint-color,gray)] opacity-50">›</div>
+      </a>
+
+      <a href="/perfil" class="twa-menu-item flex items-center gap-4 p-4 active:bg-[var(--tg-theme-hint-color,gray)]/20 transition-colors">
+        <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-lg">📝</div>
+        <div class="flex-grow">
+          <div class="font-uber-display font-semibold text-[var(--tg-theme-text-color,black)]">Mis Reportes</div>
+          <div class="font-uber-text text-xs text-[var(--tg-theme-hint-color,gray)]">Ver el estado de tus solicitudes</div>
+        </div>
+        <div class="text-[var(--tg-theme-hint-color,gray)] opacity-50">›</div>
+      </a>
+    </div>
+
+    <!-- Bloque 3: Voluntarios -->
+    <div id="twa-volunteer-block" class={`bg-[var(--tg-theme-secondary-bg-color,#f4f4f5)] rounded-2xl overflow-hidden shadow-sm border border-[var(--tg-theme-hint-color,transparent)]/20 ${isVoluntario ? 'block' : 'hidden'}`}>
+      <div class="px-4 py-2 bg-[var(--tg-theme-button-color,#2481cc)]/10 border-b border-[var(--tg-theme-hint-color,gray)]/10">
+        <span class="text-xs font-bold text-[var(--tg-theme-button-color,#2481cc)] font-uber-text uppercase tracking-wider">Gestión de Voluntarios</span>
+      </div>
+      <a href="/refugios/nuevo" class="twa-menu-item flex items-center gap-4 p-4 active:bg-[var(--tg-theme-hint-color,gray)]/20 transition-colors border-b border-[var(--tg-theme-hint-color,gray)]/10">
+        <div class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-white text-lg">➕</div>
+        <div class="flex-grow">
+          <div class="font-uber-display font-semibold text-[var(--tg-theme-text-color,black)]">Registrar Centro</div>
+          <div class="font-uber-text text-xs text-[var(--tg-theme-hint-color,gray)]">Añadir nuevo refugio o acopio</div>
+        </div>
+        <div class="text-[var(--tg-theme-hint-color,gray)] opacity-50">›</div>
+      </a>
+      
+      <a href="/" class="twa-menu-item flex items-center gap-4 p-4 active:bg-[var(--tg-theme-hint-color,gray)]/20 transition-colors">
+        <div class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-white text-lg">📋</div>
+        <div class="flex-grow">
+          <div class="font-uber-display font-semibold text-[var(--tg-theme-text-color,black)]">Actualizar Inventario</div>
+          <div class="font-uber-text text-xs text-[var(--tg-theme-hint-color,gray)]">Modificar estado de insumos</div>
+        </div>
+        <div class="text-[var(--tg-theme-hint-color,gray)] opacity-50">›</div>
+      </a>
+    </div>
+
+    <!-- Bloque 4: Unirse -->
+    {!isVoluntario && (
+      <div id="twa-join-volunteer-block" class="bg-[var(--tg-theme-secondary-bg-color,#f4f4f5)] rounded-2xl overflow-hidden shadow-sm border border-[var(--tg-theme-hint-color,transparent)]/20">
+        <a href="/ayudar" class="twa-menu-item flex items-center gap-4 p-4 active:bg-[var(--tg-theme-hint-color,gray)]/20 transition-colors">
+          <div class="w-8 h-8 rounded-full bg-black flex items-center justify-center text-white text-lg">👷</div>
+          <div class="flex-grow">
+            <div class="font-uber-display font-semibold text-[var(--tg-theme-text-color,black)]">Ser Voluntario</div>
+            <div class="font-uber-text text-xs text-[var(--tg-theme-hint-color,gray)]">Apoya la logística y registros</div>
+          </div>
+          <div class="text-[var(--tg-theme-hint-color,gray)] opacity-50">›</div>
+        </a>
+      </div>
+    )}
+
+  </div>
+</div>
+
+<script is:inline>
+  document.addEventListener("DOMContentLoaded", () => {
+    const tg = window.Telegram?.WebApp;
+    
+    if (tg) {
+      document.getElementById('twa-menu').classList.remove('hidden');
+      
+      // Expandir la web app para ocupar toda la pantalla
+      if (!tg.isExpanded) {
+        tg.expand();
+      }
+
+      const user = tg.initDataUnsafe?.user;
+      if (user) {
+        const nameEl = document.getElementById('twa-user-name');
+        const usernameEl = document.getElementById('twa-user-username');
+        const photoEl = document.getElementById('twa-user-photo');
+        const initialEl = document.getElementById('twa-user-initial');
+        
+        nameEl.textContent = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+        
+        if (user.username) {
+          usernameEl.textContent = `@${user.username}`;
+        } else {
+          usernameEl.style.display = 'none';
+        }
+
+        if (user.photo_url) {
+          photoEl.src = user.photo_url;
+          photoEl.classList.remove('hidden');
+          initialEl.classList.add('hidden');
+        } else {
+          initialEl.textContent = user.first_name ? user.first_name.charAt(0).toUpperCase() : '?';
+          initialEl.classList.remove('hidden');
+          photoEl.classList.add('hidden');
+        }
+
+        // Intento de autenticación silenciosa para ver si es voluntario
+        // Solo si no estamos ya renderizados como voluntarios desde el servidor
+        const isVoluntarioFromServer = document.getElementById('twa-volunteer-badge')?.classList.contains('flex');
+        
+        if (!isVoluntarioFromServer && tg.initData) {
+          fetch('/api/auth/telegram-miniapp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initData: tg.initData })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.voluntario) {
+              // Habilitar vista de voluntario dinámicamente
+              document.getElementById('twa-volunteer-badge').classList.remove('hidden');
+              document.getElementById('twa-volunteer-badge').classList.add('flex');
+              
+              const block = document.getElementById('twa-volunteer-block');
+              if (block) {
+                block.classList.remove('hidden');
+                block.classList.add('block');
+              }
+              
+              const joinBlock = document.getElementById('twa-join-volunteer-block');
+              if (joinBlock) joinBlock.classList.add('hidden');
+            }
+          })
+          .catch(e => console.error("Error auto-login TWA:", e));
+        }
+      }
+    } else {
+      // Si no es Telegram, redirigir al home o mostrar un mensaje
+      const menuDiv = document.getElementById('twa-menu');
+      menuDiv.innerHTML = `
+        <div class="p-8 text-center mt-20">
+          <div class="text-4xl mb-4">🤖</div>
+          <h2 class="font-uber-display text-xl font-bold text-ink mb-2">Este menú es exclusivo de Telegram</h2>
+          <p class="font-uber-text text-sm text-body mb-6">Esta vista está optimizada para la Mini App de Telegram.</p>
+          <a href="/" class="btn bg-primary text-white px-6 py-2 rounded-full font-uber-text font-bold">Ir al Inicio</a>
+        </div>
+      `;
+      menuDiv.classList.remove('hidden');
+    }
+  });
+</script>
