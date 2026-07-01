@@ -31,10 +31,12 @@ Este proyecto es una plataforma para el registro y búsqueda de personas desapar
    - **Transición de Páginas (Astro View Transitions)**: Para evitar condiciones de carrera ("not defined" en el swap del DOM), NO usar scripts inline (`is:inline`) ni locales del componente para registrar controladores complejos de Alpine.
      - **Componentes Complejos**: Extraerlos a archivos dedicados en `src/scripts/` (ej: `src/scripts/form-reporte-alpine.ts`) e importarlos globalmente en el script principal de `src/layouts/Layout.astro` para registrarlos en `Alpine.data` durante el inicio.
      - **Reactividad Simple**: Definirla directamente de forma declarativa inline en el atributo del HTML (ej: `x-data="{ query: '', filtro: 'todos' }"`).
+     - **Inyección de Estado (SSR a Cliente)**: NUNCA usar utilidades asquerosas como `escapeJSString` ni ensuciar el HTML con JSON escapado en `x-data`. Para pasar estado complejo del servidor (Astro) al cliente (Alpine), usar un atributo de datos en el HTML (`data-estado={JSON.stringify(estado)}`) y leerlo limpiamente con `JSON.parse(this.$el.dataset.estado)` dentro del método `init()` del componente Alpine global.
 
 
 4. **Operaciones de Base de Datos Eficientes**
-   - Minimizar los roundtrips de red a D1. Para procesamiento masivo de datos (como el escáner de IA de censos/listas), utilizar **`db.batch()`** para agrupar consultas e inserciones en el menor número posible de llamadas.
+   - Minimizar los roundtrips de red a D1. Para procesamiento masivo de datos, utilizar **`db.batch()`**.
+   - **Updates y Respuestas**: NUNCA hacer un `SELECT` después de un `UPDATE` solo para obtener el registro actualizado. Usa siempre `RETURNING *` en la consulta `UPDATE` de SQLite/D1 para obtener la fila modificada en una sola operación milisegundos O(1) y retornarla directamente al cliente.
 
 5. **Filosofía "Lazy Engineer" & Ponytail Style**
    - **Escribir menos**: Solo código estrictamente necesario (YAGNI).

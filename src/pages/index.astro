@@ -11,14 +11,7 @@ import { CATEGORIAS_INVENTARIO } from "../lib/items";
 export const prerender = false;
 
 let esVoluntario = false;
-function escapeJSString(str: string | null | undefined): string {
-  if (!str) return "";
-  return str
-    .replace(/\\/g, '\\\\')
-    .replace(/'/g, "\\'")
-    .replace(/\n/g, '\\n')
-    .replace(/\r/g, '\\r');
-}
+
 let totalRefugios = 0;
 let totalNecesidades = 0;
 let necesidadesCriticas: any[] = [];
@@ -294,63 +287,24 @@ try {
             return (
               <div 
                 id={`refugio-${r.id}`}
-                x-data={`{
-                  ocupacion: ${ocupacion},
-                  capacidad: ${capacidad},
-                  encargado: '${escapeJSString(r.encargado)}',
-                  direccion: '${escapeJSString(r.direccion)}',
-                  contacto: '${escapeJSString(r.contacto)}',
-                  necesidades: '${escapeJSString(r.necesidades)}',
-                  ninos: ${r.ninos || 0},
-                  bebes: ${r.bebes_lactantes || 0},
-                  mayores: ${r.adultos_mayores || 0},
-                  prof: ${r.personal_profesional || 0},
-                  vols: ${r.voluntarios || 0},
-                  itemsCriticos: ${JSON.stringify(itemsCriticos).replace(/"/g, "'")},
-                  itemsAlerta: ${JSON.stringify(itemsAlerta).replace(/"/g, "'")},
-                  fechaActualizada: '${escapeJSString(fechaActualizada)}'
-                }`}
-                @refugio-updated-${r.id}.window="
-                  ocupacion = $event.detail.ocupacion_actual;
-                  capacidad = $event.detail.capacidad_maxima;
-                  encargado = $event.detail.encargado;
-                  direccion = $event.detail.direccion;
-                  contacto = $event.detail.contacto;
-                  necesidades = $event.detail.necesidades;
-                  ninos = $event.detail.ninos;
-                  bebes = $event.detail.bebes;
-                  mayores = $event.detail.mayores;
-                  prof = $event.detail.prof;
-                  vols = $event.detail.vols;
-                  itemsCriticos = $event.detail.itemsCriticos;
-                  itemsAlerta = $event.detail.itemsAlerta;
-                  fechaActualizada = $event.detail.fechaActualizada;
-                  
-                  // Actualizar dataset para búsquedas Alpine
-                  $el.dataset.ocupacion = ocupacion;
-                  $el.dataset.capacidad = capacidad;
-                  $el.dataset.encargado = encargado;
-                  $el.dataset.direccion = direccion.toLowerCase();
-                  $el.dataset.contacto = contacto;
-                  $el.dataset.necesidades = necesidades.toLowerCase();
-
-                  // Actualizar dataset del botón de editar interior
-                  const btn = $el.querySelector('.btn-edit-refugio');
-                  if (btn) {
-                    btn.dataset.ocupacion = ocupacion;
-                    btn.dataset.capacidad = capacidad;
-                    btn.dataset.encargado = encargado;
-                    btn.dataset.direccion = direccion;
-                    btn.dataset.contacto = contacto;
-                    btn.dataset.necesidades = necesidades;
-                    btn.dataset.ninos = ninos;
-                    btn.dataset.bebes = bebes;
-                    btn.dataset.mayores = mayores;
-                    btn.dataset.prof = prof;
-                    btn.dataset.vols = vols;
-                    btn.dataset.inventario = JSON.stringify($event.detail.inventario || {});
-                  }
-                "
+                data-refugio-inicial={JSON.stringify({
+                  ocupacion: ocupacion,
+                  capacidad: capacidad,
+                  encargado: r.encargado || '',
+                  direccion: r.direccion || '',
+                  contacto: r.contacto || '',
+                  necesidades: r.necesidades || '',
+                  ninos: r.ninos || 0,
+                  bebes: r.bebes_lactantes || 0,
+                  mayores: r.adultos_mayores || 0,
+                  prof: r.personal_profesional || 0,
+                  vols: r.voluntarios || 0,
+                  itemsCriticos: itemsCriticos,
+                  itemsAlerta: itemsAlerta,
+                  fechaActualizada: fechaActualizada,
+                  fotos: fotosArray
+                })}
+                x-data="refugioCard"
                 x-show={`(filtro === 'todos' || filtro === '${r.tipo}') && (!query || query.toLowerCase().split(' ').filter(Boolean).every(word => '${r.nombre.replace(/'/g, "").toLowerCase()} \${direccion.toLowerCase()} \${necesidades.toLowerCase()}'.includes(word)))`}
                 class="refugio-card bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm space-y-4 transition-all hover:shadow-md"
                 data-id={r.id}
@@ -367,15 +321,27 @@ try {
                 data-semaforo={itemsCriticos.length > 0 ? "rojo" : itemsAlerta.length > 0 ? "amarillo" : "verde"}
                 data-fotos={typeof r.fotos === 'string' ? r.fotos : JSON.stringify(r.fotos || [])}
               >
-                {fotosArray && fotosArray.length > 0 && (
-                  <div class="w-full h-40 sm:h-48 rounded-xl overflow-hidden border border-canvas-soft bg-surface-pressed mb-2">
+                {fotosArray.length > 0 ? (
+                  <div x-show="fotos.length > 0" class="w-full h-40 sm:h-48 rounded-xl overflow-hidden border border-canvas-soft bg-surface-pressed mb-2">
                     <img 
-                      src={`/api/upload?key=${fotosArray[0]}`} 
+                      src={`/api/upload?key=${fotosArray[0]}`}
+                      :src="fotoUrl" 
                       alt={`Foto de ${r.nombre}`} 
                       class="w-full h-full object-cover"
                       loading="lazy"
                     />
                   </div>
+                ) : (
+                  <template x-if="fotos && fotos.length > 0">
+                    <div class="w-full h-40 sm:h-48 rounded-xl overflow-hidden border border-canvas-soft bg-surface-pressed mb-2">
+                      <img 
+                        :src="fotoUrl" 
+                        alt={`Foto de ${r.nombre}`} 
+                        class="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                  </template>
                 )}
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                   <div>
@@ -1597,6 +1563,16 @@ try {
         if (inputContacto) inputContacto.value = el.dataset.contacto || "";
         if (editTitulo) editTitulo.textContent = `Actualizar: ${el.dataset.nombre}`;
         
+        // Reset the submit button just in case
+        const form = document.getElementById("form-edit-refugio") as HTMLFormElement;
+        if (form) {
+          const btnSubmit = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Guardar Cambios";
+          }
+        }
+        
         const gpiCard = document.getElementById("edit-google-place-info");
         window.dispatchEvent(new CustomEvent('hide-gpi'));
 
@@ -1759,11 +1735,7 @@ try {
         }
       });
 
-      try {
-        const resp = await fetch(`/api/refugios/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const payload = {
             ocupacion_actual: ocupacion,
             capacidad_maxima: capacidad,
             necesidades,
@@ -1780,16 +1752,25 @@ try {
             voluntarios: vols,
             inventario,
             fotos: fotosKeys
-          })
+        };
+
+      try {
+        const resp = await fetch(`/api/refugios/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
         });
 
         if (resp.ok) {
+          const json = await resp.json();
+          const r = json.refugio;
           cerrarModal();
           
-          // Map inventory to critical and alert names
+          // Map inventory to critical and alert names (from the parsed DB inventory if available)
           const itemsCriticos: string[] = [];
           const itemsAlerta: string[] = [];
-          for (const [itemId, estado] of Object.entries(inventario)) {
+          const invData = typeof r.inventario === 'string' ? JSON.parse(r.inventario) : (r.inventario || {});
+          for (const [itemId, estado] of Object.entries(invData)) {
             const itemName = ITEM_MAP[itemId];
             if (itemName) {
               if (estado === "Crítico") itemsCriticos.push(itemName);
@@ -1797,32 +1778,36 @@ try {
             }
           }
 
-          // Format Date
-          const fechaActualizada = new Date().toLocaleString('es-VE', { 
+          // Format Date from updated_at if available
+          let fechaActualizada = new Date().toLocaleString('es-VE', { 
             dateStyle: 'short', 
             timeStyle: 'short' 
           }).replace(/\//g, "-");
+          if (r.updated_at) {
+             const d = new Date(r.updated_at);
+             if (!isNaN(d.getTime())) {
+               fechaActualizada = d.toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' }).replace(/\//g, "-");
+             }
+          }
+
+          // Parse fotos
+          let fotosParsed = [];
+          try { fotosParsed = typeof r.fotos === 'string' ? JSON.parse(r.fotos) : (r.fotos || []); } catch {}
 
           // Dispatch event to update the specific card element in-place
-          window.dispatchEvent(new CustomEvent(`refugio-updated-${id}`, {
-            detail: {
-              ocupacion_actual: ocupacion,
-              capacidad_maxima: capacidad,
-              necesidades,
-              contacto,
-              encargado,
-              direccion,
-              ninos,
-              bebes,
-              mayores,
-              prof,
-              vols,
-              itemsCriticos,
-              itemsAlerta,
-              inventario,
-              fechaActualizada
-            }
-          }));
+          const cardEl = document.getElementById(`refugio-${id}`);
+          if (cardEl) {
+            cardEl.dispatchEvent(new CustomEvent('update-refugio', {
+              detail: {
+                ...r,
+                fotos: fotosParsed,
+                inventario: invData,
+                itemsCriticos,
+                itemsAlerta,
+                fechaActualizada
+              }
+            }));
+          }
 
           // Show success toast
           const toast = document.getElementById('index-success-toast');
