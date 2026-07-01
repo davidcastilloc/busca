@@ -6,7 +6,7 @@ export const prerender = false;
 // GET: Retorna la clave pública VAPID para que el cliente la use al suscribirse
 export const GET: APIRoute = async () => {
   try {
-    const publicKey = (env as any).VAPID_PUBLIC_KEY;
+    const publicKey = env.VAPID_PUBLIC_KEY;
 
     if (!publicKey) {
       return new Response(

@@ -46,7 +46,7 @@ try {
         } else {
           await DB.prepare(`
             UPDATE refugios 
-            SET ocupacion_actual = ?, updated_at = datetime('now', '-4 hours') 
+            SET ocupacion_actual = ?, updated_at = datetime('now') 
             WHERE id = ?
           `).bind(ocupacion, refugioId).run();
           successMsg = "Ocupación del refugio actualizada con éxito.";

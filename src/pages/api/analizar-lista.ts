@@ -16,7 +16,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     // Usar la IA localmente (síncrono)
     const imageBuffer = await file.arrayBuffer();
-    const personas = await extraerNombresDeImagen(env as any, imageBuffer);
+    const personas = await extraerNombresDeImagen(env, imageBuffer);
 
     return new Response(JSON.stringify({ success: true, personas }), {
       status: 200,

@@ -1,15 +1,17 @@
 import type { TelegramClient } from "../client";
 import { setSession, clearSession, type TelegramSession } from "../session";
 import { getShelterKeyboard, resolveLocation } from "../utils";
+import { ReporteSchema } from "../../validators";
 
 export async function startFound(
   client: TelegramClient,
   db: D1Database,
   chatId: string | number,
   telegramId: string | number,
-  args?: string
+  args?: string,
+  estado: string = "localizado"
 ): Promise<void> {
-  const data: any = {};
+  const data: any = { estado_persona: estado };
   
   if (args && args.trim().length > 0) {
     data.cedula_buscado = args.trim();
@@ -19,7 +21,7 @@ export async function startFound(
       `✅ Cédula recibida: <b>${data.cedula_buscado}</b>\n\nEnvía el <b>Nombre y Apellido</b> de la persona encontrada (o escribe /saltar si no lo sabes):`
     );
   } else {
-    await setSession(db, telegramId, chatId, "fnd_cedula", {});
+    await setSession(db, telegramId, chatId, "fnd_cedula", data);
     await client.sendMessage(
       chatId,
       "🟢 <b>Reportar Persona Encontrada</b>\n\nEnvía el <b>Número de Cédula</b> de la persona (o escribe /saltar si no lo sabes):\n\n<i>/cancelar para salir.</i>"
@@ -147,14 +149,14 @@ export async function handleFoundState(
         } catch (e) {
           // ignore error
         }
+        
+        const estadoLabel = data.estado_persona || "localizado";
 
-        await env.CENSO_QUEUE.send({
-          type: "reporte",
-          data: {
+        const payload = {
             tipo: "encontrado",
             nombre_buscado: data.nombre_buscado,
             cedula_buscado: data.cedula_buscado,
-            descripcion: "Reportado como localizado por voluntario.",
+            descripcion: `Reportado como ${estadoLabel} por voluntario.`,
             ubicacion_nombre: data.ubicacion_nombre,
             latitud: data.latitud || null,
             longitud: data.longitud || null,
@@ -164,11 +166,17 @@ export async function handleFoundState(
             reportante_contacto: `User ID: ${telegramId}`,
             foto_key: data.foto_key,
             created_by: voluntarioId,
-          },
+          };
+          
+        const validatedPayload = ReporteSchema.parse(payload);
+
+        await env.CENSO_QUEUE.send({
+          type: "reporte",
+          data: validatedPayload,
         });
         await client.sendMessage(
           chatId,
-          `✅ <b>Persona registrada como LOCALIZADO</b>\n\nLa información se cruza automáticamente con la lista de desaparecidos.`
+          `✅ <b>Persona registrada como ${estadoLabel.toUpperCase()}</b>\n\nLa información se cruza automáticamente con la lista de desaparecidos.`
         );
       }
     } catch (queueErr) {

@@ -499,7 +499,7 @@ if (!voluntario) {
       const queryUrl = `/api/maps/geocode?address=${encodeURIComponent(dir)}`;
       const resp = await fetch(queryUrl);
       if (resp.ok) {
-        const data = await resp.json();
+        const data = await resp.json() as any;
         const lat = data.lat;
         const lon = data.lng;
         latInput.value = lat.toFixed(6);
@@ -610,7 +610,7 @@ if (!voluntario) {
       });
 
       if (resp.ok) {
-        const data = await resp.json();
+        const data = await resp.json() as any;
         latInput.value = data.lat.toFixed(6);
         lonInput.value = data.lng.toFixed(6);
 

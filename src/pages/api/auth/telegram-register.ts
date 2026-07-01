@@ -15,7 +15,7 @@ async function hashPin(pin: string): Promise<string> {
 
 export const POST: APIRoute = async (context) => {
   try {
-    const { DB } = env as any;
+    const { DB } = env;
     if (!DB) {
       return new Response(JSON.stringify({ error: "Configuración del servidor incompleta." }), { status: 500 });
     }
@@ -91,7 +91,7 @@ export const POST: APIRoute = async (context) => {
 
     await DB.prepare(`
       INSERT INTO sesiones_voluntarios (token, voluntario_id, expires_at, created_at)
-      VALUES (?, ?, ?, datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, datetime('now'))
     `).bind(
       token,
       voluntarioId,

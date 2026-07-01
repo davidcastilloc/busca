@@ -56,7 +56,7 @@ export const POST: APIRoute = async (context) => {
 
     await DB.prepare(`
       INSERT INTO sesiones_voluntarios (token, voluntario_id, expires_at, created_at)
-      VALUES (?, ?, ?, datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, datetime('now'))
     `).bind(
       token,
       voluntario.id,

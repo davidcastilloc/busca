@@ -25,7 +25,7 @@
 		"binding": "ASSETS"
 	},
 	"observability": {
-		"enabled": false,
+		"enabled": true,
 		"head_sampling_rate": 1,
 		"logs": {
 			"enabled": true,
@@ -88,7 +88,6 @@
 	},
 	"vars": {
 		"VAPID_PUBLIC_KEY": "BEcyoYTu_KhDf-xdW_w3S9bpjzJHD_op-PcYTOTPstRoczDaGNs-VWti9rShxBU4VP8I3_C6-Oqk-25eqqPtRe4",
-		"GOOGLE_MAPS_API_KEY": "",
 		// Configura en produccion: el @username o ID numerico de tu canal Telegram publico
 		// Ejemplo: "@dondeestanve" o "-1001234567890"
 		"TELEGRAM_CHANNEL_ID": ""

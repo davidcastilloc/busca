@@ -122,7 +122,7 @@ export async function processTelegramUpdate(
       } else if (data.startsWith("cub:")) {
         const [, necesidadId] = data.split(":");
         try {
-          const res = await db.prepare("UPDATE necesidades SET estado = 'atendida', updated_at = datetime('now', '-4 hours') WHERE id = ?").bind(necesidadId).run();
+          const res = await db.prepare("UPDATE necesidades SET estado = 'atendida', updated_at = datetime('now') WHERE id = ?").bind(necesidadId).run();
           if (res.meta.changes > 0) {
             // Actualizar también ayudas en camino a entregadas
             await db.prepare("UPDATE ayudas_en_camino SET estatus = 'entregado' WHERE necesidad_id = ? AND estatus = 'en_ruta'").bind(necesidadId).run();
@@ -433,10 +433,11 @@ export async function processTelegramUpdate(
           return;
         }
         try {
-          const res = await db.prepare("UPDATE necesidades SET estado = 'atendida', updated_at = datetime('now', '-4 hours') WHERE id = ?").bind(args).run();
+          const res = await db.prepare("UPDATE necesidades SET estado = 'atendida', updated_at = datetime('now') WHERE id = ?").bind(args).run();
           if (res.meta.changes > 0) {
             // Actualizar también ayudas en camino a entregadas
             await db.prepare("UPDATE ayudas_en_camino SET estatus = 'entregado' WHERE necesidad_id = ? AND estatus = 'en_ruta'").bind(args).run();
+            await db.prepare("DELETE FROM flyers WHERE necesidad_id = ?").bind(args).run();
             await client.sendMessage(chatId, `✅ <b>¡Necesidad #${args} marcada como cubierta!</b>\nGracias por mantener actualizada la información.`);
           } else {
             await client.sendMessage(chatId, `❌ No se encontró la necesidad con ID: ${args}`);

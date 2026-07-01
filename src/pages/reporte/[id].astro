@@ -336,7 +336,7 @@ const metaSenas     = extractBracket(desc, "SEÑAS");
       const btnCopy = document.getElementById("btn-copy-reporte");
       if (btnCopy) {
         // Remover listener viejo clonando el botón para evitar duplicados si se navega de un reporte a otro
-        const newBtnCopy = btnCopy.cloneNode(true);
+        const newBtnCopy = btnCopy.cloneNode(true) as HTMLElement;
         btnCopy.parentNode?.replaceChild(newBtnCopy, btnCopy);
         
         newBtnCopy.addEventListener("click", () => {

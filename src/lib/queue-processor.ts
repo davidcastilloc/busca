@@ -5,11 +5,11 @@ import {
   resolverReportesRelacionados, 
   procesarCensoBatch 
 } from "./db";
+import { notifyAdmins, notificarCercanos } from "./telegram/notify";
 
 export async function procesarCola(
   batch: MessageBatch<any>,
-  env: Env,
-  ctx: ExecutionContext
+  env: Env
 ): Promise<void> {
   for (const message of batch.messages) {
     try {
@@ -31,7 +31,6 @@ export async function procesarCola(
         if (reporteId) {
           // Notificar administradores por Telegram
           try {
-            const { notifyAdmins } = await import("./telegram/notify");
             const alertMsg = `🚨 <b>Nuevo Reporte Recibido (#${reporteId})</b>\n\n` +
               `• <b>Nombre buscado:</b> ${data.nombre_buscado || "Sin identificar"}\n` +
               `• <b>Cédula:</b> ${data.cedula_buscado || "No especificada"}\n` +
@@ -39,19 +38,18 @@ export async function procesarCola(
               `• <b>Ubicación:</b> ${data.ubicacion_nombre || "No especificada"}\n\n` +
               `📝 <b>Descripción:</b> <i>"${data.descripcion}"</i>\n\n` +
               `🔗 <a href="https://dondeestan.org/admin/dashboard">Ir al Panel de Moderación</a>`;
-            ctx.waitUntil(notifyAdmins(env, alertMsg));
+            await notifyAdmins(env, alertMsg);
           } catch (err) {
             console.error("Error al notificar admin por Telegram:", err);
           }
           // Notificar a usuarios de Telegram cercanos
           try {
-            const { notificarCercanos } = await import("./telegram/notify");
             if (data.latitud && data.longitud) {
               const msg = `🚨 <b>NUEVO REPORTE EN TU ZONA</b>\n\n` +
                           `• Tipo: ${data.tipo}\n` +
                           `• Detalle: ${data.descripcion}\n\n` +
                           `🔗 <a href="https://dondeestan.org">Ver en el mapa</a>`;
-              ctx.waitUntil(notificarCercanos(env, data.latitud, data.longitud, msg));
+              await notificarCercanos(env, data.latitud, data.longitud, msg);
             }
           } catch (e) {
             console.error("Error al notificar a usuarios cercanos por Telegram:", e);
@@ -120,7 +118,7 @@ export async function procesarCola(
         
         console.log(`Procesando censo curado manualmente, total personas: ${personasRecibidas.length}`);
 
-        const PUSH_QUEUE = (env as any).PUSH_QUEUE;
+        const PUSH_QUEUE = env.PUSH_QUEUE;
 
         // Ejecutar procesamiento masivo optimizado en D1
         const { results } = await procesarCensoBatch(
@@ -181,8 +179,9 @@ export async function procesarCola(
 
       message.ack();
     } catch (err) {
-      console.error("Error al procesar mensaje en cola censo:", err);
-      message.retry();
+      console.error("Error crítico procesando mensaje:", err);
+      // Cloudflare lo reintentará automáticamente porque lanzamos el error
+      throw err;
     }
   }
 }

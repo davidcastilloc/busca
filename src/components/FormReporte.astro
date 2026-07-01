@@ -30,7 +30,7 @@ try {
 }
 ---
 
-<div class="max-w-2xl mx-auto px-4 py-4 sm:py-6">
+<div x-data="formReporteAlpine()" class="max-w-2xl mx-auto px-4 py-4 sm:py-6">
   <!-- Cabecera de Progreso -->
   <div class="mb-8 flex justify-between items-center px-2">
     <div class="flex items-center space-x-2">
@@ -57,16 +57,16 @@ try {
     </div>
   )}
 
-  <form id="form-reporte" class="space-y-6">
+  <form id="form-reporte" class="space-y-6" @submit.prevent="submitForm">
     <!-- PASO 1: TIPO DE REPORTE -->
-    <div id="pane-step-1" class="step-pane space-y-6">
+    <div id="pane-step-1" class="step-pane space-y-6" x-show="step === 1" x-transition>
       <div class="text-center mb-6">
         <h2 class="font-uber-display text-xl text-ink">¿Qué tipo de reporte deseas emitir?</h2>
         <p class="text-xs text-body font-uber-text mt-1">Selecciona la opción que mejor describa la situación.</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <button type="button" class="type-card text-left p-5 border border-canvas-soft bg-canvas rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" data-type="desaparecido">
+        <button type="button" class="type-card text-left p-5 border rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" :class="tipo === \'desaparecido\' ? \'border-primary bg-canvas-softer scale-98\' : \'border-canvas-soft bg-canvas\'" @click="setTipo(\'desaparecido\')">
           <div>
             <span class="text-3xl block mb-2">🔍</span>
             <h3 class="font-uber-display text-base text-ink">Persona Desaparecida</h3>
@@ -74,14 +74,14 @@ try {
           </div>
         </button>
         {isVolunteer && (
-          <button type="button" class="type-card text-left p-5 border border-canvas-soft bg-canvas rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" data-type="encontrado">
+          <button type="button" class="type-card text-left p-5 border rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" :class="tipo === \'encontrado\' ? \'border-primary bg-canvas-softer scale-98\' : \'border-canvas-soft bg-canvas\'" @click="setTipo(\'encontrado\')">
             <div>
               <span class="text-3xl block mb-2">🤝</span>
               <h3 class="font-uber-display text-base text-ink">Persona Encontrada</h3>
               <p class="text-xs text-body font-uber-text mt-1">Reporta a alguien localizado pero que aún no está identificado.</p>
             </div>
           </button>
-          <button type="button" class="type-card text-left p-5 border border-canvas-soft bg-canvas rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" data-type="refugio">
+          <button type="button" class="type-card text-left p-5 border rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" :class="tipo === \'refugio\' ? \'border-primary bg-canvas-softer scale-98\' : \'border-canvas-soft bg-canvas\'" @click="setTipo(\'refugio\')">
             <div>
               <span class="text-3xl block mb-2">🏠</span>
               <h3 class="font-uber-display text-base text-ink">Reportar Refugio</h3>
@@ -89,7 +89,7 @@ try {
             </div>
           </button>
         )}
-        <button type="button" class="type-card text-left p-5 border border-canvas-soft bg-canvas rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" data-type="necesidad">
+        <button type="button" class="type-card text-left p-5 border rounded-xl cursor-pointer hover:border-primary transition-all active:scale-98 flex flex-col justify-between" :class="tipo === \'necesidad\' ? \'border-primary bg-canvas-softer scale-98\' : \'border-canvas-soft bg-canvas\'" @click="setTipo(\'necesidad\')">
           <div>
             <span class="text-3xl block mb-2">🚨</span>
             <h3 class="font-uber-display text-base text-ink">Necesidad Crítica</h3>
@@ -97,25 +97,25 @@ try {
           </div>
         </button>
       </div>
-      <input type="hidden" name="tipo" id="input-tipo" />
+      <input type="hidden" name="tipo" id="input-tipo" :value="tipo" />
 
       <div class="flex justify-end pt-4">
-        <button type="button" id="btn-next-1" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text px-8" disabled>
+        <button type="button" id="btn-next-1" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text px-8" :disabled="!tipo" @click="goToStep(2)">
           Siguiente
         </button>
       </div>
     </div>
 
     <!-- PASO 2: DETALLES -->
-    <div id="pane-step-2" class="step-pane hidden space-y-6">
+    <div id="pane-step-2" class="step-pane space-y-6" x-show="step === 2" x-transition style="display: none;">
       <!-- 2.1 Detalles del Reporte -->
       <fieldset class="fieldset bg-canvas border border-canvas-soft p-4 sm:p-6 rounded-xl shadow-sm">
         <legend class="fieldset-legend font-uber-display text-lg text-ink px-2 bg-canvas">1. Detalles del Reporte</legend>
         
         <!-- BLOQUE PERSONA (Desaparecido / Encontrado) -->
-        <div id="campos-tipo-persona" class="space-y-4">
+        <div id="campos-tipo-persona" class="space-y-4" x-show="tipo === 'desaparecido' || tipo === 'encontrado'">
           <div>
-            <label id="label-nombre-buscado" class="block font-uber-text uber-body-sm-strong text-body mb-1">Nombre de Persona Involucrada *</label>
+            <label id="label-nombre-buscado" class="block font-uber-text uber-body-sm-strong text-body mb-1" x-text="tipo === 'desaparecido' ? 'Nombre de Persona Involucrada *' : 'Nombre de Persona Encontrada'"></label>
             <input type="text" name="nombre_buscado" class="input w-full font-uber-text uber-body-md" placeholder="Nombres y apellidos completos" />
           </div>
           <div>
@@ -124,7 +124,7 @@ try {
           </div>
 
           <!-- Campos adicionales específicos para desaparecido -->
-          <div id="campos-desaparecido" class="hidden space-y-4 border-t border-canvas-soft pt-4 mt-2">
+          <div id="campos-desaparecido" class="space-y-4 border-t border-canvas-soft pt-4 mt-2" x-show="tipo === 'desaparecido'" style="display: none;">
             <p class="font-uber-display text-sm text-ink font-semibold">Datos adicionales de la persona desaparecida:</p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -152,11 +152,11 @@ try {
         </div>
 
         <!-- BLOQUE NECESIDAD CRÍTICA -->
-        <div id="campos-tipo-necesidad" class="hidden space-y-4">
+        <div id="campos-tipo-necesidad" class="space-y-4" x-show="tipo === 'necesidad'" style="display: none;">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Tipo de Necesidad *</label>
-              <select name="necesidad_categoria" id="necesidad_categoria_select" class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent">
+              <select x-model="necesidadCategoria" name="necesidad_categoria" id="necesidad_categoria_select" class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent">
                 <option value="Agua potable">Agua potable</option>
                 <option value="Alimentos / Comida">Alimentos / Comida</option>
                 <option value="Atención médica / Medicinas">Atención médica / Medicinas</option>
@@ -165,7 +165,7 @@ try {
                 <option value="Energía / Telecomunicaciones">Energía / Telecomunicaciones</option>
                 <option value="Otro">Otro / Varios</option>
               </select>
-              <div id="wrapper-necesidad-otro" class="hidden mt-2">
+              <div id="wrapper-necesidad-otro" class="mt-2" x-show="necesidadCategoria === 'Otro'" style="display: none;">
                 <input type="text" name="necesidad_categoria_otro" id="necesidad_categoria_otro" placeholder="Especifica la necesidad (ej: Pañales, linternas...)" class="input w-full font-uber-text uber-body-md" />
               </div>
             </div>
@@ -206,7 +206,7 @@ try {
         </div>
 
         <!-- BLOQUE REPORTAR REFUGIO -->
-        <div id="campos-tipo-refugio" class="hidden space-y-4">
+        <div id="campos-tipo-refugio" class="space-y-4" x-show="tipo === 'refugio'" style="display: none;">
           <div>
             <label class="block font-uber-text uber-body-sm-strong text-body mb-1">Nombre del Refugio / Acopio *</label>
             <input type="text" name="refugio_nombre" class="input w-full font-uber-text uber-body-md" placeholder="Ej: Albergue Polideportivo Petare" />
@@ -238,14 +238,14 @@ try {
 
         <!-- CAMPO COMÚN: DESCRIPCIÓN DETALLADA -->
         <div class="mt-4 pt-4 border-t border-canvas-soft">
-          <label id="label-descripcion" class="block font-uber-text uber-body-sm-strong text-body mb-1">Descripción Detallada *</label>
+          <label id="label-descripcion" class="block font-uber-text uber-body-sm-strong text-body mb-1" x-text="labelDescripcion"></label>
           <textarea 
             name="descripcion" 
             id="input-descripcion"
             class="textarea w-full h-24 font-uber-text uber-body-md" 
             placeholder="Ej: Detalles de la desaparición o situación..."
           ></textarea>
-          <span id="help-descripcion" class="text-xs text-mute mt-1 block font-uber-text">La IA utilizará esta descripción para cruzar reportes.</span>
+          <span id="help-descripcion" class="text-xs text-mute mt-1 block font-uber-text" x-text="helpDescripcion"></span>
         </div>
       </fieldset>
 
@@ -281,17 +281,17 @@ try {
       </fieldset>
 
       <div class="flex justify-between pt-4">
-        <button type="button" id="btn-back-2" class="btn btn-secondary font-uber-text px-8">
+        <button type="button" id="btn-back-2" class="btn btn-secondary font-uber-text px-8" @click="goToStep(1)">
           Atrás
         </button>
-        <button type="button" id="btn-next-2" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text px-8">
+        <button type="button" id="btn-next-2" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text px-8" @click="goToStep(3)">
           Siguiente
         </button>
       </div>
     </div>
 
     <!-- PASO 3: CONFIRMACIÓN Y OPCIONES -->
-    <div id="pane-step-3" class="step-pane hidden space-y-6">
+    <div id="pane-step-3" class="step-pane space-y-6" x-show="step === 3" x-transition style="display: none;">
       <div class="text-center mb-6">
         <h2 class="font-uber-display text-xl text-ink">Confirmación de Reporte</h2>
         <p class="text-xs text-body font-uber-text mt-1">Por favor, revisa las opciones finales antes de enviar.</p>
@@ -333,7 +333,7 @@ try {
       </div>
 
       <div class="flex justify-between pt-4">
-        <button type="button" id="btn-back-3" class="btn btn-secondary font-uber-text px-8">
+        <button type="button" id="btn-back-3" class="btn btn-secondary font-uber-text px-8" @click="goToStep(2)">
           Atrás
         </button>
         <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text px-8">
@@ -343,9 +343,9 @@ try {
     </div>
 
     <!-- Toast de estado estilo ex-toast -->
-    <div id="toast-container-rep" class="toast-mobile hidden">
-      <div id="toast-message-rep" class="bg-canvas border border-canvas-soft text-ink rounded-xl p-4 shadow-md font-uber-text uber-body-sm flex items-center gap-2">
-        <span>Guardando...</span>
+    <div id="toast-container-rep" class="toast-mobile" x-show="toast.visible" x-transition style="display: none;">
+      <div id="toast-message-rep" class="bg-canvas border text-ink rounded-xl p-4 shadow-md font-uber-text uber-body-sm flex items-center gap-2" :class="toast.borderClass">
+        <span x-text="toast.message"></span>
       </div>
     </div>
   </form>
@@ -354,721 +354,373 @@ try {
 <script>
   import { encolarRegistro } from "../lib/offline-queue";
 
-  function initFormReporte() {
-    const form = document.getElementById("form-reporte") as HTMLFormElement;
-    const toastContainer = document.getElementById("toast-container-rep");
-    const toastMessage = document.getElementById("toast-message-rep");
-
-    if (form && toastContainer && toastMessage) {
-    const inputTipo = document.getElementById("input-tipo") as HTMLInputElement;
-    const typeCards = document.querySelectorAll(".type-card");
-    const btnNext1 = document.getElementById("btn-next-1") as HTMLButtonElement;
-    const btnNext2 = document.getElementById("btn-next-2") as HTMLButtonElement;
-    const btnBack2 = document.getElementById("btn-back-2") as HTMLButtonElement;
-    const btnBack3 = document.getElementById("btn-back-3") as HTMLButtonElement;
-
-    // Inputs para validación
-    const inputNombre = document.querySelector('input[name="nombre_buscado"]') as HTMLInputElement;
-    const inputDescripcion = document.querySelector('textarea[name="descripcion"]') as HTMLTextAreaElement;
-    const inputEstado = document.querySelector('input[name="extra_estado"]') as HTMLInputElement;
-    const inputCiudad = document.querySelector('input[name="extra_ciudad"]') as HTMLInputElement;
-    const inputSector = document.querySelector('input[name="extra_sector"]') as HTMLInputElement;
-    const inputUltimoContacto = document.querySelector('input[name="extra_ultimo_contacto"]') as HTMLInputElement;
-    const inputSenas = document.querySelector('textarea[name="extra_senas"]') as HTMLTextAreaElement;
-    const inputFotoKey = document.getElementById("foto_key") as HTMLInputElement;
-
-    // Elementos del resumen paso 3
-    const summaryTipo = document.getElementById("summary-tipo");
-    const summaryNombre = document.getElementById("summary-nombre");
-    const summaryDescripcion = document.getElementById("summary-descripcion");
-    const summaryUbicacion = document.getElementById("summary-ubicacion");
-    const summaryFoto = document.getElementById("summary-foto");
-    const rowNombre = document.getElementById("summary-row-nombre");
-    const flyerOptIn = document.getElementById("flyer-opt-in");
-    const flyerNoPhotoTip = document.getElementById("flyer-no-photo-tip");
-
-    let currentStep = 1;
-
-    const tg = (window as any).Telegram?.WebApp;
-    const isTWA = !!(tg && tg.initData);
-
-    function handleTelegramMainClick() {
-      if (currentStep === 2) {
-        if (validarPaso2()) {
-          goToStep(3);
-        }
-      } else if (currentStep === 3) {
-        tg.MainButton.showProgress();
-        form.requestSubmit();
-      }
-    }
-
-    if (isTWA) {
-      // Ocultar botones de navegación web
-      form.querySelectorAll('.flex.justify-between.pt-4, .flex.justify-end.pt-4').forEach(el => {
-        el.classList.add('hidden');
-      });
-      tg.MainButton.onClick(handleTelegramMainClick);
-    }
-
-    function toggleCamposEspecificos(tipo: string) {
-      const camposPersona = document.getElementById("campos-tipo-persona");
-      const camposNecesidad = document.getElementById("campos-tipo-necesidad");
-      const camposRefugio = document.getElementById("campos-tipo-refugio");
-      const camposDesaparecido = document.getElementById("campos-desaparecido");
-      const labelNombreBuscado = document.getElementById("label-nombre-buscado");
-      const labelDescripcion = document.getElementById("label-descripcion");
-      const labelFoto = Array.from(document.querySelectorAll("#form-reporte label")).find(el => el.textContent?.includes("Foto Evidencia"));
-      const helpDescripcion = document.getElementById("help-descripcion");
-
-      if (!camposPersona || !camposNecesidad || !camposRefugio || !camposDesaparecido) return;
-
-      // Ocultar todos
-      camposPersona.classList.add("hidden");
-      camposNecesidad.classList.add("hidden");
-      camposRefugio.classList.add("hidden");
-      camposDesaparecido.classList.add("hidden");
-
-      if (tipo === "desaparecido") {
-        camposPersona.classList.remove("hidden");
-        camposDesaparecido.classList.remove("hidden");
-        if (labelNombreBuscado) labelNombreBuscado.innerHTML = 'Nombre de Persona Involucrada *';
-        inputNombre.placeholder = "Nombres y apellidos completos";
-        inputDescripcion.placeholder = "Ej: Detalles de la desaparición, vestimenta, última vez que se le vio...";
-        if (labelDescripcion) labelDescripcion.innerHTML = 'Detalles adicionales y contexto *';
-        if (labelFoto) labelFoto.innerHTML = '📸 Foto de la Persona (Requerida) *';
-        if (helpDescripcion) helpDescripcion.textContent = "La IA utilizará esta descripción para cruzar reportes.";
-      } else if (tipo === "encontrado") {
-        camposPersona.classList.remove("hidden");
-        if (labelNombreBuscado) labelNombreBuscado.innerHTML = 'Nombre de Persona Encontrada';
-        inputNombre.placeholder = "Opcional (si se conoce)";
-        inputDescripcion.placeholder = "Ej: Rasgos físicos, estado de salud actual, señas particulares...";
-        if (labelDescripcion) labelDescripcion.innerHTML = 'Descripción del Hallazgo *';
-        if (labelFoto) labelFoto.innerHTML = '📸 Foto Evidencia (Opcional)';
-        if (helpDescripcion) helpDescripcion.textContent = "La IA utilizará esta descripción para cruzar reportes.";
-      } else if (tipo === "necesidad") {
-        camposNecesidad.classList.remove("hidden");
-        inputDescripcion.placeholder = "Ej: Describa qué insumos específicos hacen falta, el nivel de urgencia y la cantidad de familias afectadas...";
-        if (labelDescripcion) labelDescripcion.innerHTML = 'Descripción de la Necesidad *';
-        if (labelFoto) labelFoto.innerHTML = '📸 Foto del Lugar/Situación (Opcional)';
-        if (helpDescripcion) helpDescripcion.textContent = "La información será visible para voluntarios y coordinadores de ayuda.";
-      } else if (tipo === "refugio") {
-        camposRefugio.classList.remove("hidden");
-        inputDescripcion.placeholder = "Ej: Estado general del refugio, insumos críticos faltantes, datos sobre el encargado o reglas de acceso...";
-        if (labelDescripcion) labelDescripcion.innerHTML = 'Descripción del Refugio / Necesidades *';
-        if (labelFoto) labelFoto.innerHTML = '📸 Foto del Centro (Opcional)';
-        if (helpDescripcion) helpDescripcion.textContent = "Detalle el estado del refugio, insumos requeridos y contactos.";
-      }
-    }
-
-    function mostrarError(input: HTMLElement, mensaje: string) {
-      input.classList.add("border-red-500", "focus:border-red-500", "ring-1", "ring-red-500");
+  window.formReporteAlpine = function() {
+    return {
+      step: 1,
+      tipo: '',
+      necesidadCategoria: 'Agua potable',
+      toast: { visible: false, message: '', borderClass: 'border-blue-500/30' },
       
-      let errorSpan = input.parentNode?.querySelector(".input-error-msg");
-      if (!errorSpan) {
-        errorSpan = document.createElement("span");
-        errorSpan.className = "input-error-msg text-xs text-red-500 mt-1 block font-uber-text font-semibold";
-        input.parentNode?.appendChild(errorSpan);
-      }
-      errorSpan.textContent = mensaje;
-    }
-
-    function limpiarErrores() {
-      const inputs = form.querySelectorAll("input, textarea");
-      inputs.forEach(input => {
-        input.classList.remove("border-red-500", "focus:border-red-500", "ring-1", "ring-red-500");
-        const errorSpan = input.parentNode?.querySelector(".input-error-msg");
-        if (errorSpan) {
-          errorSpan.remove();
-        }
-      });
-    }
-
-    function validarPaso2(): boolean {
-      limpiarErrores();
-      let esValido = true;
-      const tipo = inputTipo.value;
-      const descripcionVal = inputDescripcion.value.trim();
-
-      // Inputs específicos
-      const inputRefugioNombre = form.querySelector('[name="refugio_nombre"]') as HTMLInputElement;
-
-      if (tipo === "desaparecido") {
-        if (!inputNombre.value.trim()) {
-          mostrarError(inputNombre, "El nombre de la persona desaparecida es requerido.");
-          esValido = false;
-        }
-        if (!inputEstado.value.trim()) {
-          mostrarError(inputEstado, "El estado de la última ubicación es requerido.");
-          esValido = false;
-        }
-        if (!inputCiudad.value.trim()) {
-          mostrarError(inputCiudad, "La ciudad de la última ubicación es requerida.");
-          esValido = false;
-        }
-        if (!inputSector.value.trim()) {
-          mostrarError(inputSector, "El sector o zona de la última ubicación es requerido.");
-          esValido = false;
-        }
-        if (!inputUltimoContacto.value.trim()) {
-          mostrarError(inputUltimoContacto, "La fecha y hora del último contacto son requeridas.");
-          esValido = false;
-        }
-        if (!inputSenas.value.trim()) {
-          mostrarError(inputSenas, "Señas particulares o descripción de vestimenta es requerida.");
-          esValido = false;
-        }
-        if (!inputFotoKey.value.trim()) {
-          const fileInputEl = document.getElementById("foto-file");
-          if (fileInputEl) {
-            mostrarError(fileInputEl, "La foto de la persona desaparecida es requerida.");
-          } else {
-            mostrarToast("❌ La foto de la persona desaparecida es requerida.", "border-red-500/30");
+      get labelDescripcion() {
+        if (this.tipo === 'desaparecido') return 'Detalles adicionales y contexto *';
+        if (this.tipo === 'encontrado') return 'Descripción del Hallazgo *';
+        if (this.tipo === 'necesidad') return 'Descripción de la Necesidad *';
+        if (this.tipo === 'refugio') return 'Descripción del Refugio / Necesidades *';
+        return 'Descripción Detallada *';
+      },
+      
+      get helpDescripcion() {
+        if (this.tipo === 'desaparecido' || this.tipo === 'encontrado') return 'La IA utilizará esta descripción para cruzar reportes.';
+        if (this.tipo === 'necesidad') return 'La información será visible para voluntarios y coordinadores de ayuda.';
+        if (this.tipo === 'refugio') return 'Detalle el estado del refugio, insumos requeridos y contactos.';
+        return '';
+      },
+      
+      setTipo(t) {
+        this.tipo = t;
+        setTimeout(() => this.goToStep(2), 350);
+      },
+      
+      goToStep(s) {
+        if (s > this.step) {
+          if (this.step === 1 && !this.tipo) {
+            this.showToast("❌ Selecciona un tipo de reporte.", "border-red-500/30");
+            return;
           }
-          esValido = false;
+          if (this.step === 2 && !this.validarPaso2()) return;
         }
-      } else if (tipo === "refugio") {
-        if (!inputRefugioNombre.value.trim()) {
-          mostrarError(inputRefugioNombre, "El nombre del refugio o centro de acopio es requerido.");
-          esValido = false;
+        
+        this.step = s;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        if (s === 2 && (window).mapaReporteInstance) {
+          setTimeout(() => {
+            try { (window).mapaReporteInstance.invalidateSize(); } catch (e) {}
+          }, 150);
         }
-      } else if (tipo === "necesidad") {
-        const selectCat = document.getElementById("necesidad_categoria_select") as HTMLSelectElement;
-        const inputOtro = document.getElementById("necesidad_categoria_otro") as HTMLInputElement;
-        if (selectCat && selectCat.value === "Otro" && inputOtro && !inputOtro.value.trim()) {
-          mostrarError(inputOtro, "Especifica qué tipo de necesidad es.");
-          esValido = false;
+        
+        if (s === 3) {
+          this.actualizarResumen();
         }
-      }
-
-      if (descripcionVal.length < 10) {
-        mostrarError(inputDescripcion, "La descripción del reporte debe tener al menos 10 caracteres.");
-        esValido = false;
-      }
-
-      if (!esValido) {
-        // Hacer scroll al primer error
-        const primerError = form.querySelector(".border-red-500");
-        if (primerError) {
-          primerError.scrollIntoView({ behavior: "smooth", block: "center" });
-          (primerError as HTMLElement).focus();
-        }
-        mostrarToast("❌ Hay campos con errores en el formulario.", "border-red-500/30");
-      }
-
-      return esValido;
-    }
-
-    function actualizarResumen() {
-      if (!summaryTipo || !summaryNombre || !summaryDescripcion || !summaryUbicacion || !summaryFoto || !rowNombre || !flyerOptIn || !flyerNoPhotoTip) return;
-
-      const tipo = inputTipo.value;
-      const nombre = (tipo === "refugio" 
-        ? (form.querySelector('[name="refugio_nombre"]') as HTMLInputElement).value 
-        : inputNombre.value).trim();
-      const desc = inputDescripcion.value.trim();
-      const ubicacion = (document.querySelector('input[name="ubicacion_nombre"]') as HTMLInputElement).value.trim();
-      const tieneFoto = !!inputFotoKey.value.trim();
-
-      let tipoText = tipo;
-      if (tipo === "desaparecido") tipoText = "Persona Desaparecida (Búsqueda)";
-      else if (tipo === "encontrado") tipoText = "Persona Encontrada (No Identificada)";
-      else if (tipo === "refugio") tipoText = "Reporte de Refugio / Centro de Acopio";
-      else if (tipo === "necesidad") tipoText = "Necesidad Crítica";
-
-      summaryTipo.textContent = tipoText;
+        
+        this.updateStepIndicators();
+      },
       
-      if (nombre) {
-        rowNombre.classList.remove("hidden");
-        summaryNombre.textContent = nombre;
-      } else {
-        rowNombre.classList.add("hidden");
-      }
-
-      summaryDescripcion.textContent = desc.substring(0, 100) + (desc.length > 100 ? "..." : "");
-      summaryUbicacion.textContent = ubicacion || "No especificada (ubicación por mapa/GPS si se marcó)";
-      summaryFoto.textContent = tieneFoto ? "✓ Sí, adjunta" : "No";
-
-      if (tipo === "desaparecido") {
-        if (tieneFoto) {
-          flyerOptIn.classList.remove("hidden");
-          flyerNoPhotoTip.classList.add("hidden");
-        } else {
-          flyerOptIn.classList.add("hidden");
-          flyerNoPhotoTip.classList.remove("hidden");
+      updateStepIndicators() {
+        for (let i = 1; i <= 3; i++) {
+          const ind = document.getElementById(`step-ind-${i}`);
+          const txt = document.getElementById(`step-txt-${i}`);
+          if (ind && txt) {
+            if (i < this.step) {
+              ind.className = "w-8 h-8 rounded-full flex items-center justify-center bg-green-500 text-white font-uber-display text-sm transition-colors";
+              ind.innerHTML = "✓";
+              txt.className = "text-xs font-uber-text font-bold text-ink transition-colors";
+            } else if (i === this.step) {
+              ind.className = "w-8 h-8 rounded-full flex items-center justify-center bg-primary text-white font-uber-display text-sm transition-colors";
+              ind.innerHTML = String(i);
+              txt.className = "text-xs font-uber-text font-bold text-ink transition-colors";
+            } else {
+              ind.className = "w-8 h-8 rounded-full flex items-center justify-center bg-canvas-soft text-mute font-uber-display text-sm transition-colors";
+              ind.innerHTML = String(i);
+              txt.className = "text-xs font-uber-text text-body transition-colors";
+            }
+          }
         }
-      } else {
-        // Para necesidades, refugios o encontrados, la foto es opcional, mostramos opt-in siempre
-        flyerOptIn.classList.remove("hidden");
-        flyerNoPhotoTip.classList.add("hidden");
-      }
-    }
-
-    function goToStep(step: number) {
-      if (step > currentStep) {
-        if (currentStep === 1 && !inputTipo.value) {
-          mostrarToast("❌ Selecciona un tipo de reporte.", "border-red-500/30");
-          return;
+      },
+      
+      showToast(msg, borderClass) {
+        this.toast = { visible: true, message: msg, borderClass };
+        setTimeout(() => { this.toast.visible = false; }, 5000);
+      },
+      
+      mostrarError(inputName, msg) {
+        const form = document.getElementById("form-reporte");
+        const input = form.querySelector(`[name="${inputName}"]`);
+        if (!input) return;
+        input.classList.add("border-red-500", "focus:border-red-500", "ring-1", "ring-red-500");
+        let errorSpan = input.parentNode.querySelector(".input-error-msg");
+        if (!errorSpan) {
+          errorSpan = document.createElement("span");
+          errorSpan.className = "input-error-msg text-xs text-red-500 mt-1 block font-uber-text font-semibold";
+          input.parentNode.appendChild(errorSpan);
         }
-        if (currentStep === 2 && !validarPaso2()) {
-          return;
+        errorSpan.textContent = msg;
+      },
+      
+      limpiarErrores() {
+        const form = document.getElementById("form-reporte");
+        form.querySelectorAll(".border-red-500").forEach(el => {
+          el.classList.remove("border-red-500", "focus:border-red-500", "ring-1", "ring-red-500");
+        });
+        form.querySelectorAll(".input-error-msg").forEach(el => el.remove());
+      },
+      
+      validarPaso2() {
+        this.limpiarErrores();
+        const form = document.getElementById("form-reporte");
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        let esValido = true;
+        
+        if (this.tipo === "desaparecido") {
+          if (!data.nombre_buscado) { this.mostrarError("nombre_buscado", "Requerido"); esValido = false; }
+          if (!data.extra_estado) { this.mostrarError("extra_estado", "Requerido"); esValido = false; }
+          if (!data.extra_ciudad) { this.mostrarError("extra_ciudad", "Requerido"); esValido = false; }
+          if (!data.extra_sector) { this.mostrarError("extra_sector", "Requerido"); esValido = false; }
+          if (!data.extra_ultimo_contacto) { this.mostrarError("extra_ultimo_contacto", "Requerido"); esValido = false; }
+          if (!data.extra_senas) { this.mostrarError("extra_senas", "Requerido"); esValido = false; }
+          if (!document.getElementById("foto_key")?.value) {
+            this.showToast("❌ La foto de la persona desaparecida es requerida.", "border-red-500/30");
+            esValido = false;
+          }
+        } else if (this.tipo === "refugio") {
+          if (!data.refugio_nombre) { this.mostrarError("refugio_nombre", "Requerido"); esValido = false; }
+        } else if (this.tipo === "necesidad") {
+          if (this.necesidadCategoria === "Otro" && !data.necesidad_categoria_otro) {
+            this.mostrarError("necesidad_categoria_otro", "Requerido"); esValido = false;
+          }
         }
-      }
-
-      document.getElementById(`pane-step-${currentStep}`)?.classList.add("hidden");
-      document.getElementById(`pane-step-${step}`)?.classList.remove("hidden");
-
-      if (step === 2 && (window as any).mapaReporteInstance) {
-        setTimeout(() => {
+        
+        if (String(data.descripcion || "").length < 10) {
+          this.mostrarError("descripcion", "Debe tener al menos 10 caracteres");
+          esValido = false;
+        }
+        
+        if (!esValido) {
+          this.showToast("❌ Hay campos con errores en el formulario.", "border-red-500/30");
+        }
+        return esValido;
+      },
+      
+      actualizarResumen() {
+        const form = document.getElementById("form-reporte");
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        const summaryTipo = document.getElementById("summary-tipo");
+        const summaryNombre = document.getElementById("summary-nombre");
+        const summaryDescripcion = document.getElementById("summary-descripcion");
+        const summaryUbicacion = document.getElementById("summary-ubicacion");
+        const summaryFoto = document.getElementById("summary-foto");
+        const rowNombre = document.getElementById("summary-row-nombre");
+        const flyerOptIn = document.getElementById("flyer-opt-in");
+        const flyerNoPhotoTip = document.getElementById("flyer-no-photo-tip");
+        
+        let tipoText = this.tipo;
+        if (this.tipo === "desaparecido") tipoText = "Persona Desaparecida";
+        else if (this.tipo === "encontrado") tipoText = "Persona Encontrada";
+        else if (this.tipo === "refugio") tipoText = "Refugio / Centro";
+        else if (this.tipo === "necesidad") tipoText = "Necesidad Crítica";
+        
+        if (summaryTipo) summaryTipo.textContent = tipoText;
+        
+        const nombre = this.tipo === "refugio" ? data.refugio_nombre : data.nombre_buscado;
+        if (nombre && summaryNombre && rowNombre) {
+          rowNombre.classList.remove("hidden");
+          summaryNombre.textContent = nombre;
+        } else if (rowNombre) {
+          rowNombre.classList.add("hidden");
+        }
+        
+        const desc = String(data.descripcion || "");
+        if (summaryDescripcion) summaryDescripcion.textContent = desc.substring(0, 100) + (desc.length > 100 ? "..." : "");
+        if (summaryUbicacion) summaryUbicacion.textContent = data.ubicacion_nombre || "Ubicación GPS/Mapa";
+        
+        const tieneFoto = !!document.getElementById("foto_key")?.value;
+        if (summaryFoto) summaryFoto.textContent = tieneFoto ? "✓ Sí, adjunta" : "No";
+        
+        if (flyerOptIn && flyerNoPhotoTip) {
+          if (this.tipo === "desaparecido") {
+            if (tieneFoto) { flyerOptIn.classList.remove("hidden"); flyerNoPhotoTip.classList.add("hidden"); }
+            else { flyerOptIn.classList.add("hidden"); flyerNoPhotoTip.classList.remove("hidden"); }
+          } else {
+            flyerOptIn.classList.remove("hidden"); flyerNoPhotoTip.classList.add("hidden");
+          }
+        }
+      },
+      
+      async submitForm() {
+        this.limpiarErrores();
+        if (!this.tipo) { this.showToast("❌ Selecciona un tipo.", "border-red-500/30"); this.goToStep(1); return; }
+        if (!this.validarPaso2()) { this.goToStep(2); return; }
+        
+        const form = document.getElementById("form-reporte");
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        let descConcatenada = String(data.descripcion).trim();
+        let payload = {};
+        let endpointUrl = "/api/reportes";
+        
+        let refugio_id = null;
+        let hospital_id = null;
+        let centro_acopio_id = null;
+        if (data.refugio_id) {
+          const [tipo, idStr] = String(data.refugio_id).split(":");
+          const id = parseInt(idStr, 10);
+          if (tipo === "hospital") hospital_id = id;
+          else if (tipo === "centro_acopio") centro_acopio_id = id;
+          else if (tipo === "refugio") refugio_id = id;
+        }
+        
+        if (this.tipo === "desaparecido") {
+          const fechaContacto = String(data.extra_ultimo_contacto).replace("T", " ");
+          const ubicacion = `${String(data.extra_estado).trim()}, ${String(data.extra_ciudad).trim()}, Sector ${String(data.extra_sector).trim()}`;
+          const senas = String(data.extra_senas).trim();
+          descConcatenada = `[FECHA ÚLTIMO CONTACTO: ${fechaContacto}]\n[UBICACIÓN: ${ubicacion}]\n[SEÑAS: ${senas}]\n\n${descConcatenada}`;
+          payload = {
+            tipo: "desaparecido",
+            nombre_buscado: data.nombre_buscado || null,
+            cedula_buscado: data.cedula_buscado || null,
+            descripcion: descConcatenada,
+            reportante_nombre: data.reportante_nombre || null,
+            reportante_contacto: data.reportante_contacto || null,
+            ubicacion_nombre: data.ubicacion_nombre || null,
+            latitud: data.latitud ? parseFloat(data.latitud) : null,
+            longitud: data.longitud ? parseFloat(data.longitud) : null,
+            foto_key: data.foto_key || null,
+            refugio_id, hospital_id, centro_acopio_id
+          };
+        } else if (this.tipo === "encontrado") {
+          payload = {
+            tipo: "encontrado",
+            nombre_buscado: data.nombre_buscado || null,
+            cedula_buscado: data.cedula_buscado || null,
+            descripcion: descConcatenada,
+            reportante_nombre: data.reportante_nombre || null,
+            reportante_contacto: data.reportante_contacto || null,
+            ubicacion_nombre: data.ubicacion_nombre || null,
+            latitud: data.latitud ? parseFloat(data.latitud) : null,
+            longitud: data.longitud ? parseFloat(data.longitud) : null,
+            foto_key: data.foto_key || null,
+            refugio_id, hospital_id, centro_acopio_id
+          };
+        } else if (this.tipo === "necesidad") {
+          endpointUrl = "/api/necesidades";
+          let categoriaFinal = String(data.necesidad_categoria);
+          if (categoriaFinal === "Otro") categoriaFinal = String(data.necesidad_categoria_otro || "").trim() || "Otro";
+          payload = {
+            tipo: "necesidad",
+            categoria: categoriaFinal,
+            gravedad: String(data.necesidad_gravedad),
+            afectados: data.necesidad_afectados ? parseInt(data.necesidad_afectados, 10) : null,
+            descripcion: descConcatenada,
+            ubicacion_nombre: data.ubicacion_nombre || null,
+            latitud: data.latitud ? parseFloat(data.latitud) : null,
+            longitud: data.longitud ? parseFloat(data.longitud) : null,
+            telefono: data.necesidad_telefono || null,
+            foto_key: data.foto_key || null,
+            refugio_id, hospital_id, centro_acopio_id,
+            reportante_nombre: data.reportante_nombre || null,
+            reportante_contacto: data.reportante_contacto || null
+          };
+        } else if (this.tipo === "refugio") {
+          const centroTipo = String(data.refugio_tipo);
+          const ocupacion = data.refugio_ocupacion ? `${data.refugio_ocupacion} pers.` : "0 pers.";
+          const capacidad = data.refugio_capacidad ? `${data.refugio_capacidad} pers.` : "100 pers.";
+          descConcatenada = `[TIPO CENTRO: ${centroTipo}]\n[OCUPACIÓN: ${ocupacion} / ${capacidad}]\n\n${descConcatenada}`;
+          payload = {
+            tipo: "refugio",
+            nombre_buscado: data.refugio_nombre || "Refugio sin nombre",
+            cedula_buscado: null,
+            descripcion: descConcatenada,
+            reportante_nombre: data.reportante_nombre || null,
+            reportante_contacto: data.reportante_contacto || null,
+            ubicacion_nombre: data.ubicacion_nombre || null,
+            latitud: data.latitud ? parseFloat(data.latitud) : null,
+            longitud: data.longitud ? parseFloat(data.longitud) : null,
+            foto_key: data.foto_key || null,
+            refugio_id, hospital_id, centro_acopio_id
+          };
+        }
+        
+        this.showToast("Procesando reporte...", "border-blue-500/30");
+        
+        if (navigator.onLine) {
           try {
-            (window as any).mapaReporteInstance.invalidateSize();
-          } catch (e) {
-            console.error("Error al redimensionar mapa:", e);
-          }
-        }, 150);
-      }
-
-      for (let i = 1; i <= 3; i++) {
-        const ind = document.getElementById(`step-ind-${i}`);
-        const txt = document.getElementById(`step-txt-${i}`);
-        if (ind && txt) {
-          if (i < step) {
-            ind.className = "w-8 h-8 rounded-full flex items-center justify-center bg-green-500 text-white font-uber-display text-sm transition-colors";
-            ind.innerHTML = "✓";
-            txt.className = "text-xs font-uber-text font-bold text-ink transition-colors";
-          } else if (i === step) {
-            ind.className = "w-8 h-8 rounded-full flex items-center justify-center bg-primary text-white font-uber-display text-sm transition-colors";
-            ind.innerHTML = String(i);
-            txt.className = "text-xs font-uber-text font-bold text-ink transition-colors";
-          } else {
-            ind.className = "w-8 h-8 rounded-full flex items-center justify-center bg-canvas-soft text-mute font-uber-display text-sm transition-colors";
-            ind.innerHTML = String(i);
-            txt.className = "text-xs font-uber-text text-body transition-colors";
-          }
-        }
-      }
-
-      if (step === 3) {
-        actualizarResumen();
-      }
-
-      currentStep = step;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      if (isTWA) {
-        tg.MainButton.hideProgress();
-        if (step === 1) {
-          tg.MainButton.hide();
-          tg.BackButton.show();
-          tg.BackButton.onClick(() => {
-            window.history.back();
-          });
-        } else {
-          tg.BackButton.show();
-          tg.BackButton.onClick(() => {
-            goToStep(step - 1);
-          });
-          if (step === 2) {
-            tg.MainButton.setText("Siguiente").show();
-          } else if (step === 3) {
-            tg.MainButton.setText("Enviar reporte de emergencia").show();
-          }
-        }
-      }
-    }
-
-    // Eventos de selección de cartas Paso 1
-    typeCards.forEach(card => {
-      card.addEventListener("click", () => {
-        typeCards.forEach(c => {
-          c.classList.remove("border-primary", "bg-canvas-softer", "scale-98");
-          c.classList.add("border-canvas-soft", "bg-canvas");
-        });
-
-        card.classList.remove("border-canvas-soft", "bg-canvas");
-        card.classList.add("border-primary", "bg-canvas-softer", "scale-98");
-
-        const selectedType = card.getAttribute("data-type") || "";
-        inputTipo.value = selectedType;
-        btnNext1.disabled = false;
-
-        toggleCamposEspecificos(selectedType);
-
-        setTimeout(() => {
-          goToStep(2);
-        }, 350);
-      });
-    });
-
-    btnNext1.addEventListener("click", () => goToStep(2));
-    btnNext2.addEventListener("click", () => goToStep(3));
-    btnBack2.addEventListener("click", () => goToStep(1));
-    btnBack3.addEventListener("click", () => goToStep(2));
-
-    const selectCategoria = document.getElementById("necesidad_categoria_select") as HTMLSelectElement;
-    const wrapperOtro = document.getElementById("wrapper-necesidad-otro");
-    if (selectCategoria && wrapperOtro) {
-      selectCategoria.addEventListener("change", function() {
-        if (this.value === "Otro") {
-          wrapperOtro.classList.remove("hidden");
-          const inputOtro = document.getElementById("necesidad_categoria_otro") as HTMLInputElement;
-          if (inputOtro) {
-            inputOtro.focus();
-          }
-        } else {
-          wrapperOtro.classList.add("hidden");
-        }
-      });
-    }
-
-    form.addEventListener("reset", () => {
-      if (wrapperOtro) {
-        wrapperOtro.classList.add("hidden");
-      }
-    });
-
-    const selectRefugio = document.getElementById("select_refugio_id") as HTMLSelectElement;
-    if (selectRefugio) {
-      selectRefugio.addEventListener("change", function() {
-        const option = this.options[this.selectedIndex];
-        const latStr = option.getAttribute("data-lat");
-        const lngStr = option.getAttribute("data-lng");
-        const nombre = option.getAttribute("data-nombre");
-
-        if (latStr && lngStr && latStr !== "null" && lngStr !== "null") {
-          const lat = parseFloat(latStr);
-          const lng = parseFloat(lngStr);
-          
-          if (!isNaN(lat) && !isNaN(lng)) {
-            const latInput = document.getElementById("latitud") as HTMLInputElement;
-            const lonInput = document.getElementById("longitud") as HTMLInputElement;
-            const mapSearchInput = document.getElementById("map-search-input") as HTMLInputElement;
-            const addressInput = document.querySelector('input[name="ubicacion_nombre"]') as HTMLInputElement;
-            
-            if (latInput && lonInput) {
-              latInput.value = lat.toString();
-              lonInput.value = lng.toString();
-              latInput.dispatchEvent(new Event("change"));
-              
-              if (mapSearchInput) mapSearchInput.value = nombre || "";
-              if (addressInput) addressInput.value = "Refugio: " + (nombre || "");
-              
-              mostrarToast("📍 Ubicación actualizada al refugio", "border-blue-500/30");
-            }
-          }
-        }
-      });
-    }
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      // Validar datos antes de submit
-      limpiarErrores();
-      if (!inputTipo.value) {
-        mostrarToast("❌ Selecciona un tipo de reporte.", "border-red-500/30");
-        goToStep(1);
-        return;
-      }
-      if (!validarPaso2()) {
-        goToStep(2);
-        return;
-      }
-
-      const formData = new FormData(form);
-      const data = Object.fromEntries(formData.entries());
-
-      let descConcatenada = String(data.descripcion).trim();
-      let payload: any = {};
-      let endpointUrl = "/api/reportes";
-      
-      let refugio_id = null;
-      let hospital_id = null;
-      let centro_acopio_id = null;
-      if (data.refugio_id) {
-        const [tipo, idStr] = String(data.refugio_id).split(":");
-        const id = parseInt(idStr, 10);
-        if (tipo === "hospital") {
-          hospital_id = id;
-        } else if (tipo === "centro_acopio") {
-          centro_acopio_id = id;
-        } else if (tipo === "refugio") {
-          refugio_id = id;
-        }
-      }
-
-      if (data.tipo === "desaparecido") {
-        const fechaContacto = String(data.extra_ultimo_contacto).replace("T", " ");
-        const ubicacion = `${String(data.extra_estado).trim()}, ${String(data.extra_ciudad).trim()}, Sector ${String(data.extra_sector).trim()}`;
-        const senas = String(data.extra_senas).trim();
-        
-        descConcatenada = `[FECHA ÚLTIMO CONTACTO: ${fechaContacto}]\n[UBICACIÓN: ${ubicacion}]\n[SEÑAS: ${senas}]\n\n${descConcatenada}`;
-        payload = {
-          tipo: "desaparecido",
-          nombre_buscado: data.nombre_buscado ? String(data.nombre_buscado).trim() : null,
-          cedula_buscado: data.cedula_buscado ? String(data.cedula_buscado).trim() : null,
-          descripcion: descConcatenada,
-          reportante_nombre: data.reportante_nombre ? String(data.reportante_nombre).trim() : null,
-          reportante_contacto: data.reportante_contacto ? String(data.reportante_contacto).trim() : null,
-          ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
-          latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
-          longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
-          foto_key: data.foto_key ? String(data.foto_key).trim() : null,
-          refugio_id,
-          hospital_id,
-          centro_acopio_id
-        };
-      } else if (data.tipo === "encontrado") {
-        payload = {
-          tipo: "encontrado",
-          nombre_buscado: data.nombre_buscado ? String(data.nombre_buscado).trim() : null,
-          cedula_buscado: data.cedula_buscado ? String(data.cedula_buscado).trim() : null,
-          descripcion: descConcatenada,
-          reportante_nombre: data.reportante_nombre ? String(data.reportante_nombre).trim() : null,
-          reportante_contacto: data.reportante_contacto ? String(data.reportante_contacto).trim() : null,
-          ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
-          latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
-          longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
-          foto_key: data.foto_key ? String(data.foto_key).trim() : null,
-          refugio_id,
-          hospital_id,
-          centro_acopio_id
-        };
-      } else if (data.tipo === "necesidad") {
-        endpointUrl = "/api/necesidades";
-        
-        let categoriaFinal = String(data.necesidad_categoria);
-        if (categoriaFinal === "Otro") {
-          categoriaFinal = String(data.necesidad_categoria_otro || "").trim() || "Otro";
-        }
-
-        payload = {
-          tipo: "necesidad",
-          categoria: categoriaFinal,
-          gravedad: String(data.necesidad_gravedad),
-          afectados: data.necesidad_afectados ? parseInt(String(data.necesidad_afectados), 10) : null,
-          descripcion: descConcatenada,
-          ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
-          latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
-          longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
-          telefono: data.necesidad_telefono ? String(data.necesidad_telefono).trim() : null,
-          foto_key: data.foto_key ? String(data.foto_key).trim() : null,
-          refugio_id,
-          hospital_id,
-          centro_acopio_id,
-          reportante_nombre: data.reportante_nombre ? String(data.reportante_nombre).trim() : null,
-          reportante_contacto: data.reportante_contacto ? String(data.reportante_contacto).trim() : null
-        };
-      } else if (data.tipo === "refugio") {
-        const centroTipo = String(data.refugio_tipo);
-        const ocupacion = data.refugio_ocupacion ? `${data.refugio_ocupacion} pers.` : "0 pers.";
-        const capacidad = data.refugio_capacidad ? `${data.refugio_capacidad} pers.` : "100 pers.";
-        
-        descConcatenada = `[TIPO CENTRO: ${centroTipo}]\n[OCUPACIÓN: ${ocupacion} / ${capacidad}]\n\n${descConcatenada}`;
-        payload = {
-          tipo: "refugio",
-          nombre_buscado: data.refugio_nombre ? String(data.refugio_nombre).trim() : "Refugio sin nombre",
-          cedula_buscado: null,
-          descripcion: descConcatenada,
-          reportante_nombre: data.reportante_nombre ? String(data.reportante_nombre).trim() : null,
-          reportante_contacto: data.reportante_contacto ? String(data.reportante_contacto).trim() : null,
-          ubicacion_nombre: data.ubicacion_nombre ? String(data.ubicacion_nombre).trim() : null,
-          latitud: data.latitud ? parseFloat(String(data.latitud)) : null,
-          longitud: data.longitud ? parseFloat(String(data.longitud)) : null,
-          foto_key: data.foto_key ? String(data.foto_key).trim() : null,
-          refugio_id,
-          hospital_id,
-          centro_acopio_id
-        };
-      }
-
-      mostrarToast("Procesando reporte...", "border-blue-500/30");
-
-      if (navigator.onLine) {
-        try {
-          const response = await fetch(endpointUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-          });
-
-          if (response.ok) {
-            const resData = await response.json();
-            const generarFlyerChk = document.getElementById("generar-flyer-chk") as HTMLInputElement;
-            const quiereFlyer = generarFlyerChk && generarFlyerChk.checked;
-
-            if (quiereFlyer) {
-              mostrarToast("Reporte creado. Generando cartel de emergencia...", "border-blue-500/30");
-              try {
-                let flyerTitle = `Emergencia Activa`;
-                if (payload.tipo === "desaparecido") {
-                  flyerTitle = `SE BUSCA: ${payload.nombre_buscado || "Persona Desaparecida"}`;
-                } else if (payload.tipo === "encontrado") {
-                  flyerTitle = `PERSONA ENCONTRADA: ${payload.nombre_buscado || "No identificada"}`;
-                } else if (payload.tipo === "necesidad") {
-                  const catMatch = payload.descripcion.match(/\[TIPO NECESIDAD: (.*?)\]/);
-                  const categoria = catMatch ? catMatch[1] : "Necesidad Urgente";
-                  flyerTitle = `EMERGENCIA: ${categoria.toUpperCase()}`;
-                } else if (payload.tipo === "refugio") {
-                  flyerTitle = `REFUGIO ACTIVO: ${payload.nombre_buscado}`;
-                }
-
-                // Concatenar la ubicación al principio de la descripción del flyer si existe
-                let flyerDescription = payload.descripcion;
-                if (payload.ubicacion_nombre) {
-                  flyerDescription = `[UBICACIÓN: ${payload.ubicacion_nombre}]\n${flyerDescription}`;
-                }
-
-                const flyerPayload = {
-                  title: flyerTitle,
-                  description: flyerDescription,
-                  foto_key: payload.foto_key || "",
-                  tipo: payload.tipo,
-                  phones: (() => {
-                    const phones: string[] = [];
-                    // Teléfono específico por tipo tiene prioridad
-                    const tipoTel = payload.tipo === "necesidad"
-                      ? (data.necesidad_telefono ? String(data.necesidad_telefono).trim() : "")
-                      : payload.tipo === "refugio"
-                        ? (data.refugio_telefono ? String(data.refugio_telefono).trim() : "")
-                        : "";
-                    if (tipoTel) phones.push(tipoTel);
-                    // Teléfono del reportante como secundario/fallback
-                    const repTel = payload.reportante_contacto || "";
-                    if (repTel && repTel !== tipoTel) phones.push(repTel);
-                    return phones;
-                  })(),
-                  socials: [],
-                  registrarEnBusca: false,
-                  necesidad_id: (payload.tipo === "necesidad" && resData.id) ? resData.id : undefined
-                };
-
-                const flyerResponse = await fetch("/api/flyers", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(flyerPayload)
-                });
-
-                if (flyerResponse.ok) {
-                  const flyerData = await flyerResponse.json();
-                  mostrarToast("✓ Cartel generado. Redirigiendo...", "border-green-500/30");
-                  setTimeout(() => {
-                    window.location.href = `/f/${flyerData.id}?creado=true`;
-                  }, 1200);
-                  return;
-                }
-              } catch (flyerErr) {
-                console.error("Error al generar flyer:", flyerErr);
-              }
-            }
-
-            mostrarToast("✓ Reporte emitido con éxito.", "border-green-500/30");
-            form.reset();
-            document.getElementById("btn-quitar-foto")?.click();
-            
-            // Volver al paso 1 reseteando la selección
-            typeCards.forEach(c => {
-              c.classList.remove("border-primary", "bg-canvas-softer", "scale-98");
-              c.classList.add("border-canvas-soft", "bg-canvas");
+            const response = await fetch(endpointUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
             });
-            inputTipo.value = "";
-            btnNext1.disabled = true;
-            goToStep(1);
-
-          } else {
-            const errData = await response.json();
-            const rawError = errData.error || "";
-
-            // Tratar de parsear como un error de validación de Zod
-            try {
-              const zodErrors = JSON.parse(rawError);
-              if (Array.isArray(zodErrors)) {
-                if (isTWA) tg.MainButton.hideProgress();
-                zodErrors.forEach(err => {
-                  const fieldName = err.path[0];
-                  // Si es descripción concatenada, mapear a textarea descripción
-                  let input = form.querySelector(`[name="${fieldName}"]`) as HTMLElement;
-                  if (fieldName === "descripcion") {
-                    input = inputDescripcion;
+            
+            if (response.ok) {
+              const resData = await response.json();
+              const generarFlyerChk = document.getElementById("generar-flyer-chk");
+              const quiereFlyer = generarFlyerChk && generarFlyerChk.checked;
+              
+              if (quiereFlyer) {
+                this.showToast("Reporte creado. Generando cartel de emergencia...", "border-blue-500/30");
+                try {
+                  let flyerTitle = `Emergencia Activa`;
+                  if (payload.tipo === "desaparecido") flyerTitle = `SE BUSCA: ${payload.nombre_buscado || "Persona Desaparecida"}`;
+                  else if (payload.tipo === "encontrado") flyerTitle = `PERSONA ENCONTRADA: ${payload.nombre_buscado || "No identificada"}`;
+                  else if (payload.tipo === "necesidad") {
+                    const catMatch = payload.descripcion.match(/\[TIPO NECESIDAD: (.*?)\]/);
+                    const categoria = catMatch ? catMatch[1] : "Necesidad Urgente";
+                    flyerTitle = `EMERGENCIA: ${categoria.toUpperCase()}`;
+                  } else if (payload.tipo === "refugio") flyerTitle = `REFUGIO ACTIVO: ${payload.nombre_buscado}`;
+                  
+                  let flyerDescription = payload.descripcion;
+                  if (payload.ubicacion_nombre) flyerDescription = `[UBICACIÓN: ${payload.ubicacion_nombre}]\n${flyerDescription}`;
+                  
+                  const flyerPayload = {
+                    title: flyerTitle,
+                    description: flyerDescription,
+                    foto_key: payload.foto_key || "",
+                    tipo: payload.tipo,
+                    phones: (() => {
+                      const phones = [];
+                      const tipoTel = payload.tipo === "necesidad" ? (data.necesidad_telefono || "") : payload.tipo === "refugio" ? (data.refugio_telefono || "") : "";
+                      if (tipoTel) phones.push(tipoTel);
+                      const repTel = payload.reportante_contacto || "";
+                      if (repTel && repTel !== tipoTel) phones.push(repTel);
+                      return phones;
+                    })(),
+                    socials: [],
+                    registrarEnBusca: false,
+                    necesidad_id: (payload.tipo === "necesidad" && resData.id) ? resData.id : undefined
+                  };
+                  
+                  const flyerResponse = await fetch("/api/flyers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(flyerPayload) });
+                  if (flyerResponse.ok) {
+                    const flyerData = await flyerResponse.json();
+                    this.showToast("✓ Cartel generado. Redirigiendo...", "border-green-500/30");
+                    setTimeout(() => { window.location.href = `/f/${flyerData.id}?creado=true`; }, 1200);
+                    return;
                   }
-                  if (input) {
-                    mostrarError(input, err.message);
-                  }
-                });
-
-                const primerError = form.querySelector(".border-red-500");
-                if (primerError) {
-                  primerError.scrollIntoView({ behavior: "smooth", block: "center" });
-                  (primerError as HTMLElement).focus();
-                }
-
-                mostrarToast("❌ Error de validación en el servidor.", "border-red-500/30");
-                goToStep(2);
-                return;
+                } catch (e) { console.error(e); }
               }
-            } catch (jsonErr) {
-              // No era un ZodError parseable, usar fallback
+              this.showToast("✓ Reporte emitido con éxito.", "border-green-500/30");
+              form.reset();
+              document.getElementById("btn-quitar-foto")?.click();
+              this.tipo = "";
+              this.goToStep(1);
+            } else {
+              const errData = await response.json();
+              this.showToast("❌ " + (errData.error || "Error"), "border-red-500/30");
             }
-
-            if (isTWA) tg.MainButton.hideProgress();
-            throw new Error(rawError || "Error al procesar en servidor");
+          } catch (e) {
+            this.guardarOffline(payload);
           }
-        } catch (err: any) {
-          console.error("Fallo de red o servidor:", err);
-          if (isTWA) tg.MainButton.hideProgress();
-          // Solo guardar offline si es realmente un problema de conexion o red
-          if (!navigator.onLine) {
-            await guardarOffline(payload);
-          } else {
-            mostrarToast("❌ " + err.message, "border-red-500/30");
-          }
+        } else {
+          this.guardarOffline(payload);
         }
-      } else {
-        await guardarOffline(payload);
-      }
-    });
-
-    async function guardarOffline(payload: any) {
-      if (isTWA) tg.MainButton.hideProgress();
-      try {
-        const queueType = data.tipo === "necesidad" ? "necesidad" : "reporte";
-        await encolarRegistro(queueType, payload);
-        mostrarToast("⚠️ Guardado localmente sin red. Se sincronizará automáticamente.", "border-yellow-500/30");
-        form.reset();
-        document.getElementById("btn-quitar-foto")?.click();
-        
-        // Volver al paso 1 reseteando la selección
-        typeCards.forEach(c => {
-          c.classList.remove("border-primary", "bg-canvas-softer", "scale-98");
-          c.classList.add("border-canvas-soft", "bg-canvas");
-        });
-        inputTipo.value = "";
-        btnNext1.disabled = true;
-        goToStep(1);
-
-        const event = new CustomEvent("offline-record-added");
-        window.dispatchEvent(event);
-      } catch (e: any) {
-        mostrarToast("❌ Error al guardar localmente: " + e.message, "border-red-500/30");
+      },
+      
+      async guardarOffline(payload) {
+        try {
+          const queueType = payload.tipo === "necesidad" ? "necesidad" : "reporte";
+          await encolarRegistro(queueType, payload);
+          this.showToast("⚠️ Guardado localmente sin red. Se sincronizará automáticamente.", "border-yellow-500/30");
+          document.getElementById("form-reporte").reset();
+          document.getElementById("btn-quitar-foto")?.click();
+          this.tipo = "";
+          this.goToStep(1);
+          window.dispatchEvent(new CustomEvent("offline-record-added"));
+        } catch (e) {
+          this.showToast("❌ Error al guardar localmente: " + e.message, "border-red-500/30");
+        }
       }
     }
-
-    function mostrarToast(text: string, borderClass: string) {
-      if (!toastContainer || !toastMessage) return;
-
-      toastMessage.className = `bg-canvas border ${borderClass} text-ink rounded-xl p-4 shadow-md font-uber-text uber-body-sm flex items-center gap-2`;
-      toastMessage.innerHTML = `<span>${text}</span>`;
-      toastContainer.classList.remove("hidden");
-
-      setTimeout(() => {
-        toastContainer.classList.add("hidden");
-      }, 5000);
-    }
   }
-  }
-
-  // Ejecutar inicialización al cargar la página y en navegaciones de ClientRouter
-  document.addEventListener("astro:page-load", initFormReporte);
 </script>

@@ -24,12 +24,12 @@ export const POST: APIRoute = async (context) => {
     // UPSERT: si el endpoint ya existe, actualizar keys
     await DB.prepare(`
       INSERT INTO push_subscriptions (endpoint, p256dh, auth, rol, created_at)
-      VALUES (?, ?, ?, ?, datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, ?, datetime('now'))
       ON CONFLICT(endpoint) DO UPDATE SET
         p256dh = excluded.p256dh,
         auth = excluded.auth,
         rol = excluded.rol,
-        created_at = datetime('now', '-4 hours')
+        created_at = datetime('now')
     `).bind(
       validated.endpoint,
       validated.keys.p256dh,

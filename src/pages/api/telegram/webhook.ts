@@ -6,7 +6,7 @@ export const prerender = false;
 
 export const POST: APIRoute = async (context) => {
   try {
-    const cfEnv = env as any;
+    const cfEnv = env;
     const url = new URL(context.request.url);
     const secret = url.searchParams.get("secret");
 
@@ -19,7 +19,7 @@ export const POST: APIRoute = async (context) => {
     const update = await context.request.json();
 
     // Procesar asíncronamente usando waitUntil si está disponible para evitar bloqueos
-    const cfContext = (context.locals as any).cfContext || (context.locals as any).runtime?.ctx;
+    const cfContext = context.locals.cfContext || context.locals.runtime?.ctx;
     const promise = processTelegramUpdate(update, cfEnv);
 
     if (cfContext?.waitUntil) {

@@ -16,12 +16,12 @@ export const GET: APIRoute = async ({ params, request }) => {
     }
 
     // 1. Obtener datos del refugio/acopio/hospital
-    let refugio = await DB.prepare("SELECT *, 'refugio' as tipo FROM refugios WHERE id = ?").bind(id).first<any>();
+    let refugio = (await DB.prepare("SELECT *, 'refugio' as tipo FROM refugios WHERE id = ?").bind(id).first()) as any;
     if (!refugio) {
-      refugio = await DB.prepare("SELECT *, 'centro_acopio' as tipo FROM centros_acopio WHERE id = ?").bind(id).first<any>();
+      refugio = (await DB.prepare("SELECT *, 'centro_acopio' as tipo FROM centros_acopio WHERE id = ?").bind(id).first()) as any;
     }
     if (!refugio) {
-      refugio = await DB.prepare("SELECT *, 'hospital' as tipo FROM hospitales WHERE id = ?").bind(id).first<any>();
+      refugio = (await DB.prepare("SELECT *, 'hospital' as tipo FROM hospitales WHERE id = ?").bind(id).first()) as any;
     }
 
     if (!refugio) {

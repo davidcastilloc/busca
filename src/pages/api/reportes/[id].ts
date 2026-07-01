@@ -103,7 +103,7 @@ export const PATCH: APIRoute = async (context) => {
             refugio_id = ?,
             centro_acopio_id = ?,
             hospital_id = ?,
-            updated_at = datetime('now', '-4 hours'),
+            updated_at = datetime('now'),
             updated_by = ?
         WHERE id = ?
       `).bind(
@@ -127,7 +127,7 @@ export const PATCH: APIRoute = async (context) => {
       if (voluntario) {
         await DB.prepare(`
           INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
-          VALUES (?, 'EDITAR', 'reportes', ?, datetime('now', '-4 hours'))
+          VALUES (?, 'EDITAR', 'reportes', ?, datetime('now'))
         `).bind(voluntario.id, Number(id)).run();
       }
 
@@ -141,7 +141,7 @@ export const PATCH: APIRoute = async (context) => {
           `• <b>Notas:</b> <i>"${body.notes || body.notas || "Sin comentarios"}"</i>\n\n` +
           `🔗 <a href="https://dondeestan.org/admin/dashboard">Verificar en Panel de Rescatistas</a>`;
         
-        const cfContext = (context.locals as any).cfContext || (context.locals as any).runtime?.ctx;
+        const cfContext = context.locals.cfContext || context.locals.runtime?.ctx;
         if (cfContext?.waitUntil) {
           cfContext.waitUntil(notifyAdmins(env, alertMsg));
         } else {
@@ -163,7 +163,7 @@ export const PATCH: APIRoute = async (context) => {
       await DB.prepare(`
         UPDATE reportes 
         SET verificacion = ?,
-            updated_at = datetime('now', '-4 hours'),
+            updated_at = datetime('now'),
             updated_by = ?
         WHERE id = ?
       `).bind(nuevaVerificacion, voluntario ? voluntario.id : null, Number(id)).run();
@@ -171,7 +171,7 @@ export const PATCH: APIRoute = async (context) => {
       if (voluntario) {
         await DB.prepare(`
           INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
-          VALUES (?, 'EDITAR', 'reportes', ?, datetime('now', '-4 hours'))
+          VALUES (?, 'EDITAR', 'reportes', ?, datetime('now'))
         `).bind(voluntario.id, Number(id)).run();
       }
 
@@ -180,7 +180,7 @@ export const PATCH: APIRoute = async (context) => {
         await DB.prepare(`
           UPDATE reportes 
           SET estado_reporte = 'resuelto', 
-              updated_at = datetime('now', '-4 hours') 
+              updated_at = datetime('now') 
           WHERE cedula_buscado = ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
         `).bind(existente.cedula_buscado).run();
       }
@@ -189,7 +189,7 @@ export const PATCH: APIRoute = async (context) => {
         await DB.prepare(`
           UPDATE reportes 
           SET estado_reporte = 'resuelto', 
-              updated_at = datetime('now', '-4 hours') 
+              updated_at = datetime('now') 
           WHERE nombre_buscado LIKE ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
         `).bind(`%${existente.nombre_buscado}%`).run();
       }
@@ -212,7 +212,7 @@ export const PATCH: APIRoute = async (context) => {
             foto_evidencia_key = NULL,
             contacto_evidencia = NULL,
             notas_evidencia = NULL,
-            updated_at = datetime('now', '-4 hours'),
+            updated_at = datetime('now'),
             updated_by = ?
         WHERE id = ?
       `).bind(nuevoEstado, nuevaVerificacion, voluntario ? voluntario.id : null, Number(id)).run();
@@ -220,7 +220,7 @@ export const PATCH: APIRoute = async (context) => {
       if (voluntario) {
         await DB.prepare(`
           INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
-          VALUES (?, 'EDITAR', 'reportes', ?, datetime('now', '-4 hours'))
+          VALUES (?, 'EDITAR', 'reportes', ?, datetime('now'))
         `).bind(voluntario.id, Number(id)).run();
       }
 
@@ -247,7 +247,7 @@ export const PATCH: APIRoute = async (context) => {
           refugio_id = ?,
           centro_acopio_id = ?,
           hospital_id = ?,
-          updated_at = datetime('now', '-4 hours'),
+          updated_at = datetime('now'),
           updated_by = ?
       WHERE id = ?
     `).bind(
@@ -268,7 +268,7 @@ export const PATCH: APIRoute = async (context) => {
     if (voluntario) {
       await DB.prepare(`
         INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
-        VALUES (?, 'EDITAR', 'reportes', ?, datetime('now', '-4 hours'))
+        VALUES (?, 'EDITAR', 'reportes', ?, datetime('now'))
       `).bind(voluntario.id, Number(id)).run();
     }
 
@@ -278,7 +278,7 @@ export const PATCH: APIRoute = async (context) => {
         await DB.prepare(`
           UPDATE reportes 
           SET estado_reporte = 'resuelto', 
-              updated_at = datetime('now', '-4 hours') 
+              updated_at = datetime('now') 
           WHERE cedula_buscado = ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
         `).bind(existente.cedula_buscado).run();
       }
@@ -287,7 +287,7 @@ export const PATCH: APIRoute = async (context) => {
         await DB.prepare(`
           UPDATE reportes 
           SET estado_reporte = 'resuelto', 
-              updated_at = datetime('now', '-4 hours') 
+              updated_at = datetime('now') 
           WHERE nombre_buscado LIKE ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
         `).bind(`%${existente.nombre_buscado}%`).run();
       }

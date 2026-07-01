@@ -25,7 +25,7 @@ export const GET: APIRoute = async (context) => {
   
   try {
     const { id } = params;
-    const { DB, FOTOS_BUCKET } = env as any;
+    const { DB, FOTOS_BUCKET } = env;
 
     if (!DB || !id) {
       return new Response("Base de datos no disponible", { status: 500 });
@@ -540,7 +540,7 @@ export const GET: APIRoute = async (context) => {
 
     // 7. Guardar en la caché de Cloudflare para futuras visitas inmediatas
     if (cache) {
-      const cfCtx = (locals as any).cfContext || (locals as any).runtime?.ctx;
+      const cfCtx = locals.cfContext || locals.runtime?.ctx;
       if (cfCtx && cfCtx.waitUntil) {
         cfCtx.waitUntil(cache.put(cacheKey, response.clone()));
       }

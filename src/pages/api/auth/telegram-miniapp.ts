@@ -6,7 +6,7 @@ export const prerender = false;
 
 export const POST: APIRoute = async (context) => {
   try {
-    const { DB, TELEGRAM_BOT_TOKEN } = env as any;
+    const { DB, TELEGRAM_BOT_TOKEN } = env;
     if (!DB) {
       return new Response(JSON.stringify({ error: "Base de datos no disponible." }), {
         status: 500,
@@ -78,7 +78,7 @@ export const POST: APIRoute = async (context) => {
 
     await DB.prepare(`
       INSERT INTO sesiones_voluntarios (token, voluntario_id, expires_at, created_at)
-      VALUES (?, ?, ?, datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, datetime('now'))
     `).bind(
       token,
       voluntario.id,

@@ -128,7 +128,7 @@ export async function handleShelterStatusUpdate(
   const nuevaOcupacion = Math.round((r.capacidad_maxima * porcentaje) / 100);
 
   await db
-    .prepare("UPDATE refugios SET ocupacion_actual = ?, updated_at = datetime('now', '-4 hours') WHERE id = ?")
+    .prepare("UPDATE refugios SET ocupacion_actual = ?, updated_at = datetime('now') WHERE id = ?")
     .bind(nuevaOcupacion, refugioId)
     .run();
 
@@ -140,7 +140,7 @@ export async function handleShelterStatusUpdate(
 
     await db.prepare(`
       INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
-      VALUES (?, 'EDITAR', 'refugios', ?, datetime('now', '-4 hours'))
+      VALUES (?, 'EDITAR', 'refugios', ?, datetime('now'))
     `).bind(voluntario.id, refugioId).run();
   }
 
