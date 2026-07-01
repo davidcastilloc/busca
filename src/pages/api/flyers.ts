@@ -18,7 +18,7 @@ async function notifyChannel(
 
   try {
     const client = new TelegramClient(token);
-    const flyerUrl = `https://dondeestan.org/flyer/${flyerId}`;
+    const flyerUrl = `https://dondeestan.org/f/${flyerId}`;
 
     // Determinar tipo a partir del título
     let emoji = "🚨";

@@ -60,7 +60,7 @@ const formatFecha = (fechaStr: string) => {
     ) : (
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
         {flyers.map((flyer) => (
-          <a href={`/flyer/${flyer.id}`} class="group flex flex-col bg-canvas border border-canvas-soft rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
+          <a href={`/f/${flyer.id}`} class="group flex flex-col bg-canvas border border-canvas-soft rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
             <div class="aspect-[3/4] w-full bg-canvas-soft relative overflow-hidden flex items-center justify-center">
               {flyer.foto_key ? (
                 <img 
