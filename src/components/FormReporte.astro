@@ -952,7 +952,7 @@ try {
                   const flyerData = await flyerResponse.json();
                   mostrarToast("✓ Cartel generado. Redirigiendo...", "border-green-500/30");
                   setTimeout(() => {
-                    window.location.href = `/flyer/${flyerData.id}?creado=true`;
+                    window.location.href = `/f/${flyerData.id}?creado=true`;
                   }, 1200);
                   return;
                 }

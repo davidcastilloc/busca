@@ -51,8 +51,8 @@ const formatFechaHora = (fechaStr: string) => {
 
 // Datos para compartir en redes sociales
 const siteUrl = "https://dondeestan.org";
-const flyerUrl = `${siteUrl}/flyer/${id}`;
-const ogImage = `${siteUrl}/flyer/${id}.png`;
+const flyerUrl = `${siteUrl}/f/${id}`;
+const ogImage = `${siteUrl}/f/${id}.png`;
 
 // Descripción corta para compartir
 const rawDesc = flyer?.description || "";
@@ -320,7 +320,7 @@ const ogDesc = shareText.replace(flyerUrl, "").trim();
           try {
             const flyerId = window.location.pathname.split("/").pop() || "";
             const a = document.createElement("a");
-            a.href = `/flyer/${flyerId}.png`;
+            a.href = `/f/${flyerId}.png`;
             a.download = `flyer_${flyerId}.png`;
             document.body.appendChild(a);
             a.click();

@@ -78,7 +78,7 @@ export const GET: APIRoute = async (context) => {
     const qrPromise = (async (): Promise<string> => {
       try {
         const siteUrl = "https://dondeestan.org";
-        const flyerUrl = `${siteUrl}/flyer/${id}`;
+        const flyerUrl = `${siteUrl}/f/${id}`;
         const qrResponse = await fetch(`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(flyerUrl)}`);
         if (qrResponse.ok) {
           const qrBytes = await qrResponse.arrayBuffer();

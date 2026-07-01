@@ -280,7 +280,7 @@ export async function handleReportState(
       // Notificar al canal publico si existe
       if (env.TELEGRAM_CHANNEL_ID) {
         try {
-          const flyerUrl = `https://dondeestan.org/flyer/${flyerId}`;
+          const flyerUrl = `https://dondeestan.org/f/${flyerId}`;
           let msg = `🔴 <b>SE BUSCA: ${flyerTitle}</b>\n\n`;
           const descLimpia = descConcatenada.replace(/\[.*?\]/g, "").trim().substring(0, 200);
           if (descLimpia) msg += `${descLimpia}${descLimpia.length >= 200 ? "..." : ""}\n\n`;
@@ -336,7 +336,7 @@ export async function handleReportState(
           `• <b>Reporta:</b> ${data.reportante_nombre} (${data.parentesco})\n\n` +
           `El reporte ya está siendo procesado por nuestra Inteligencia Artificial para el cruce de datos.\n\n` +
           `Hemos generado automáticamente un <b>Cartel de Búsqueda</b> para ti. Ábrelo en el siguiente enlace y compártelo en WhatsApp o Redes Sociales:\n` +
-          `🔗 <b>https://dondeestan.org/flyer/${flyerId}</b>`
+          `🔗 <b>https://dondeestan.org/f/${flyerId}</b>`
         );
       } else {
         throw new Error("CENSO_QUEUE binding not found");
