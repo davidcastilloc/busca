@@ -103,6 +103,21 @@ export const POST: APIRoute = async (context) => {
       friendlyId += chars.charAt(Math.floor(Math.random() * chars.length));
     }
 
+     // Inferir tipo final a partir del título si es ambiguo
+    let tipoFinal = tipo;
+    if (!tipoFinal || tipoFinal === "desaparecido") {
+      const titleUpper = title.toUpperCase();
+      if (titleUpper.includes("REFUGIO")) {
+        tipoFinal = "refugio";
+      } else if (titleUpper.includes("EMERGENCIA") || titleUpper.includes("NECESIDAD")) {
+        tipoFinal = "necesidad";
+      } else if (titleUpper.includes("ENCONTRAD") || titleUpper.includes("SALVO")) {
+        tipoFinal = "encontrado";
+      } else {
+        tipoFinal = tipo || "desaparecido";
+      }
+    }
+
     // Insertar en D1
     await DB.prepare(`
       INSERT INTO flyers (id, title, description, foto_key, phones, socials, tipo, created_at, updated_at)
@@ -114,7 +129,7 @@ export const POST: APIRoute = async (context) => {
       foto_key,
       JSON.stringify(phones || []),
       JSON.stringify(socials || []),
-      tipo || "desaparecido"
+      tipoFinal
     ).run();
 
     // Si el usuario seleccionó registrar, encolamos automáticamente el reporte de búsqueda
