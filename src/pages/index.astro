@@ -11,6 +11,14 @@ import { CATEGORIAS_INVENTARIO } from "../lib/items";
 export const prerender = false;
 
 let esVoluntario = false;
+function escapeJSString(str: string | null | undefined): string {
+  if (!str) return "";
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r');
+}
 let totalRefugios = 0;
 let totalNecesidades = 0;
 let necesidadesCriticas: any[] = [];
@@ -289,18 +297,18 @@ try {
                 x-data={`{
                   ocupacion: ${ocupacion},
                   capacidad: ${capacidad},
-                  encargado: ${JSON.stringify(r.encargado || "")},
-                  direccion: ${JSON.stringify(r.direccion || "")},
-                  contacto: ${JSON.stringify(r.contacto || "")},
-                  necesidades: ${JSON.stringify(r.necesidades || "")},
+                  encargado: '${escapeJSString(r.encargado)}',
+                  direccion: '${escapeJSString(r.direccion)}',
+                  contacto: '${escapeJSString(r.contacto)}',
+                  necesidades: '${escapeJSString(r.necesidades)}',
                   ninos: ${r.ninos || 0},
                   bebes: ${r.bebes_lactantes || 0},
                   mayores: ${r.adultos_mayores || 0},
                   prof: ${r.personal_profesional || 0},
                   vols: ${r.voluntarios || 0},
-                  itemsCriticos: ${JSON.stringify(itemsCriticos)},
-                  itemsAlerta: ${JSON.stringify(itemsAlerta)},
-                  fechaActualizada: ${JSON.stringify(fechaActualizada || "")}
+                  itemsCriticos: ${JSON.stringify(itemsCriticos).replace(/"/g, "'")},
+                  itemsAlerta: ${JSON.stringify(itemsAlerta).replace(/"/g, "'")},
+                  fechaActualizada: '${escapeJSString(fechaActualizada)}'
                 }`}
                 @refugio-updated-${r.id}.window="
                   ocupacion = $event.detail.ocupacion_actual;
