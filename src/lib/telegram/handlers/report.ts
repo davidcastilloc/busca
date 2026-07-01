@@ -26,7 +26,8 @@ export async function handleReportState(
   photoArray?: any[],
   env?: any,
   location?: { latitude: number; longitude: number },
-  isAuthorized: boolean = false
+  isAuthorized: boolean = false,
+  contact?: any
 ): Promise<void> {
   const currentStep = session.step;
   const data = session.data || {};
@@ -47,22 +48,38 @@ export async function handleReportState(
     await setSession(db, telegramId, chatId, "rep_contacto", data);
     await client.sendMessage(
       chatId,
-      `Bien, ${data.reportante_nombre}. Ahora escribe tu <b>número de teléfono de contacto</b> (ej. 0414-1234567):`
+      `Bien, ${data.reportante_nombre}. Ahora escribe tu <b>número de teléfono de contacto</b> o pulsa el botón abajo para compartirlo:`,
+      {
+        reply_markup: {
+          keyboard: [
+            [{ text: "📱 Compartir mi número", request_contact: true }],
+            [{ text: "/cancelar" }]
+          ],
+          resize_keyboard: true,
+          one_time_keyboard: true
+        }
+      }
     );
     return;
   }
 
   // 2. Esperando Contacto
   if (currentStep === "rep_contacto") {
-    if (!text || text.trim().length < 5) {
-      await client.sendMessage(chatId, "⚠️ Por favor, ingresa un número de teléfono válido:");
+    let phoneNumber = text;
+    if (contact && contact.phone_number) {
+      phoneNumber = contact.phone_number;
+    }
+
+    if (!phoneNumber || phoneNumber.trim().length < 5) {
+      await client.sendMessage(chatId, "⚠️ Por favor, ingresa un número de teléfono válido o pulsa el botón de Compartir:");
       return;
     }
-    data.reportante_contacto = text.trim();
+    data.reportante_contacto = phoneNumber.trim();
     await setSession(db, telegramId, chatId, "rep_name", data);
     await client.sendMessage(
       chatId,
-      "¡Gracias! Ahora sí, indícame el <b>Nombre y Apellido</b> de la persona desaparecida:"
+      "¡Gracias! Ahora sí, indícame el <b>Nombre y Apellido</b> de la persona desaparecida:",
+      { reply_markup: { remove_keyboard: true } }
     );
     return;
   }

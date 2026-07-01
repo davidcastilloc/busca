@@ -221,7 +221,7 @@ export async function processTelegramUpdate(
         return;
       }
       if (session.step.startsWith("rep_")) {
-        await handleReportState(client, db, chatId, telegramId, session, text, msg.photo, env, msg.location, isAuthorized);
+        await handleReportState(client, db, chatId, telegramId, session, text, msg.photo, env, msg.location, isAuthorized, msg.contact);
         return;
       }
       if (session.step.startsWith("fnd_")) {
