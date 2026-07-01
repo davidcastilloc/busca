@@ -228,18 +228,21 @@ try {
               }
             }
 
-            // Formatear fecha
-            let fechaFormateada = "";
-            if (r.fecha_registro) {
+            // Formatear fechas
+            const formatFechaStr = (fstr: string) => {
+              if (!fstr) return "";
               try {
-                fechaFormateada = new Date(r.fecha_registro).toLocaleString('es-VE', {
+                return new Date(fstr).toLocaleString('es-VE', {
                   dateStyle: 'short',
                   timeStyle: 'short'
                 });
               } catch {
-                fechaFormateada = r.fecha_registro;
+                return fstr;
               }
-            }
+            };
+
+            let fechaFormateada = formatFechaStr(r.fecha_registro || r.created_at);
+            let fechaActualizada = formatFechaStr(r.updated_at);
 
             // Parsear fotos
             let fotosArray: string[] = [];
@@ -298,13 +301,26 @@ try {
                   )}
                 </div>
 
-                <!-- Encargado y Fecha -->
-                {(r.encargado || fechaFormateada) && (
-                  <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs font-uber-text text-body border-t border-canvas-soft pt-2">
-                    {r.encargado && <span>👤 Encargado: <strong>{r.encargado}</strong></span>}
-                    {fechaFormateada && <span>📅 Reportado: <strong>{fechaFormateada}</strong></span>}
+                <!-- Encargado y Fechas -->
+                <div class="flex flex-col gap-2 border-t border-canvas-soft pt-3 mt-2">
+                  {r.encargado && (
+                    <div class="text-xs font-uber-text text-body">
+                      👤 Encargado: <strong class="text-ink">{r.encargado}</strong>
+                    </div>
+                  )}
+                  <div class="flex flex-wrap gap-x-4 gap-y-2">
+                    {fechaActualizada && (
+                      <div class="inline-flex items-center gap-1.5 bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded-md text-xs font-semibold font-uber-text shadow-sm" title="Última actualización de la información">
+                        ⏱️ Actualizado: {fechaActualizada}
+                      </div>
+                    )}
+                    {(!fechaActualizada && fechaFormateada) && (
+                      <div class="inline-flex items-center gap-1.5 bg-gray-50 text-gray-700 border border-gray-200 px-2.5 py-1 rounded-md text-xs font-semibold font-uber-text shadow-sm" title="Fecha de reporte original">
+                        📅 Reportado: {fechaFormateada}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
 
                 <!-- Barra de capacidad -->
                 {r.tipo === "refugio" && (
@@ -349,6 +365,14 @@ try {
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+
+                <!-- Notas Adicionales -->
+                {r.necesidades && (
+                  <div class="bg-canvas-soft/30 border border-canvas-soft p-3 rounded-lg mt-3">
+                    <span class="text-[10px] font-bold text-mute uppercase tracking-wider font-uber-text block mb-1">📝 Notas Adicionales</span>
+                    <p class="text-xs text-body font-uber-text whitespace-pre-wrap">{r.necesidades}</p>
                   </div>
                 )}
 

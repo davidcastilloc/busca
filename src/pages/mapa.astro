@@ -1038,12 +1038,22 @@ const isVolunteer = !!voluntario;
         `;
       }
 
+      let fechaActStr = "";
+      if (r.updated_at) {
+        try {
+          fechaActStr = new Date(r.updated_at).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' });
+        } catch {
+          fechaActStr = r.updated_at;
+        }
+      }
+
       detailView.innerHTML = `
         <div class="space-y-4 font-uber-text">
           <div class="flex gap-3">
             <div class="flex-1">
               <span class="text-xs font-bold uppercase tracking-wider text-primary">${r.tipo.replace("_", " ")}</span>
-              <p class="text-xs text-mute mt-1">📍 ${r.direccion}</p>
+              <p class="text-xs text-mute mt-1 mb-2">📍 ${r.direccion}</p>
+              ${fechaActStr ? `<div class="inline-flex items-center gap-1 bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold shadow-sm" title="Última actualización">⏱️ Act: ${fechaActStr}</div>` : ""}
             </div>
             ${r.contacto ? `
               <a href="tel:${r.contacto.replace(/\s/g, '')}" class="flex items-center justify-center w-10 h-10 rounded-xl bg-green-50 text-green-700 border border-green-200">📞</a>

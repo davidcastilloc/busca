@@ -238,15 +238,7 @@ try {
 
         <!-- CAMPO COMÚN: DESCRIPCIÓN DETALLADA -->
         <div class="mt-4 pt-4 border-t border-canvas-soft">
-          <div class="flex items-center justify-between mb-1">
-            <label id="label-descripcion" class="block font-uber-text uber-body-sm-strong text-body">Descripción Detallada *</label>
-            {isVolunteer && (
-              <button type="button" id="btn-dictar" class="btn btn-xs btn-outline border-canvas-soft text-mute flex items-center gap-1 cursor-pointer hover:bg-canvas-soft active:scale-95 transition-all" title="Dictar por voz (Micrófono)">
-                <span id="mic-icon">🎙️</span>
-                <span id="mic-text" class="text-xs font-uber-text">Dictar por voz</span>
-              </button>
-            )}
-          </div>
+          <label id="label-descripcion" class="block font-uber-text uber-body-sm-strong text-body mb-1">Descripción Detallada *</label>
           <textarea 
             name="descripcion" 
             id="input-descripcion"
@@ -1023,107 +1015,6 @@ try {
       setTimeout(() => {
         toastContainer.classList.add("hidden");
       }, 5000);
-    }
-
-    // Lógica de dictado por voz (Whisper)
-    const btnDictar = document.getElementById("btn-dictar") as HTMLButtonElement;
-    const micIcon = document.getElementById("mic-icon");
-    const micText = document.getElementById("mic-text");
-    let mediaRecorder: MediaRecorder | null = null;
-    let audioChunks: Blob[] = [];
-    let isRecording = false;
-
-    if (btnDictar && micIcon && micText && inputDescripcion) {
-      btnDictar.addEventListener("click", async () => {
-        if (!isRecording) {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioChunks = [];
-            
-            // Intentar usar formatos compatibles con Whisper
-            let options = {};
-            if (MediaRecorder.isTypeSupported("audio/webm")) {
-              options = { mimeType: "audio/webm" };
-            } else if (MediaRecorder.isTypeSupported("audio/ogg")) {
-              options = { mimeType: "audio/ogg" };
-            }
-            
-            mediaRecorder = new MediaRecorder(stream, options);
-            mediaRecorder.addEventListener("dataavailable", (event) => {
-              if (event.data.size > 0) {
-                audioChunks.push(event.data);
-              }
-            });
-
-            mediaRecorder.addEventListener("stop", async () => {
-              const audioBlob = new Blob(audioChunks, { type: mediaRecorder?.mimeType || "audio/webm" });
-              
-              // Cambiar botón a cargando/transcribiendo
-              btnDictar.disabled = true;
-              micIcon.textContent = "⏳";
-              micText.textContent = "Transcribiendo...";
-
-              try {
-                const response = await fetch("/api/transcribir", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/octet-stream" },
-                  body: audioBlob
-                });
-
-                if (response.ok) {
-                  const result = await response.json();
-                  if (result.text && result.text.trim()) {
-                    const text = result.text.trim();
-                    const currentVal = inputDescripcion.value.trim();
-                    inputDescripcion.value = currentVal ? `${currentVal} ${text}` : text;
-                    inputDescripcion.dispatchEvent(new Event("input"));
-                    mostrarToast("✓ Audio transcrito con éxito.", "border-green-500/30");
-                  } else {
-                    mostrarToast("⚠️ No se detectó voz clara en el audio.", "border-yellow-500/30");
-                  }
-                } else {
-                  throw new Error("Fallo en transcripción");
-                }
-              } catch (err) {
-                console.error(err);
-                mostrarToast("❌ Error al transcribir el audio.", "border-red-500/30");
-              } finally {
-                btnDictar.disabled = false;
-                micIcon.textContent = "🎙️";
-                micText.textContent = "Dictar por voz";
-                
-                // Detener todas las pistas de audio para liberar el micrófono
-                stream.getTracks().forEach(track => track.stop());
-              }
-            });
-
-            mediaRecorder.start();
-            isRecording = true;
-            btnDictar.classList.add("border-red-500", "text-red-500", "animate-pulse");
-            micIcon.textContent = "🛑";
-            micText.textContent = "Detener grabación";
-
-            // Detener automáticamente a los 15 segundos para no procesar audios gigantescos
-            setTimeout(() => {
-              if (isRecording && mediaRecorder && mediaRecorder.state !== "inactive") {
-                mediaRecorder.stop();
-                isRecording = false;
-                btnDictar.classList.remove("border-red-500", "text-red-500", "animate-pulse");
-              }
-            }, 15000);
-
-          } catch (err) {
-            console.error("Error al acceder al micrófono:", err);
-            mostrarToast("❌ Permiso de micrófono denegado o no disponible.", "border-red-500/30");
-          }
-        } else {
-          if (mediaRecorder && mediaRecorder.state !== "inactive") {
-            mediaRecorder.stop();
-          }
-          isRecording = false;
-          btnDictar.classList.remove("border-red-500", "text-red-500", "animate-pulse");
-        }
-      });
     }
   }
   }

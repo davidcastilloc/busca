@@ -1,12 +1,25 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Navbar from "../components/Navbar.astro";
+import TelegramLoginWidget from "../components/TelegramLoginWidget.astro";
 import { env } from "cloudflare:workers";
 import { obtenerVoluntarioSesion } from "../lib/auth-helpers";
 
 export const prerender = false;
 
 const sessionToken = Astro.cookies.get("session_token")?.value;
+const pendingAuthCookie = Astro.cookies.get("tg_pending_auth")?.value;
+const isTelegramRegister = Astro.url.searchParams.get("register") === "telegram" && pendingAuthCookie;
+
+let pendingTgUser = null;
+if (isTelegramRegister && pendingAuthCookie) {
+  try {
+    pendingTgUser = JSON.parse(pendingAuthCookie);
+  } catch (e) {
+    // Ignore parse error
+  }
+}
+
 let voluntario: any = null;
 let errorMsg = "";
 let successMsg = "";
@@ -235,18 +248,31 @@ const formatFecha = (fechaStr: string) => {
         </div>
 
         <!-- Selector de Pestañas Registro / Login -->
-        <div class="flex gap-1 bg-canvas-soft p-1 rounded-xl">
-          <button id="tab-login" class="flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-primary text-white border-none cursor-pointer">
-            Iniciar Sesión
-          </button>
-          <button id="tab-register" class="flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-transparent text-ink border-none cursor-pointer">
-            Registrarse
-          </button>
-        </div>
+        {!isTelegramRegister && (
+          <div class="flex gap-1 bg-canvas-soft p-1 rounded-xl">
+            <button id="tab-login" class="flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-primary text-white border-none cursor-pointer">
+              Iniciar Sesión
+            </button>
+            <button id="tab-register" class="flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-transparent text-ink border-none cursor-pointer">
+              Registrarse
+            </button>
+          </div>
+        )}
 
-        <!-- Formulario Login -->
-        <form id="form-login" class="space-y-4 bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm">
+        {/* Flujo Normal - Login */}
+        <form id="form-login" class={`space-y-4 bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm ${isTelegramRegister ? 'hidden' : ''}`}>
           <h3 class="text-sm font-bold text-ink uppercase tracking-wider font-uber-text">Ingresar a tu cuenta</h3>
+          
+          <TelegramLoginWidget 
+            botName="DondeEstanBot" 
+            authUrl="/api/auth/telegram-web" 
+          />
+          
+          <div class="relative flex py-2 items-center">
+            <div class="flex-grow border-t border-canvas-soft"></div>
+            <span class="flex-shrink-0 mx-4 text-mute text-xs font-uber-text">o con teléfono</span>
+            <div class="flex-grow border-t border-canvas-soft"></div>
+          </div>
           
           <div>
             <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="login-telefono">Teléfono *</label>
@@ -280,7 +306,7 @@ const formatFecha = (fechaStr: string) => {
           </button>
         </form>
 
-        <!-- Formulario Registro -->
+        <!-- Formulario Registro Normal -->
         <form id="form-register" class="space-y-4 bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm hidden">
           <h3 class="text-sm font-bold text-ink uppercase tracking-wider font-uber-text">Crear cuenta voluntario</h3>
 
@@ -336,8 +362,63 @@ const formatFecha = (fechaStr: string) => {
             Registrarse y entrar
           </button>
         </form>
+
+        {/* Flujo Completar Registro Telegram */}
+        {isTelegramRegister && (
+          <form id="form-tg-register" class="space-y-4 bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm">
+            <h3 class="text-sm font-bold text-ink uppercase tracking-wider font-uber-text">Completar Registro con Telegram</h3>
+            <p class="text-xs text-body font-uber-text">
+              Hola <b>{pendingTgUser?.first_name}</b>, para finalizar tu registro y vincular tu cuenta de Telegram, necesitamos un número de teléfono. Si ya tienes cuenta, esto la vinculará automáticamente.
+            </p>
+
+            <div>
+              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="tg-telefono">Teléfono de contacto *</label>
+              <input 
+                type="tel" 
+                id="tg-telefono" 
+                required 
+                class="input w-full font-uber-text uber-body-md" 
+                placeholder="Ej: 04127654321"
+              />
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="tg-pin">PIN (4 dígitos) *</label>
+              <input 
+                type="password" 
+                id="tg-pin" 
+                required 
+                maxlength="4"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                class="input w-full font-uber-text uber-body-md" 
+                placeholder="Si ya tienes cuenta, ingresa tu PIN."
+              />
+            </div>
+
+            <div>
+              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="tg-rol">Especialidad / Rol *</label>
+              <select id="tg-rol" required class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent text-ink rounded-xl">
+                <option value="general">General (Cualquier ayuda)</option>
+                <option value="busqueda">Búsqueda de Personas</option>
+                <option value="rescate">Rescate en Terreno</option>
+                <option value="logistica">Logística y Refugios</option>
+              </select>
+            </div>
+
+            <div id="tg-error" class="hidden text-xs text-red-500 font-uber-text bg-red-500/5 border border-red-500/20 p-3 rounded-lg"></div>
+
+            <button type="submit" id="btn-submit-tg" class="btn bg-primary text-white w-full font-uber-text font-semibold py-3 rounded-xl cursor-pointer flex items-center justify-center gap-2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21.011 2.94611C21.4647 2.80218 21.8906 3.22815 21.7466 3.68176L16.4862 20.2524C16.3275 20.7523 15.6517 20.8524 15.3414 20.4194L11.5 15.0538M21.011 2.94611L3.92135 9.07166C3.43398 9.2464 3.46822 9.94821 3.9723 10.0742L11.5 11.9566M21.011 2.94611L11.5 11.9566M11.5 11.9566V15.0538M11.5 15.0538L9.04306 18.2917C8.7501 18.6778 8.13111 18.5284 8.05834 18.054L7.54581 14.717L11.5 11.9566Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Finalizar Registro
+            </button>
+          </form>
+        )}
       </div>
     )}
+
   </main>
 </Layout>
 
@@ -439,6 +520,46 @@ const formatFecha = (fechaStr: string) => {
           const err = await resp.json();
           if (errorDiv) {
             errorDiv.textContent = `Error: ${err.error || "no se pudo registrar."}`;
+            errorDiv.classList.remove("hidden");
+          }
+          if (btnSubmit) btnSubmit.disabled = false;
+        }
+      } catch {
+        if (errorDiv) {
+          errorDiv.textContent = "Error de conexión con el servidor.";
+          errorDiv.classList.remove("hidden");
+        }
+        if (btnSubmit) btnSubmit.disabled = false;
+      }
+    });
+
+    // Envío Formulario Registro Telegram
+    const formTgRegister = document.getElementById("form-tg-register");
+    formTgRegister?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const telefono = (document.getElementById("tg-telefono") as HTMLInputElement).value;
+      const pin = (document.getElementById("tg-pin") as HTMLInputElement).value;
+      const rol = (document.getElementById("tg-rol") as HTMLSelectElement).value;
+      const errorDiv = document.getElementById("tg-error");
+      const btnSubmit = document.getElementById("btn-submit-tg") as HTMLButtonElement;
+
+      if (errorDiv) errorDiv.classList.add("hidden");
+      if (btnSubmit) btnSubmit.disabled = true;
+
+      try {
+        const resp = await fetch("/api/auth/telegram-register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ telefono, pin, rol })
+        });
+
+        if (resp.ok) {
+          // Limpiar query param y recargar
+          window.location.href = "/ayudar";
+        } else {
+          const err = await resp.json();
+          if (errorDiv) {
+            errorDiv.textContent = `Error: ${err.error || "no se pudo completar registro."}`;
             errorDiv.classList.remove("hidden");
           }
           if (btnSubmit) btnSubmit.disabled = false;
