@@ -19,6 +19,7 @@ let stats = {
 
 let refugios: { refugio: string; count: number }[] = [];
 let personas: any[] = [];
+let reportesDesaparecidos: any[] = [];
 let pendientes: any[] = [];
 let totalSuscriptoresPush = 0;
 
@@ -65,6 +66,14 @@ try {
 
     const personasQuery = await DB.prepare(queryStr).bind(...bindings).all();
     personas = personasQuery.results;
+
+    // 3.5 Consulta de reportes de desaparecidos
+    const reportesQuery = await DB.prepare(`
+      SELECT * FROM reportes 
+      WHERE tipo = 'desaparecido' 
+      ORDER BY updated_at DESC LIMIT 50
+    `).all();
+    reportesDesaparecidos = reportesQuery.results;
 
     // 4. Consulta de pendientes de verificación
     const personasPendientes = await DB.prepare("SELECT *, 'persona' as _tipo_origen FROM personas WHERE verificacion = 'pendiente'").all();
@@ -411,6 +420,78 @@ const formatFecha = (fechaStr: string) => {
                         </td>
                         <td class="text-xs text-body font-uber-text">
                           {formatFecha(p.updated_at)}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-canvas border border-canvas-soft rounded-xl shadow-sm overflow-hidden mt-8">
+          <div class="p-6 border-b border-canvas-soft flex justify-between items-center bg-canvas">
+            <h3 class="font-uber-display text-lg text-ink">Reportes de Desaparición</h3>
+            <span class="text-xs font-uber-text font-medium text-body">Mostrando {reportesDesaparecidos.length} reportes recientes</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="table w-full text-left">
+              <thead>
+                <tr class="font-uber-text font-medium text-xs uppercase text-body">
+                  <th>Foto</th>
+                  <th>Buscado(a)</th>
+                  <th>Cédula</th>
+                  <th>Estado</th>
+                  <th>Reportante</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reportesDesaparecidos.length === 0 ? (
+                  <tr>
+                    <td colspan="6" class="text-center py-10 font-uber-text font-medium text-body">
+                      No hay reportes de desaparición recientes.
+                    </td>
+                  </tr>
+                ) : (
+                  reportesDesaparecidos.map(r => {
+                    const statusMap = {
+                      abierto: { badge: "border border-yellow-500/30 text-ink bg-canvas", dot: "bg-yellow-500" },
+                      resuelto: { badge: "border border-green-500/30 text-ink bg-canvas", dot: "bg-green-500" },
+                      archivado: { badge: "border border-canvas-soft text-ink bg-canvas", dot: "bg-mute" }
+                    }[r.estado_reporte as string] || { badge: "border border-canvas-soft text-ink bg-canvas", dot: "bg-mute" };
+
+                    return (
+                      <tr class="transition-colors hover:bg-canvas-soft">
+                        <td>
+                          {r.foto_key ? (
+                            <div class="w-10 h-10 rounded-xl overflow-hidden bg-canvas-soft">
+                              <img src={`/api/upload?key=${encodeURIComponent(r.foto_key)}`} alt="Foto" class="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div class="w-10 h-10 bg-canvas-soft rounded-xl flex items-center justify-center text-lg text-mute">
+                              👤
+                            </div>
+                          )}
+                        </td>
+                        <td class="font-uber-text uber-body-md-strong text-ink">
+                          {r.nombre_buscado}
+                        </td>
+                        <td class="font-mono text-sm text-body">{r.cedula_buscado || "-"}</td>
+                        <td>
+                          <span class={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-uber-text font-medium ${statusMap.badge}`}>
+                            <span class={`w-1.5 h-1.5 rounded-full ${statusMap.dot}`}></span>
+                            <span class="capitalize">{r.estado_reporte || "Abierto"}</span>
+                          </span>
+                        </td>
+                        <td>
+                          <div class="font-uber-text uber-body-sm-strong text-ink">{r.reportante_nombre || "Anónimo"}</div>
+                          <div class="text-xs text-body font-uber-text truncate max-w-xs">{r.reportante_contacto || "-"}</div>
+                        </td>
+                        <td class="text-xs text-body font-uber-text">
+                          {formatFecha(r.updated_at)}
                         </td>
                       </tr>
                     );
