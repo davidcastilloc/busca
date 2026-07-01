@@ -20,12 +20,16 @@ export const PUT: APIRoute = async (context) => {
 
     const result = await DB.prepare(`
       UPDATE necesidades
-      SET estado = ?, updated_at = datetime('now', '-4 hours')
+      SET estado = ?, updated_at = datetime('now')
       WHERE id = ?
     `).bind(body.estado, id).run();
 
     if (!result.success) {
         throw new Error("No se pudo actualizar la necesidad");
+    }
+
+    if (body.estado === "atendida" || body.estado === "cancelada") {
+      await DB.prepare("DELETE FROM flyers WHERE necesidad_id = ?").bind(id).run();
     }
 
     return new Response(JSON.stringify({ success: true }), {

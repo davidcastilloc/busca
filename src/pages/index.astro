@@ -912,56 +912,6 @@ try {
       }, 250);
     }
 
-    // Filtro de Búsqueda y Tipo
-    function filtrarCentros() {
-      const term = searchInput.value.toLowerCase().trim();
-      const activeBtn = document.querySelector(".filter-btn.bg-primary") as HTMLElement;
-      const tipoActivo = activeBtn ? activeBtn.dataset.tipo : "todos";
-
-      cards.forEach((card) => {
-        const el = card as HTMLElement;
-        const id = el.dataset.id || "";
-        const nombre = el.dataset.nombre || "";
-        const direccion = el.dataset.direccion || "";
-        const necesidades = el.dataset.necesidades || "";
-        const tipo = el.dataset.tipo || "";
-
-        const coincideTexto = nombre.includes(term) || direccion.includes(term) || necesidades.includes(term);
-        const coincideTipo = tipoActivo === "todos" || tipo === tipoActivo;
-
-        const marker = marcadores.get(id);
-
-        if (coincideTexto && coincideTipo) {
-          el.classList.remove("hidden");
-          if (marker && map) {
-            marker.addTo(map);
-          }
-        } else {
-          el.classList.add("hidden");
-          if (marker && map) {
-            map.removeLayer(marker);
-          }
-        }
-      });
-    }
-
-    // Escuchar entrada de búsqueda
-    searchInput?.addEventListener("input", filtrarCentros);
-
-    // Escuchar filtros de tipo
-    filterBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        filterBtns.forEach((b) => {
-          b.classList.remove("bg-primary", "text-white");
-          b.classList.add("bg-canvas", "text-ink", "hover:bg-canvas-soft");
-        });
-        btn.classList.add("bg-primary", "text-white");
-        btn.classList.remove("bg-canvas", "text-ink", "hover:bg-canvas-soft");
-        
-        filtrarCentros();
-      });
-    });
-
     // Geolocalización
     btnGeolocalizar?.addEventListener("click", () => {
       if (!navigator.geolocation) {
@@ -1208,9 +1158,9 @@ try {
 
       if (items.length > 0) {
         content.innerHTML = items.join("");
-        container.classList.remove("hidden");
+        window.dispatchEvent(new CustomEvent('show-gpi'));
       } else {
-        container.classList.add("hidden");
+        window.dispatchEvent(new CustomEvent('hide-gpi'));
       }
     }
 
@@ -1521,7 +1471,7 @@ try {
         if (editTitulo) editTitulo.textContent = `Actualizar: ${el.dataset.nombre}`;
         
         const gpiCard = document.getElementById("edit-google-place-info");
-        if (gpiCard) gpiCard.classList.add("hidden");
+        window.dispatchEvent(new CustomEvent('hide-gpi'));
 
         if (inputNinos) inputNinos.value = el.dataset.ninos || "0";
         if (inputBebes) inputBebes.value = el.dataset.bebes || "0";
@@ -1580,13 +1530,13 @@ try {
           errorDiv.classList.add("hidden");
         }
 
-        modal?.classList.remove("hidden");
+        window.dispatchEvent(new CustomEvent('open-edit-modal', { detail: { tipo } }));
         document.body.style.overflow = "hidden";
       });
     });
 
     function cerrarModal() {
-      modal?.classList.add("hidden");
+      window.dispatchEvent(new CustomEvent('close-edit-modal'));
       document.body.style.overflow = "";
     }
 
@@ -1619,14 +1569,14 @@ try {
 
       if (tipo === "refugio") {
         if (ocupacion < sumaSubgrupos) {
-          if (demografiaWarning) demografiaWarning.classList.remove("hidden");
+          window.dispatchEvent(new CustomEvent('show-warning'));
           if (errorDiv) {
             errorDiv.textContent = "Error: La Población Total no puede ser menor a la suma de niños, bebés, adultos mayores, profesionales y voluntarios.";
             errorDiv.classList.remove("hidden");
           }
           return;
         } else {
-          if (demografiaWarning) demografiaWarning.classList.add("hidden");
+          window.dispatchEvent(new CustomEvent('hide-warning'));
         }
 
         if (isNaN(ocupacion) || ocupacion < 0) {

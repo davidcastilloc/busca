@@ -18,7 +18,7 @@ export const POST: APIRoute = async (context) => {
     const validated = AlertaSchema.parse(body);
 
     const { DB } = env;
-    const PUSH_QUEUE = (env as any).PUSH_QUEUE;
+    const PUSH_QUEUE = env.PUSH_QUEUE;
 
     if (!PUSH_QUEUE) {
       return new Response(

@@ -4,6 +4,7 @@ import { getShelterKeyboard, resolveLocation } from "../utils";
 import { startFound } from "./found";
 import { startShelter } from "./shelter";
 import { startSos } from "./sos";
+import { ReporteSchema } from "../../validators";
 
 export async function startReport(
   client: TelegramClient,
@@ -17,8 +18,9 @@ export async function startReport(
   const keyboard = {
     keyboard: [
       [{ text: "🔴 Persona Desaparecida" }, { text: "✅ Persona Localizada" }],
-      [{ text: "🏠 Refugio / Centro" }, { text: "🆘 Necesidad Crítica" }],
-      [{ text: "/cancelar" }]
+      [{ text: "⚠️ Persona Afectada" }, { text: "🚑 Persona Herida" }],
+      [{ text: "🕊️ Persona Fallecida" }, { text: "🏠 Refugio / Centro" }],
+      [{ text: "🆘 Necesidad Crítica" }, { text: "/cancelar" }]
     ],
     resize_keyboard: true,
     one_time_keyboard: true
@@ -73,13 +75,19 @@ export async function handleReportState(
       return;
     }
 
-    if (cleanText.includes("Localizada")) {
+    if (cleanText.includes("Localizada") || cleanText.includes("Afectada") || cleanText.includes("Herida") || cleanText.includes("Fallecida")) {
       if (!isAuthorized) {
-        await client.sendMessage(chatId, "🚷 Acceso denegado. Reportar personas localizadas es una función exclusiva para voluntarios autorizados. Inicia sesión con /login.");
+        await client.sendMessage(chatId, "🚷 Acceso denegado. Reportar el estado de personas es una función exclusiva para voluntarios autorizados. Inicia sesión con /login.");
         return;
       }
+      
+      let estado = "localizado";
+      if (cleanText.includes("Herida")) estado = "herido";
+      else if (cleanText.includes("Afectada")) estado = "afectado";
+      else if (cleanText.includes("Fallecida")) estado = "fallecido";
+
       await clearSession(db, telegramId);
-      await startFound(client, db, chatId, telegramId);
+      await startFound(client, db, chatId, telegramId, undefined, estado);
       return;
     }
 
@@ -327,15 +335,11 @@ export async function handleReportState(
 
     try {
       // 1. Generar Flyer en base de datos D1
-      const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-      let flyerId = "";
-      for (let i = 0; i < 6; i++) {
-        flyerId += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
+      const flyerId = crypto.randomUUID().split("-")[0]; // ID amigable de 8 caracteres
 
       await db.prepare(`
         INSERT INTO flyers (id, title, description, foto_key, phones, socials, tipo, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+        VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       `).bind(
         flyerId,
         flyerTitle,
@@ -391,9 +395,11 @@ export async function handleReportState(
           created_by: voluntarioId
         };
 
+        const validatedPayload = ReporteSchema.parse(payload);
+
         await env.CENSO_QUEUE.send({
           type: "reporte",
-          data: payload,
+          data: validatedPayload,
         });
 
         // Respuesta final al usuario

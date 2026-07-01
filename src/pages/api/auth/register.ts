@@ -51,7 +51,7 @@ export const POST: APIRoute = async (context) => {
     try {
       const res = await DB.prepare(`
         INSERT INTO voluntarios (nombre, telefono, pin_hash, rol, activo, created_at)
-        VALUES (?, ?, ?, ?, 1, datetime('now', '-4 hours'))
+        VALUES (?, ?, ?, ?, 1, datetime('now'))
         RETURNING id
       `).bind(
         nombre.trim(),
@@ -81,7 +81,7 @@ export const POST: APIRoute = async (context) => {
 
     await DB.prepare(`
       INSERT INTO sesiones_voluntarios (token, voluntario_id, expires_at, created_at)
-      VALUES (?, ?, ?, datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, datetime('now'))
     `).bind(
       token,
       voluntarioId,

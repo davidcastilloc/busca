@@ -19,18 +19,18 @@ export default {
   ): Promise<void> {
     // Discriminar por nombre de cola
     if (batch.queue === "push-queue") {
-      ctx.waitUntil(procesarColaPush(batch, env));
+      await procesarColaPush(batch, env);
     } else {
       // censo-queue (default)
-      ctx.waitUntil(procesarCola(batch, env, ctx));
+      await procesarCola(batch, env, ctx);
     }
   },
 
   async scheduled(
-    event: any,
+    event: ScheduledEvent,
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
-    ctx.waitUntil(processHourlyAlerts(env as any));
+    await processHourlyAlerts(env);
   }
 } satisfies ExportedHandler<Env>;

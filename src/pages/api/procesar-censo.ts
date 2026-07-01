@@ -24,7 +24,7 @@ export const POST: APIRoute = async (context) => {
     }
 
     // Encolar trabajo de cruce de datos con D1 en background
-    const QUEUE = (env as any).CENSO_QUEUE;
+    const QUEUE = env.CENSO_QUEUE;
     await QUEUE.send({
       type: "procesar_nombres_censo",
       data: {

@@ -22,7 +22,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
 
       const imageBuffer = await file.arrayBuffer();
-      personas = await extraerNombresDeImagen(env as any, imageBuffer);
+      personas = await extraerNombresDeImagen(env, imageBuffer);
     } else {
       // Intentar parsear como JSON
       const body = await request.json();
@@ -35,7 +35,7 @@ export const POST: APIRoute = async ({ request }) => {
         });
       }
 
-      personas = await extraerNombresDeTexto(env as any, text);
+      personas = await extraerNombresDeTexto(env, text);
     }
 
     return new Response(JSON.stringify({ success: true, personas }), {

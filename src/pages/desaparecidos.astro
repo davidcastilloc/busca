@@ -12,7 +12,7 @@ try {
   if (DB) {
     const result = await DB.prepare(`
       SELECT * FROM flyers 
-      WHERE tipo = 'desaparecido' AND (title LIKE 'SE BUSCA:%' OR title LIKE 'ALERTA%')
+      WHERE tipo = 'desaparecido' AND title LIKE 'SE BUSCA:%'
       ORDER BY created_at DESC 
       LIMIT 100
     `).all();

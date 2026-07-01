@@ -436,7 +436,7 @@ export const POST: APIRoute = async (context) => {
       return jsonResp({ error: "URL requerida" }, 400);
     }
 
-    const apiKey = (env as any).GOOGLE_MAPS_API_KEY;
+    const apiKey = env.GOOGLE_MAPS_API_KEY;
 
     let lat: number | null = null;
     let lng: number | null = null;

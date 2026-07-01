@@ -58,7 +58,7 @@ async function notifyChannel(
 
 export const POST: APIRoute = async (context) => {
   try {
-    const cfEnv = env as any;
+    const cfEnv = env;
     const { DB, FOTOS_BUCKET } = cfEnv;
 
     const body = await context.request.json();
@@ -92,12 +92,7 @@ export const POST: APIRoute = async (context) => {
       });
     }
 
-    // Generar un ID amigable de 6 caracteres alfanuméricos
-    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-    let friendlyId = "";
-    for (let i = 0; i < 6; i++) {
-      friendlyId += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+    const friendlyId = crypto.randomUUID().split("-")[0]; // ID corto de 8 caracteres
 
      // Inferir tipo final a partir del título si es ambiguo
     let tipoFinal = tipo;
@@ -117,7 +112,7 @@ export const POST: APIRoute = async (context) => {
     // Insertar en D1
     await DB.prepare(`
       INSERT INTO flyers (id, title, description, foto_key, phones, socials, tipo, necesidad_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(
       friendlyId,
       title,
@@ -148,7 +143,7 @@ export const POST: APIRoute = async (context) => {
     }
 
     // Notificar al canal público de Telegram (fire-and-forget, no bloquea la respuesta)
-    const cfCtx = (context.locals as any).cfContext || (context.locals as any).runtime?.ctx;
+    const cfCtx = context.locals.cfContext || context.locals.runtime?.ctx;
     const notifyPromise = notifyChannel(cfEnv, friendlyId, title, description, phones || []);
     if (cfCtx?.waitUntil) {
       cfCtx.waitUntil(notifyPromise);

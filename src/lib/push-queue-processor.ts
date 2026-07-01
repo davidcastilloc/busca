@@ -22,9 +22,9 @@ export async function procesarColaPush(
   env: Env
 ): Promise<void> {
   const vapidKeys: VapidKeys = {
-    publicKey: (env as any).VAPID_PUBLIC_KEY || "",
-    privateKey: (env as any).VAPID_PRIVATE_KEY || "",
-    subject: (env as any).VAPID_SUBJECT || "mailto:admin@dondeestan.org",
+    publicKey: env.VAPID_PUBLIC_KEY || "",
+    privateKey: env.VAPID_PRIVATE_KEY || "",
+    subject: env.VAPID_SUBJECT || "mailto:admin@dondeestan.org",
   };
 
   if (!vapidKeys.publicKey || !vapidKeys.privateKey) {

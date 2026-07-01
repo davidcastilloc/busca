@@ -6,12 +6,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const proto = context.request.headers.get("x-forwarded-proto");
   const host = url.host;
 
-  // Forzar HTTPS en producción
-  if ((url.protocol === "http:" || proto === "http") && !host.includes("localhost") && !host.includes("127.0.0.1")) {
-    const httpsUrl = new URL(context.request.url);
-    httpsUrl.protocol = "https:";
-    return Response.redirect(httpsUrl.toString(), 301);
-  }
+
 
   // ═══════════════════════════════════════════════════════════
   // Protección de rutas /admin/* con Cloudflare Access

@@ -6,7 +6,7 @@ export interface PersonaData {
   apellido?: string | null;
   edad?: number | null;
   sexo?: "M" | "F" | "X";
-  estado?: "localizado" | "herido" | "fallecido" | "desconocido";
+  estado?: "desaparecido" | "afectado" | "herido" | "localizado" | "fallecido";
   ubicacion_nombre?: string | null;
   latitud?: number | null;
   longitud?: number | null;
@@ -49,7 +49,7 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
         ubicacion_nombre, latitud, longitud, refugio, 
         contacto, notas, foto_key, fuente, refugio_id, hospital_id, centro_acopio_id, created_by, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
       ON CONFLICT(cedula) DO UPDATE SET
         nombre = excluded.nombre,
         apellido = excluded.apellido,
@@ -68,14 +68,14 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
         hospital_id = excluded.hospital_id,
         centro_acopio_id = excluded.centro_acopio_id,
         created_by = COALESCE(personas.created_by, excluded.created_by),
-        updated_at = datetime('now', '-4 hours')
+        updated_at = datetime('now')
     `).bind(
       data.cedula,
       data.nombre,
       data.apellido || null,
       data.edad || null,
       data.sexo || "X",
-      data.estado || "desconocido",
+      data.estado || "desaparecido",
       data.ubicacion_nombre || null,
       data.latitud || null,
       data.longitud || null,
@@ -96,13 +96,13 @@ export async function upsertPersona(db: D1Database, data: PersonaData) {
         ubicacion_nombre, latitud, longitud, refugio, 
         contacto, notas, foto_key, fuente, refugio_id, hospital_id, centro_acopio_id, created_by, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(
       data.nombre,
       data.apellido || null,
       data.edad || null,
       data.sexo || "X",
-      data.estado || "desconocido",
+      data.estado || "desaparecido",
       data.ubicacion_nombre || null,
       data.latitud || null,
       data.longitud || null,
@@ -129,7 +129,7 @@ export async function insertReporte(db: D1Database, data: ReporteData): Promise<
       reportante_nombre, reportante_contacto, ubicacion_nombre, 
       latitud, longitud, foto_key, refugio_id, hospital_id, centro_acopio_id, created_by, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     RETURNING id
   `).bind(
     data.tipo,
@@ -151,7 +151,7 @@ export async function insertReporte(db: D1Database, data: ReporteData): Promise<
   if (result?.id && data.created_by) {
     await db.prepare(`
       INSERT INTO historial_actividad (voluntario_id, accion, tabla, registro_id, created_at)
-      VALUES (?, 'CREAR', 'reportes', ?, datetime('now', '-4 hours'))
+      VALUES (?, 'CREAR', 'reportes', ?, datetime('now'))
     `).bind(data.created_by, result.id).run();
   }
 
@@ -169,7 +169,7 @@ export async function resolverReportesRelacionados(db: D1Database, cedula?: stri
       db.prepare(`
         UPDATE reportes 
         SET estado_reporte = 'resuelto', 
-            updated_at = datetime('now', '-4 hours') 
+            updated_at = datetime('now') 
         WHERE cedula_buscado = ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
       `).bind(cedula)
     );
@@ -180,7 +180,7 @@ export async function resolverReportesRelacionados(db: D1Database, cedula?: stri
       db.prepare(`
         UPDATE reportes 
         SET estado_reporte = 'resuelto', 
-            updated_at = datetime('now', '-4 hours') 
+            updated_at = datetime('now') 
         WHERE nombre_buscado LIKE ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
       `).bind(`%${nombre}%`)
     );
@@ -242,7 +242,7 @@ export async function procesarCensoBatch(
 
     return db.prepare(`
       INSERT INTO personas (nombre, apellido, estado, refugio, contacto, cedula, edad, fuente, refugio_id, hospital_id, centro_acopio_id, created_by, updated_at, created_at)
-      VALUES (?, ?, 'localizado', ?, ?, ?, ?, 'escaner_ia', ?, ?, ?, ?, datetime('now', '-4 hours'), datetime('now', '-4 hours'))
+      VALUES (?, ?, 'localizado', ?, ?, ?, ?, 'escaner_ia', ?, ?, ?, ?, datetime('now'), datetime('now'))
       RETURNING id
     `).bind(
       nombre,
@@ -285,7 +285,7 @@ export async function procesarCensoBatch(
             SET estado_reporte = 'resuelto', 
                 verificacion = 'pendiente',
                 persona_id = ?,
-                updated_at = datetime('now', '-4 hours') 
+                updated_at = datetime('now') 
             WHERE id = ?
           `).bind(res.personaId, match.id)
         );

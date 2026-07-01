@@ -700,8 +700,11 @@ const isVolunteer = !!voluntario;
         let count = 0;
         for (let j = 0; j < allPoints.length; j++) {
           const p2 = allPoints[j];
-          if (haversine(p1.lat, p1.lng, p2.lat, p2.lng) < 15) {
-            count++;
+          // ponytail: filtro rápido de caja para evitar Haversine en O(N^2)
+          if (Math.abs(p1.lat - p2.lat) < 0.15 && Math.abs(p1.lng - p2.lng) < 0.15) {
+            if (haversine(p1.lat, p1.lng, p2.lat, p2.lng) < 15) {
+              count++;
+            }
           }
         }
         if (count > maxCount) {
@@ -711,34 +714,16 @@ const isVolunteer = !!voluntario;
       }
 
       // Obtener todos los puntos dentro de ese radio para hacer bounds
-      const clusterPoints = allPoints.filter(p => haversine(bestCenter.lat, bestCenter.lng, p.lat, p.lng) < 15);
+      // ponytail: filtro rápido
+      const clusterPoints = allPoints.filter(p => 
+        Math.abs(bestCenter.lat - p.lat) < 0.15 && 
+        Math.abs(bestCenter.lng - p.lng) < 0.15 && 
+        haversine(bestCenter.lat, bestCenter.lng, p.lat, p.lng) < 15
+      );
       const bounds = L.latLngBounds(clusterPoints.map(p => [p.lat, p.lng]));
       
       // Ajustar la vista: menos padding y maxZoom=16 para que la cámara baje más
       map.fitBounds(bounds.pad(0.05), { maxZoom: 16 });
-    }
-  }
-
-  function checkCoverageGap(tipo: string, ent: any) {
-    const L = (window as any).L;
-    let minDist = Infinity;
-    
-    dataStore.refugios.forEach(r => {
-      const d = haversine(ent.lat, ent.lng, r.lat, r.lng);
-      if (d < minDist) minDist = d;
-    });
-
-    // Si no hay refugio a menos de 5 km, marcamos la zona como "Gap de Cobertura"
-    if (minDist > 5.0 && minDist !== Infinity) {
-      L.circle([ent.lat, ent.lng], {
-        radius: 3000,
-        color: "#f97316", // naranja de advertencia
-        fillColor: "#ffedd5",
-        fillOpacity: 0.1,
-        weight: 1.5,
-        dashArray: "4, 6",
-        interactive: false
-      }).addTo(coverageGapsGroup);
     }
   }
 
@@ -752,7 +737,7 @@ const isVolunteer = !!voluntario;
     map.removeLayer(peligrosCluster);
     map.removeLayer(heatmapLayer);
     map.removeLayer(coverageGroup);
-    map.removeLayer(coverageGapsGroup);
+    
 
     if (activeLayer === "todos") {
       map.addLayer(refugiosCluster);
@@ -771,7 +756,7 @@ const isVolunteer = !!voluntario;
       map.addLayer(heatmapLayer);
     } else if (activeLayer === "cobertura") {
       map.addLayer(coverageGroup);
-      map.addLayer(coverageGapsGroup);
+      
       map.addLayer(refugiosCluster);
       map.addLayer(necesidadesCluster);
       map.addLayer(peligrosCluster);

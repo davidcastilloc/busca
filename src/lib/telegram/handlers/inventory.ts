@@ -358,7 +358,7 @@ export async function setItemStatus(
     const statusConsolidatedName = STATUS_MAP[estadoConsolidado] || "Desconocido";
     inv[itemId] = statusConsolidatedName;
 
-    const updateQuery = `UPDATE ${table} SET inventario = ?, updated_at = datetime('now', '-4 hours') WHERE id = ?`;
+    const updateQuery = `UPDATE ${table} SET inventario = ?, updated_at = datetime('now') WHERE id = ?`;
     await db.prepare(updateQuery).bind(JSON.stringify(inv), refugioId).run();
 
     // 4. Confirmar y volver a la categoría

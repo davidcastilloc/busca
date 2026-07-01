@@ -2,9 +2,11 @@
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 import tailwindcss from '@tailwindcss/vite';
+import alpinejs from '@astrojs/alpinejs';
 
 // https://astro.build/config
 export default defineConfig({
+  integrations: [alpinejs()],
   adapter: cloudflare({
     sessionKVBindingName: 'CACHE_KV'
   }),

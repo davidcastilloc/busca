@@ -6,7 +6,7 @@ export const prerender = false;
 
 export const GET: APIRoute = async (context) => {
   try {
-    const { DB, TELEGRAM_BOT_TOKEN } = env as any;
+    const { DB, TELEGRAM_BOT_TOKEN } = env;
     if (!DB || !TELEGRAM_BOT_TOKEN) {
       return new Response("Configuración del servidor incompleta.", { status: 500 });
     }
@@ -41,7 +41,7 @@ export const GET: APIRoute = async (context) => {
 
       await DB.prepare(`
         INSERT INTO sesiones_voluntarios (token, voluntario_id, expires_at, created_at)
-        VALUES (?, ?, ?, datetime('now', '-4 hours'))
+        VALUES (?, ?, ?, datetime('now'))
       `).bind(
         token,
         voluntario.id,

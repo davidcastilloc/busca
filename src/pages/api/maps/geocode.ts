@@ -13,7 +13,7 @@ export const GET: APIRoute = async (context) => {
       });
     }
 
-    const apiKey = (env as any).GOOGLE_MAPS_API_KEY;
+    const apiKey = env.GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "Google Maps API Key no configurada" }), {
         status: 500,

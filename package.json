@@ -13,8 +13,10 @@
     "generate-types": "wrangler types"
   },
   "dependencies": {
+    "@astrojs/alpinejs": "^1.0.0",
     "@astrojs/cloudflare": "^14.0.1",
     "@tailwindcss/vite": "^4.3.1",
+    "alpinejs": "^3.15.12",
     "astro": "^7.0.3",
     "cf-workers-og": "^3.0.1",
     "daisyui": "^5.6.0",
@@ -25,6 +27,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^26.0.1"
+    "@astrojs/check": "^0.9.9",
+    "@types/node": "^26.0.1",
+    "typescript": "^6.0.3"
   }
 }
