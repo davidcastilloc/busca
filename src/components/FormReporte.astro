@@ -30,7 +30,7 @@ try {
 }
 ---
 
-<div x-data="formReporteAlpine()" class="max-w-2xl mx-auto px-4 py-4 sm:py-6">
+<div x-data="formReporteAlpine" id="form-reporte-container" class="max-w-2xl mx-auto px-4 py-4 sm:py-6">
   <!-- Cabecera de Progreso -->
   <div class="mb-8 flex justify-between items-center px-2">
     <div class="flex items-center space-x-2">
@@ -354,7 +354,31 @@ try {
 <script>
   import { encolarRegistro } from "../lib/offline-queue";
 
-  window.formReporteAlpine = function() {
+  function setup() {
+    const Alpine = (window as any).Alpine;
+    if (Alpine) {
+      if (!Alpine.data('formReporteAlpine')) {
+        Alpine.data('formReporteAlpine', formReporteAlpine);
+      }
+      const el = document.getElementById("form-reporte-container");
+      if (el && !('_x_dataStack' in el)) {
+        try {
+          Alpine.initTree(el);
+        } catch (e) {
+          console.error("Error al forzar inicialización de Alpine:", e);
+        }
+      }
+    } else {
+      document.addEventListener('alpine:init', () => {
+        (window as any).Alpine.data('formReporteAlpine', formReporteAlpine);
+      });
+    }
+  }
+
+  setup();
+  document.addEventListener('astro:page-load', setup);
+
+  function formReporteAlpine() {
     return {
       step: 1,
       tipo: '',
