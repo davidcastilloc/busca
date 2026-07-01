@@ -1672,8 +1672,10 @@ try {
         if (resp.ok) {
           cerrarModal();
           sessionStorage.setItem('refugio_updated', 'true');
-          const anchor = lastEditedCardId ? `#${lastEditedCardId}` : "";
-          navigate(window.location.pathname + '?t=' + Date.now() + anchor, { history: 'replace' });
+          if (lastEditedCardId) {
+            sessionStorage.setItem('scroll_to_id', lastEditedCardId);
+          }
+          navigate(window.location.pathname + '?t=' + Date.now(), { history: 'replace' });
         } else {
           const err = await resp.json();
           if (errorDiv) {
@@ -1699,19 +1701,20 @@ try {
           }, 3000);
         }
         
-        // Centrar elemento editado en pantalla
-        const hash = window.location.hash;
-        if (hash) {
-          const el = document.querySelector(hash);
+        // Centrar elemento editado en pantalla desde sessionStorage
+        const scrollId = sessionStorage.getItem('scroll_to_id');
+        if (scrollId) {
+          sessionStorage.removeItem('scroll_to_id');
+          const el = document.getElementById(scrollId);
           if (el) {
             setTimeout(() => {
               el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            }, 150);
+            }, 300);
           }
         }
 
-        // Clean URL timestamp query param smoothly, preserving the anchor hash
-        const cleanUrl = window.location.pathname + window.location.hash;
+        // Clean URL timestamp query param smoothly
+        const cleanUrl = window.location.pathname;
         window.history.replaceState({}, '', cleanUrl);
       }
     });
