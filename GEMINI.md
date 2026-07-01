@@ -28,7 +28,10 @@ Este proyecto es una plataforma para el registro y búsqueda de personas desapar
 
 3. **Interactividad del Frontend (Alpine.js)**
    - No escribir scripts JS imperativos de manipulación del DOM ad-hoc. Toda interactividad reactiva (búsquedas locales, filtros, modales, formularios reactivos) debe hacerse declarativamente mediante Alpine.js (`x-data`, `x-model`, `x-show`, `x-on`).
-   - **Transición de Páginas (Astro View Transitions)**: Para prevenir condiciones de carrera al navegar con View Transitions, registra los datos de Alpine bajo `Alpine.data` y no uses funciones globales de inicialización directa en el objeto window.
+   - **Transición de Páginas (Astro View Transitions)**: Para evitar condiciones de carrera ("not defined" en el swap del DOM), NO usar scripts inline (`is:inline`) ni locales del componente para registrar controladores complejos de Alpine.
+     - **Componentes Complejos**: Extraerlos a archivos dedicados en `src/scripts/` (ej: `src/scripts/form-reporte-alpine.ts`) e importarlos globalmente en el script principal de `src/layouts/Layout.astro` para registrarlos en `Alpine.data` durante el inicio.
+     - **Reactividad Simple**: Definirla directamente de forma declarativa inline en el atributo del HTML (ej: `x-data="{ query: '', filtro: 'todos' }"`).
+
 
 4. **Operaciones de Base de Datos Eficientes**
    - Minimizar los roundtrips de red a D1. Para procesamiento masivo de datos (como el escáner de IA de censos/listas), utilizar **`db.batch()`** para agrupar consultas e inserciones en el menor número posible de llamadas.
