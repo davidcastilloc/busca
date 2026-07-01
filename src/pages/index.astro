@@ -1668,7 +1668,8 @@ try {
 
         if (resp.ok) {
           cerrarModal();
-          navigate(window.location.pathname + '?success=updated', { history: 'replace' });
+          sessionStorage.setItem('refugio_updated', 'true');
+          navigate(window.location.pathname, { history: 'replace' });
         } else {
           const err = await resp.json();
           if (errorDiv) {
@@ -1683,17 +1684,14 @@ try {
         }
       }
 
-      // Check for success param to show toast
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('success') === 'updated') {
+      // Check for success flag in sessionStorage to show toast
+      if (sessionStorage.getItem('refugio_updated') === 'true') {
+        sessionStorage.removeItem('refugio_updated');
         const toast = document.getElementById('index-success-toast');
         if (toast) {
           toast.classList.remove('hidden');
           setTimeout(() => {
             toast.classList.add('hidden');
-            // Clean URL query params smoothly
-            const cleanUrl = window.location.pathname;
-            window.history.replaceState({}, '', cleanUrl);
           }, 3000);
         }
       }
