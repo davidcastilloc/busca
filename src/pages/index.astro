@@ -286,7 +286,7 @@ try {
             return (
               <div 
                 id={`refugio-${r.id}`}
-                x-show={`(filtro === 'todos' || filtro === '${r.tipo}') && (!query || '${r.nombre.replace(/'/g, "").toLowerCase()} ${r.direccion?.replace(/'/g, "").toLowerCase() || ""} ${r.necesidades?.replace(/'/g, "").toLowerCase() || ""}'.includes(query.toLowerCase()))`}
+                x-show={`(filtro === 'todos' || filtro === '${r.tipo}') && (!query || query.toLowerCase().split(' ').filter(Boolean).every(word => '${r.nombre.replace(/'/g, "").toLowerCase()} ${r.direccion?.replace(/'/g, "").toLowerCase() || ""} ${r.necesidades?.replace(/'/g, "").toLowerCase() || ""}'.includes(word)))`}
                 class="refugio-card bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm space-y-4 transition-all hover:shadow-md"
                 data-id={r.id}
                 data-nombre={r.nombre.toLowerCase()}
@@ -694,6 +694,13 @@ try {
     .leaflet-popup-tip { border-top-color: var(--canvas, #fff) !important; }
   </style>
   </main>
+  <!-- Toast de éxito al actualizar refugio -->
+  <div id="index-success-toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] hidden animate-slide-up w-[calc(100%-2rem)] max-w-sm pointer-events-none">
+    <div class="bg-black text-white border border-zinc-800 rounded-xl px-4 py-3 shadow-2xl flex items-center gap-3">
+      <span class="text-lg">✅</span>
+      <span class="font-uber-text uber-body-sm-strong">Refugio actualizado con éxito</span>
+    </div>
+  </div>
 </Layout>
 
 <!-- Leaflet y MarkerCluster para mini-mapa GPS y mapa interactivo -->
@@ -704,6 +711,7 @@ try {
 <script is:inline src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
 <script>
+  import { navigate } from 'astro:transitions/client';
   let map: any = null;
   let editMap: any = null;
   let editMarker: any = null;
@@ -1660,7 +1668,7 @@ try {
 
         if (resp.ok) {
           cerrarModal();
-          window.location.reload();
+          navigate(window.location.pathname + '?success=updated', { history: 'replace' });
         } else {
           const err = await resp.json();
           if (errorDiv) {
@@ -1672,6 +1680,21 @@ try {
         if (errorDiv) {
           errorDiv.textContent = "Error de conexión con el servidor.";
           errorDiv.classList.remove("hidden");
+        }
+      }
+
+      // Check for success param to show toast
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('success') === 'updated') {
+        const toast = document.getElementById('index-success-toast');
+        if (toast) {
+          toast.classList.remove('hidden');
+          setTimeout(() => {
+            toast.classList.add('hidden');
+            // Clean URL query params smoothly
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, '', cleanUrl);
+          }, 3000);
         }
       }
     });
