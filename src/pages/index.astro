@@ -286,7 +286,64 @@ try {
             return (
               <div 
                 id={`refugio-${r.id}`}
-                x-show={`(filtro === 'todos' || filtro === '${r.tipo}') && (!query || query.toLowerCase().split(' ').filter(Boolean).every(word => '${r.nombre.replace(/'/g, "").toLowerCase()} ${r.direccion?.replace(/'/g, "").toLowerCase() || ""} ${r.necesidades?.replace(/'/g, "").toLowerCase() || ""}'.includes(word)))`}
+                x-data={`{
+                  ocupacion: ${ocupacion},
+                  capacidad: ${capacidad},
+                  encargado: '${(r.encargado || "").replace(/'/g, "\\'")}',
+                  direccion: '${(r.direccion || "").replace(/'/g, "\\'")}',
+                  contacto: '${(r.contacto || "").replace(/'/g, "\\'")}',
+                  necesidades: '${(r.necesidades || "").replace(/'/g, "\\'").replace(/\n/g, "\\n")}',
+                  ninos: ${r.ninos || 0},
+                  bebes: ${r.bebes_lactantes || 0},
+                  mayores: ${r.adultos_mayores || 0},
+                  prof: ${r.personal_profesional || 0},
+                  vols: ${r.voluntarios || 0},
+                  itemsCriticos: ${JSON.stringify(itemsCriticos)},
+                  itemsAlerta: ${JSON.stringify(itemsAlerta)},
+                  fechaActualizada: '${fechaActualizada || ""}'
+                }`}
+                @refugio-updated-${r.id}.window="
+                  ocupacion = $event.detail.ocupacion_actual;
+                  capacidad = $event.detail.capacidad_maxima;
+                  encargado = $event.detail.encargado;
+                  direccion = $event.detail.direccion;
+                  contacto = $event.detail.contacto;
+                  necesidades = $event.detail.necesidades;
+                  ninos = $event.detail.ninos;
+                  bebes = $event.detail.bebes;
+                  mayores = $event.detail.mayores;
+                  prof = $event.detail.prof;
+                  vols = $event.detail.vols;
+                  itemsCriticos = $event.detail.itemsCriticos;
+                  itemsAlerta = $event.detail.itemsAlerta;
+                  fechaActualizada = $event.detail.fechaActualizada;
+                  
+                  // Actualizar dataset para búsquedas Alpine
+                  $el.dataset.ocupacion = ocupacion;
+                  $el.dataset.capacidad = capacidad;
+                  $el.dataset.encargado = encargado;
+                  $el.dataset.direccion = direccion.toLowerCase();
+                  $el.dataset.contacto = contacto;
+                  $el.dataset.necesidades = necesidades.toLowerCase();
+
+                  // Actualizar dataset del botón de editar interior
+                  const btn = $el.querySelector('.btn-edit-refugio');
+                  if (btn) {
+                    btn.dataset.ocupacion = ocupacion;
+                    btn.dataset.capacidad = capacidad;
+                    btn.dataset.encargado = encargado;
+                    btn.dataset.direccion = direccion;
+                    btn.dataset.contacto = contacto;
+                    btn.dataset.necesidades = necesidades;
+                    btn.dataset.ninos = ninos;
+                    btn.dataset.bebes = bebes;
+                    btn.dataset.mayores = mayores;
+                    btn.dataset.prof = prof;
+                    btn.dataset.vols = vols;
+                    btn.dataset.inventario = JSON.stringify($event.detail.inventario || {});
+                  }
+                "
+                x-show={`(filtro === 'todos' || filtro === '${r.tipo}') && (!query || query.toLowerCase().split(' ').filter(Boolean).every(word => '${r.nombre.replace(/'/g, "").toLowerCase()} \${direccion.toLowerCase()} \${necesidades.toLowerCase()}'.includes(word)))`}
                 class="refugio-card bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm space-y-4 transition-all hover:shadow-md"
                 data-id={r.id}
                 data-nombre={r.nombre.toLowerCase()}
@@ -320,11 +377,11 @@ try {
                       </span>
                       <h3 class="font-uber-display text-lg text-ink font-semibold">{r.nombre}</h3>
                     </div>
-                    {r.direccion && <p class="text-xs text-body font-uber-text mt-1">📍 {r.direccion}</p>}
+                    <p class="text-xs text-body font-uber-text mt-1" x-show="direccion">📍 <span x-text="direccion">{(r.direccion || "")}</span></p>
                   </div>
                   {r.tipo === "refugio" && (
                     <div class="text-right shrink-0">
-                      <span class="text-xs font-semibold text-ink font-uber-text bg-canvas-soft px-2.5 py-1 rounded-full border border-canvas-soft">
+                      <span class="text-xs font-semibold text-ink font-uber-text bg-canvas-soft px-2.5 py-1 rounded-full border border-canvas-soft" x-text="ocupacion + ' / ' + capacidad + ' personas'">
                         {ocupacion} / {capacidad} personas
                       </span>
                     </div>
@@ -333,19 +390,15 @@ try {
 
                 <!-- Encargado y Fechas -->
                 <div class="flex flex-col gap-2 border-t border-canvas-soft pt-3 mt-2">
-                  {r.encargado && (
-                    <div class="text-xs font-uber-text text-body">
-                      👤 Encargado: <strong class="text-ink">{r.encargado}</strong>
-                    </div>
-                  )}
+                  <div class="text-xs font-uber-text text-body" x-show="encargado">
+                    👤 Encargado: <strong class="text-ink" x-text="encargado">{r.encargado || ""}</strong>
+                  </div>
                   <div class="flex flex-wrap gap-x-4 gap-y-2">
-                    {fechaActualizada && (
-                      <div class="inline-flex items-center gap-1.5 bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded-md text-xs font-semibold font-uber-text shadow-sm" title="Última actualización de la información">
-                        ⏱️ Actualizado: {fechaActualizada}
-                      </div>
-                    )}
+                    <div class="inline-flex items-center gap-1.5 bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded-md text-xs font-semibold font-uber-text shadow-sm" title="Última actualización de la información" x-show="fechaActualizada">
+                      ⏱️ Actualizado: <span x-text="fechaActualizada">{fechaActualizada || ""}</span>
+                    </div>
                     {(!fechaActualizada && fechaFormateada) && (
-                      <div class="inline-flex items-center gap-1.5 bg-gray-50 text-gray-700 border border-gray-200 px-2.5 py-1 rounded-md text-xs font-semibold font-uber-text shadow-sm" title="Fecha de reporte original">
+                      <div class="inline-flex items-center gap-1.5 bg-gray-50 text-gray-700 border border-gray-200 px-2.5 py-1 rounded-md text-xs font-semibold font-uber-text shadow-sm" title="Fecha de reporte original" x-show="!fechaActualizada">
                         📅 Reportado: {fechaFormateada}
                       </div>
                     )}
@@ -357,10 +410,10 @@ try {
                   <div class="space-y-1">
                     <div class="flex justify-between text-[11px] font-uber-text font-medium text-mute">
                       <span>Capacidad ocupada</span>
-                      <span>{pct}%</span>
+                      <span x-text="Math.min(Math.round((ocupacion / capacidad) * 100), 100) + '%'">{pct}%</span>
                     </div>
                     <div class="w-full bg-canvas-soft h-2.5 rounded-full overflow-hidden border border-canvas-soft">
-                      <div class={`h-full ${colorBar}`} style={`width: ${pct}%`}></div>
+                      <div class="h-full" :class="Math.round((ocupacion / capacidad) * 100) >= 90 ? 'bg-error' : (Math.round((ocupacion / capacidad) * 100) >= 70 ? 'bg-warning' : 'bg-success')" :style="'width: ' + Math.min(Math.round((ocupacion / capacidad) * 100), 100) + '%'"></div>
                     </div>
                   </div>
                 )}
@@ -368,43 +421,35 @@ try {
                 <!-- Demografía -->
                 {r.tipo === "refugio" && (
                   <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-uber-text bg-canvas-soft p-3 rounded-lg border border-canvas-soft">
-                    <div>👶 Niños: <strong class="text-ink">{r.ninos || 0}</strong></div>
-                    <div>🍼 Lactantes: <strong class="text-ink">{r.bebes_lactantes || 0}</strong></div>
-                    <div>👵 Mayores: <strong class="text-ink">{r.adultos_mayores || 0}</strong></div>
-                    <div>🩺 Personal: <strong class="text-ink">{r.personal_profesional || 0}</strong></div>
-                    <div>🤝 Vols: <strong class="text-ink">{r.voluntarios || 0}</strong></div>
+                    <div>👶 Niños: <strong class="text-ink" x-text="ninos">{r.ninos || 0}</strong></div>
+                    <div>🍼 Lactantes: <strong class="text-ink" x-text="bebes">{r.bebes_lactantes || 0}</strong></div>
+                    <div>👵 Mayores: <strong class="text-ink" x-text="mayores">{r.adultos_mayores || 0}</strong></div>
+                    <div>🩺 Personal: <strong class="text-ink" x-text="prof">{r.personal_profesional || 0}</strong></div>
+                    <div>🤝 Vols: <strong class="text-ink" x-text="vols">{r.voluntarios || 0}</strong></div>
                   </div>
                 )}
 
                 <!-- Inventario Crítico/Alerta -->
-                {(itemsCriticos.length > 0 || itemsAlerta.length > 0) && (
-                  <div class="space-y-1.5 bg-canvas-soft/50 border border-canvas-soft p-3 rounded-lg">
-                    {itemsCriticos.length > 0 && (
-                      <div class="flex flex-wrap gap-1 items-center">
-                        <span class="text-[9px] font-bold text-red-700 uppercase tracking-wider font-uber-text mr-1">Crítico:</span>
-                        {itemsCriticos.map(item => (
-                          <span class="text-[9px] bg-red-500/10 text-red-700 font-semibold px-2 py-0.5 rounded-full border border-red-500/20">{item}</span>
-                        ))}
-                      </div>
-                    )}
-                    {itemsAlerta.length > 0 && (
-                      <div class="flex flex-wrap gap-1 items-center">
-                        <span class="text-[9px] font-bold text-amber-700 uppercase tracking-wider font-uber-text mr-1">Alerta:</span>
-                        {itemsAlerta.map(item => (
-                          <span class="text-[9px] bg-amber-500/10 text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-500/20">{item}</span>
-                        ))}
-                      </div>
-                    )}
+                <div class="space-y-1.5 bg-canvas-soft/50 border border-canvas-soft p-3 rounded-lg" x-show="itemsCriticos.length > 0 || itemsAlerta.length > 0">
+                  <div class="flex flex-wrap gap-1 items-center" x-show="itemsCriticos.length > 0">
+                    <span class="text-[9px] font-bold text-red-700 uppercase tracking-wider font-uber-text mr-1">Crítico:</span>
+                    <template x-for="item in itemsCriticos">
+                      <span class="text-[9px] bg-red-500/10 text-red-700 font-semibold px-2 py-0.5 rounded-full border border-red-500/20" x-text="item"></span>
+                    </template>
                   </div>
-                )}
+                  <div class="flex flex-wrap gap-1 items-center" x-show="itemsAlerta.length > 0">
+                    <span class="text-[9px] font-bold text-amber-700 uppercase tracking-wider font-uber-text mr-1">Alerta:</span>
+                    <template x-for="item in itemsAlerta">
+                      <span class="text-[9px] bg-amber-500/10 text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-500/20" x-text="item"></span>
+                    </template>
+                  </div>
+                </div>
 
                 <!-- Notas Adicionales -->
-                {r.necesidades && (
-                  <div class="bg-canvas-soft/30 border border-canvas-soft p-3 rounded-lg mt-3">
-                    <span class="text-[10px] font-bold text-mute uppercase tracking-wider font-uber-text block mb-1">📝 Notas Adicionales</span>
-                    <p class="text-xs text-body font-uber-text whitespace-pre-wrap">{r.necesidades}</p>
-                  </div>
-                )}
+                <div class="bg-canvas-soft/30 border border-canvas-soft p-3 rounded-lg mt-3" x-show="necesidades">
+                  <span class="text-[10px] font-bold text-mute uppercase tracking-wider font-uber-text block mb-1">📝 Notas Adicionales</span>
+                  <p class="text-xs text-body font-uber-text whitespace-pre-wrap" x-text="necesidades">{r.necesidades || ""}</p>
+                </div>
 
                 <!-- Botones de Acción -->
                 <div class="flex flex-wrap sm:justify-between items-center gap-2 pt-2 border-t border-canvas-soft">
@@ -719,6 +764,67 @@ try {
   let userMarker: any = null;
   let esVoluntario = false;
   let lastEditedCardId = "";
+  const ITEM_MAP: Record<string, string> = {
+    agua_potable: "Agua potable embotellada",
+    botellones_agua: "Botellones (Para cocina o hidratación masiva)",
+    pastillas_potabilizadoras: "Pastillas Potabilizadoras",
+    cloro_potabilizacion: "Cloro Líquido / Pastillas de Cloro (Para desinfección)",
+    tanques_envases: "Tanques / Envases Vacíos",
+    alimentos_enlatados: "Alimentos enlatados (atún, sardina, granos)",
+    arroz_harina: "Carbohidratos Secos (arroz, pasta, harina de maíz)",
+    pasta_granos: "Granos y Legumbres (caraotas, lentejas, arvejas)",
+    leche_polvo: "Proteína en Polvo / Larga Duración (Leche en polvo, embutidos)",
+    comida_lista: "Comida Lista para Consumo (Galletas, barras, frutos secos)",
+    aceite_comestible: "Aceite comestible",
+    azucar_sal: "Azúcar / Sal",
+    papillas_adultos_mayores: "Papillas y comida líquida para adultos mayores",
+    jabon_champu: "Jabón de baño / Champú",
+    crema_cepillo: "Crema dental / Cepillo de dientes",
+    papel_higienico: "Papel higiénico",
+    toallas_sanitarias: "Toallas sanitarias / Tampón",
+    desodorante: "Desodorante (unisex)",
+    toallitas_humedas: "Toallitas húmedas",
+    detergente_jabon: "Detergente para ropa / Jabón de platos",
+    cloro_desinfectante: "Desinfectante / Limpiador de pisos",
+    bolsas_basura: "Bolsas para basura de alta resistencia",
+    alcohol_oxigenada: "Alcohol / Agua oxigenada",
+    gasas_vendas: "Gasas / Vendas / Adhesivos médicos",
+    analgesicos: "Analgésicos (Paracetamol, Ibuprofeno)",
+    antialergicos: "Antialérgicos (Loratadina)",
+    medicos_cronicos: "Medicamentos crónicos (Presión, Diabetes)",
+    antibioticos: "Antibióticos de amplio espectro",
+    suero_hidratacion: "Suero de hidratación oral",
+    tapabocas_guantes: "Tapabocas / Guantes desechables",
+    termometros: "Termómetros",
+    agujas_inyectadoras: "Agujas / Inyectadoras",
+    panales_bebe: "Pañales desechables para bebés",
+    leche_formula: "Leche de fórmula infantil",
+    biberones: "Teteros / Biberones limpios",
+    papillas_compotas: "Papillas / Compotas",
+    ropa_bebe: "Ropa de bebé",
+    champu_jabon_bebe: "Champú y jabón especial para bebé",
+    pomadas_antipanalitis: "Pomadas antipañalitis",
+    corrales_cunas: "Cunas de viaje / Corrales plegables",
+    colchonetas_esterillas: "Colchonetas / Esterillas",
+    mantas_cobijas: "Mantas / Cobijas / Sábanas",
+    linternas_velas: "Linternas con pilas / Velas",
+    baterias_powerbanks: "Baterías portátiles (Powerbanks)",
+    repelente_mosquitos: "Repelente de mosquitos",
+    herramientas_basicas: "Kit de herramientas básicas",
+    fosforos_encendedores: "Fósforos / Encendedores",
+    toldos_carpas: "Toldos / Carpas / Lonas plásticas",
+    ropa_abrigo: "Ropa abrigada / Impermeables",
+    brazaletes_identificadores: "Brazaletes identificadores",
+    pulseras_gps: "Pulseras GPS",
+    papeleria: "Papelería (bolígrafos, cuadernos, marcadores)",
+    silbatos_pitos: "Silbatos y pitos",
+    comida_mascotas: "Comida para mascotas (Perros/Gatos)",
+    medicinas_mascotas: "Medicinas / Insumos veterinarios básicos",
+    entretenimiento_infantil: "Entretenimiento infantil",
+    actividades_culturales: "Actividades culturales",
+    baile_musica: "Baile y música",
+    veterinario: "Atención Veterinaria"
+  };
 
   document.addEventListener('astro:page-load', () => {
     // Limpieza de mapas e instancias previas
@@ -1671,11 +1777,53 @@ try {
 
         if (resp.ok) {
           cerrarModal();
-          sessionStorage.setItem('refugio_updated', 'true');
-          if (lastEditedCardId) {
-            sessionStorage.setItem('scroll_to_id', lastEditedCardId);
+          
+          // Map inventory to critical and alert names
+          const itemsCriticos: string[] = [];
+          const itemsAlerta: string[] = [];
+          for (const [itemId, estado] of Object.entries(inventario)) {
+            const itemName = ITEM_MAP[itemId];
+            if (itemName) {
+              if (estado === "Crítico") itemsCriticos.push(itemName);
+              else if (estado === "Alerta") itemsAlerta.push(itemName);
+            }
           }
-          navigate(window.location.pathname + '?t=' + Date.now(), { history: 'replace' });
+
+          // Format Date
+          const fechaActualizada = new Date().toLocaleString('es-VE', { 
+            dateStyle: 'short', 
+            timeStyle: 'short' 
+          }).replace(/\//g, "-");
+
+          // Dispatch event to update the specific card element in-place
+          window.dispatchEvent(new CustomEvent(`refugio-updated-${id}`, {
+            detail: {
+              ocupacion_actual: ocupacion,
+              capacidad_maxima: capacidad,
+              necesidades,
+              contacto,
+              encargado,
+              direccion,
+              ninos,
+              bebes,
+              mayores,
+              prof,
+              vols,
+              itemsCriticos,
+              itemsAlerta,
+              inventario,
+              fechaActualizada
+            }
+          }));
+
+          // Show success toast
+          const toast = document.getElementById('index-success-toast');
+          if (toast) {
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+              toast.classList.add('hidden');
+            }, 3000);
+          }
         } else {
           const err = await resp.json();
           if (errorDiv) {
@@ -1688,34 +1836,6 @@ try {
           errorDiv.textContent = "Error de conexión con el servidor.";
           errorDiv.classList.remove("hidden");
         }
-      }
-
-      // Check for success flag in sessionStorage to show toast
-      if (sessionStorage.getItem('refugio_updated') === 'true') {
-        sessionStorage.removeItem('refugio_updated');
-        const toast = document.getElementById('index-success-toast');
-        if (toast) {
-          toast.classList.remove('hidden');
-          setTimeout(() => {
-            toast.classList.add('hidden');
-          }, 3000);
-        }
-        
-        // Centrar elemento editado en pantalla desde sessionStorage
-        const scrollId = sessionStorage.getItem('scroll_to_id');
-        if (scrollId) {
-          sessionStorage.removeItem('scroll_to_id');
-          const el = document.getElementById(scrollId);
-          if (el) {
-            setTimeout(() => {
-              el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            }, 300);
-          }
-        }
-
-        // Clean URL timestamp query param smoothly
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, '', cleanUrl);
       }
     });
   });
