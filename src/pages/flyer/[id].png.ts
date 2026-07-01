@@ -5,7 +5,24 @@ import { Buffer } from "node:buffer";
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ params, request }) => {
+// Cache global en memoria de la instancia del worker para evitar recargas del TTF (ahorra ~300ms)
+let cachedFontBuffer: ArrayBuffer | null = null;
+
+async function getFontBuffer(): Promise<ArrayBuffer> {
+  if (cachedFontBuffer) {
+    return cachedFontBuffer;
+  }
+  const fontResponse = await fetch("https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf");
+  if (!fontResponse.ok) {
+    throw new Error("No se pudo descargar la fuente Roboto");
+  }
+  cachedFontBuffer = await fontResponse.arrayBuffer();
+  return cachedFontBuffer;
+}
+
+export const GET: APIRoute = async (context) => {
+  const { params, request, locals } = context;
+  
   try {
     const { id } = params;
     const { DB, FOTOS_BUCKET } = env as any;
@@ -14,58 +31,73 @@ export const GET: APIRoute = async ({ params, request }) => {
       return new Response("Base de datos no disponible", { status: 500 });
     }
 
-    // 1. Obtener datos del flyer
+    // 1. Intentar usar la caché de Cloudflare (caches.default) para entregar en <50ms
+    const cache = typeof caches !== "undefined" ? caches.default : null;
+    const cacheKey = new Request(request.url, { method: "GET" });
+    if (cache) {
+      const cachedResponse = await cache.match(cacheKey);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+    }
+
+    // 2. Obtener datos del flyer
     const flyer = await DB.prepare("SELECT * FROM flyers WHERE id = ?").bind(id).first<any>();
     if (!flyer) {
       return new Response("Flyer no encontrado", { status: 404 });
     }
 
     const phones: string[] = JSON.parse(flyer.phones || "[]");
-    const socials: string[] = JSON.parse(flyer.socials || "[]");
 
-    // 3. Descargar fuente Roboto TTF
-    const fontResponse = await fetch("https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf");
-    if (!fontResponse.ok) throw new Error("No se pudo descargar la fuente");
-    const fontBuffer = await fontResponse.arrayBuffer();
+    // 3. Lanzar descargas concurrentes en paralelo (ahorra ~600ms adicionales)
+    const fontPromise = getFontBuffer();
 
-    // 4. Descargar foto de R2 si existe y codificar a Base64
-    let base64Image = "";
-    if (flyer.foto_key && FOTOS_BUCKET) {
-      try {
-        const object = await FOTOS_BUCKET.get(flyer.foto_key);
-        if (object) {
-          const bytes = await object.arrayBuffer();
-          // Límite de seguridad: WASM / Resvg colapsa con OOM
-          if (bytes.byteLength < 1.5 * 1024 * 1024) {
-            // Conversión rápida con Buffer de NodeJS
-            const base64 = Buffer.from(bytes).toString('base64');
-            const ext = flyer.foto_key.split('.').pop() || 'jpeg';
-            const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
-            base64Image = `data:${mime};base64,${base64}`;
-          } else {
-            console.warn(`Foto persona demasiado grande: ${bytes.byteLength} bytes. Se omitirá para prevenir crash.`);
+    const photoPromise = (async (): Promise<string> => {
+      if (flyer.foto_key && FOTOS_BUCKET) {
+        try {
+          const object = await FOTOS_BUCKET.get(flyer.foto_key);
+          if (object) {
+            const bytes = await object.arrayBuffer();
+            // Límite de seguridad: WASM / Resvg colapsa con OOM
+            if (bytes.byteLength < 1.5 * 1024 * 1024) {
+              const base64 = Buffer.from(bytes).toString("base64");
+              const ext = flyer.foto_key.split(".").pop() || "jpeg";
+              const mime = ext === "png" ? "image/png" : "image/jpeg";
+              return `data:${mime};base64,${base64}`;
+            } else {
+              console.warn(`Foto persona demasiado grande: ${bytes.byteLength} bytes. Se omitirá.`);
+            }
           }
+        } catch (err) {
+          console.error("Error al obtener foto de R2 para el flyer:", err);
+        }
+      }
+      return "";
+    })();
+
+    const qrPromise = (async (): Promise<string> => {
+      try {
+        const siteUrl = "https://dondeestan.org";
+        const flyerUrl = `${siteUrl}/flyer/${id}`;
+        const qrResponse = await fetch(`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(flyerUrl)}`);
+        if (qrResponse.ok) {
+          const qrBytes = await qrResponse.arrayBuffer();
+          return `data:image/png;base64,${Buffer.from(qrBytes).toString("base64")}`;
         }
       } catch (err) {
-        console.error("Error al obtener foto de R2 para el flyer:", err);
+        console.error("Error al generar QR para el flyer:", err);
       }
-    }
+      return "";
+    })();
 
-    // 5. Generar QR Code
-    let base64QR = "";
-    try {
-      const siteUrl = "https://dondeestan.org";
-      const flyerUrl = `${siteUrl}/flyer/${id}`;
-      const qrResponse = await fetch(`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(flyerUrl)}`);
-      if (qrResponse.ok) {
-        const qrBytes = await qrResponse.arrayBuffer();
-        base64QR = `data:image/png;base64,${Buffer.from(qrBytes).toString('base64')}`;
-      }
-    } catch (err) {
-      console.error("Error al generar QR para el flyer:", err);
-    }
+    // Resolver promesas concurrentes
+    const [fontBuffer, base64Image, base64QR] = await Promise.all([
+      fontPromise,
+      photoPromise,
+      qrPromise
+    ]);
 
-    // 6. Configurar colores y emojis según el tipo de flyer
+    // 4. Configurar colores y emojis según el tipo de flyer
     let themeColor = "#ef4444"; // Rojo (Desaparecido / Emergencia)
     let tipoEmoji = "🔴";
     let tipoLabel = "SE BUSCA";
@@ -84,31 +116,41 @@ export const GET: APIRoute = async ({ params, request }) => {
       tipoLabel = "PERSONA LOCALIZADA";
     }
 
-    // 7. Limpiar datos para el diseño
+    // 5. Limpiar datos para el diseño y parsear etiquetas de Web y Bot
     let cleanTitle = flyer.title || "DESCONOCIDO";
     cleanTitle = cleanTitle.replace(/^(SE BUSCA:|ALERTA AMBER:|ALERTA:|URGENTE:)\s*/i, "").trim().toUpperCase();
 
     let rawDescription = flyer.description || "";
     
+    // Parsear Ubicación / Lugar (soporta [UBICACIÓN: ...] y [LUGAR: ...])
     let ubicaciones: string[] = [];
-    rawDescription = rawDescription.replace(/\[UBICACIÓN:\s*(.*?)\]/gi, (match, p1) => {
+    rawDescription = rawDescription.replace(/\[(?:UBICACIÓN|LUGAR):\s*(.*?)\]/gi, (match, p1) => {
       if (p1.trim()) ubicaciones.push(p1.trim());
       return "";
     });
 
+    // Parsear Último Contacto
     let ultimoContacto = "";
     rawDescription = rawDescription.replace(/\[FECHA ÚLTIMO CONTACTO:\s*(.*?)\]/gi, (match, p1) => {
       ultimoContacto = p1.trim();
       return "";
     });
 
+    // Parsear Señas Particulares
     let senas = "";
     rawDescription = rawDescription.replace(/\[SEÑAS:\s*(.*?)\]/gi, (match, p1) => {
       senas = p1.trim();
       return "";
     });
 
-    // Remover otras etiquetas sobrantes
+    // Parsear Vínculo (flujo bot Telegram)
+    let vinculo = "";
+    rawDescription = rawDescription.replace(/\[VÍNCULO|VINCULO:\s*(.*?)\]/gi, (match, p1) => {
+      vinculo = p1.trim();
+      return "";
+    });
+
+    // Remover otras etiquetas sobrantes entre corchetes
     rawDescription = rawDescription.replace(/\[(.*?)\]/g, "");
     
     let extraDetails = rawDescription.replace(/\n{2,}/g, "\n").trim();
@@ -145,6 +187,19 @@ export const GET: APIRoute = async ({ params, request }) => {
       });
     }
 
+    if (vinculo) {
+      descriptionChildren.push({
+        type: "div",
+        props: {
+          style: fieldStyle,
+          children: [
+            { type: "span", props: { style: labelStyle, children: "👪 Relación con Reportante" } },
+            { type: "span", props: { style: valueStyle, children: vinculo } }
+          ]
+        }
+      });
+    }
+
     if (senas) {
       descriptionChildren.push({
         type: "div",
@@ -172,8 +227,8 @@ export const GET: APIRoute = async ({ params, request }) => {
       });
     }
 
-    // 8. Generar diseño HTML/CSS para ImageResponse (Aspect ratio de cartel 600x800)
-    return ImageResponse.create(
+    // 6. Generar diseño HTML/CSS para ImageResponse
+    const response = ImageResponse.create(
       {
         type: "div",
         props: {
@@ -451,6 +506,16 @@ export const GET: APIRoute = async ({ params, request }) => {
         },
       }
     );
+
+    // 7. Guardar en la caché de Cloudflare para futuras visitas inmediatas
+    if (cache) {
+      const cfCtx = (locals as any).cfContext || (locals as any).runtime?.ctx;
+      if (cfCtx && cfCtx.waitUntil) {
+        cfCtx.waitUntil(cache.put(cacheKey, response.clone()));
+      }
+    }
+
+    return response;
   } catch (error: any) {
     console.error("Error al renderizar el flyer PNG:", error);
     return new Response(`Error al renderizar flyer: ${error.message}`, { status: 500 });

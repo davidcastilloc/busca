@@ -56,10 +56,17 @@ const ogImage = `${siteUrl}/flyer/${id}.png`;
 
 // Descripción corta para compartir
 const rawDesc = flyer?.description || "";
-const ubicacion = flyer?.location_name || "";
+let ubicacion = "";
+const ubiMatch = rawDesc.match(/\[(?:UBICACIÓN|LUGAR):\s*(.*?)\]/i);
+if (ubiMatch) {
+  ubicacion = ubiMatch[1].trim();
+}
 const phones0 = phones[0] || "";
 
 let shareText = "";
+const titleUpper = flyer?.title || "";
+const nombreExtraido = titleUpper.replace(/^(SE BUSCA:|ALERTA AMBER:|ALERTA:|URGENTE:|REFUGIO ACTIVO:|PERSONA ENCONTRADA:|EMERGENCIA:)\s*/i, "").trim();
+
 if (flyer?.tipo === "necesidad") {
   const catMatch = rawDesc.match(/\[TIPO NECESIDAD: (.*?)\]/);
   const gravedadMatch = rawDesc.match(/\[URGENCIA: (.*?)\]/);
@@ -67,14 +74,11 @@ if (flyer?.tipo === "necesidad") {
   const grav = gravedadMatch ? gravedadMatch[1] : "Alta urgencia";
   shareText = `🇧 NECESIDAD CRÍTICA: ${cat} (${grav})${ubicacion ? ` en ${ubicacion}` : ""}${phones0 ? `. Contactar: ${phones0}` : ""}. ¡Comparte y ayuda! ${flyerUrl}`;
 } else if (flyer?.tipo === "refugio") {
-  const nombre = flyer?.nombre_buscado || "Refugio activo";
-  shareText = `🏠 REFUGIO ACTIVO: ${nombre}${ubicacion ? ` - ${ubicacion}` : ""}${phones0 ? `. Encargado: ${phones0}` : ""}. ${flyerUrl}`;
+  shareText = `🏠 REFUGIO ACTIVO: ${nombreExtraido}${ubicacion ? ` - ${ubicacion}` : ""}${phones0 ? `. Encargado: ${phones0}` : ""}. ${flyerUrl}`;
 } else if (flyer?.tipo === "desaparecido") {
-  const nombre = flyer?.nombre_buscado || "Persona desaparecida";
-  shareText = `🔴 SE BUSCA: ${nombre}${ubicacion ? ` - Último avistamiento: ${ubicacion}` : ""}. ¡Comparte! ${flyerUrl}`;
+  shareText = `🔴 SE BUSCA: ${nombreExtraido}${ubicacion ? ` - Último avistamiento: ${ubicacion}` : ""}. ¡Comparte! ${flyerUrl}`;
 } else if (flyer?.tipo === "encontrado") {
-  const nombre = flyer?.nombre_buscado || "Persona encontrada";
-  shareText = `✅ PERSONA ENCONTRADA/LOCALIZADO: ${nombre}. Informar a familiares. ${flyerUrl}`;
+  shareText = `✅ PERSONA ENCONTRADA/LOCALIZADO: ${nombreExtraido}. Informar a familiares. ${flyerUrl}`;
 } else {
   shareText = `🚨 Reporte de emergencia en dondeestan.org: ${flyerUrl}`;
 }
