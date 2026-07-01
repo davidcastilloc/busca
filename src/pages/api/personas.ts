@@ -23,10 +23,24 @@ export const POST: APIRoute = async (context) => {
     const validated = PersonaSchema.parse(body);
     validated.created_by = voluntario.id;
 
-    await env.CENSO_QUEUE.send({
-      type: "persona",
-      data: validated
-    });
+    if (import.meta.env.DEV) {
+      const { procesarCola } = await import("../../lib/queue-processor");
+      const mockBatch = {
+        messages: [{
+          body: {
+            type: "persona",
+            data: validated
+          },
+          ack: () => {}
+        }]
+      };
+      await procesarCola(mockBatch as any, env);
+    } else {
+      await env.CENSO_QUEUE.send({
+        type: "persona",
+        data: validated
+      });
+    }
 
     return new Response(JSON.stringify({ success: true, message: "Registro encolado" }), {
       status: 202,
