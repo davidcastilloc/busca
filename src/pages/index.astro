@@ -183,19 +183,19 @@ try {
       </div>
 
       <!-- Filtros Rápidos y Buscador -->
-      <div class="space-y-4 mb-6">
+      <div class="space-y-4 mb-6" x-data="{ query: '', filtro: 'todos' }">
         <!-- Filtros por tipo -->
         <div class="flex flex-wrap gap-2 overflow-x-auto pb-1 scrollbar-none" id="tipo-filtros">
-          <button type="button" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border border-canvas-soft bg-primary text-white cursor-pointer transition-all" data-tipo="todos">
+          <button type="button" @click="filtro = 'todos'" :class="filtro === 'todos' ? 'bg-primary text-white' : 'bg-canvas text-ink hover:bg-canvas-soft border-canvas-soft'" class="px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border cursor-pointer transition-all">
             Todos
           </button>
-          <button type="button" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border border-canvas-soft bg-canvas text-ink hover:bg-canvas-soft cursor-pointer transition-all" data-tipo="refugio">
+          <button type="button" @click="filtro = 'refugio'" :class="filtro === 'refugio' ? 'bg-primary text-white' : 'bg-canvas text-ink hover:bg-canvas-soft border-canvas-soft'" class="px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border cursor-pointer transition-all">
             🏠 Refugios
           </button>
-          <button type="button" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border border-canvas-soft bg-canvas text-ink hover:bg-canvas-soft cursor-pointer transition-all" data-tipo="centro_acopio">
+          <button type="button" @click="filtro = 'centro_acopio'" :class="filtro === 'centro_acopio' ? 'bg-primary text-white' : 'bg-canvas text-ink hover:bg-canvas-soft border-canvas-soft'" class="px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border cursor-pointer transition-all">
             📦 Centros de Acopio
           </button>
-          <button type="button" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border border-canvas-soft bg-canvas text-ink hover:bg-canvas-soft cursor-pointer transition-all" data-tipo="hospital">
+          <button type="button" @click="filtro = 'hospital'" :class="filtro === 'hospital' ? 'bg-primary text-white' : 'bg-canvas text-ink hover:bg-canvas-soft border-canvas-soft'" class="px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border cursor-pointer transition-all">
             🏥 Hospitales / Salud
           </button>
         </div>
@@ -204,6 +204,7 @@ try {
         <input 
           type="text" 
           id="search-refugios" 
+          x-model="query"
           placeholder="Buscar refugio por nombre, ubicación o insumos..." 
           class="input w-full font-uber-text uber-body-md border border-canvas-soft bg-canvas px-4 py-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary shadow-sm animate-fade-in"
         />
@@ -285,6 +286,7 @@ try {
             return (
               <div 
                 id={`refugio-${r.id}`}
+                x-show={`(filtro === 'todos' || filtro === '${r.tipo}') && (!query || '${r.nombre.replace(/'/g, "").toLowerCase()} ${r.direccion?.replace(/'/g, "").toLowerCase() || ""} ${r.necesidades?.replace(/'/g, "").toLowerCase() || ""}'.includes(query.toLowerCase()))`}
                 class="refugio-card bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm space-y-4 transition-all hover:shadow-md"
                 data-id={r.id}
                 data-nombre={r.nombre.toLowerCase()}
