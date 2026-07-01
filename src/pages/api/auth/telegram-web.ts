@@ -58,7 +58,7 @@ export const GET: APIRoute = async (context) => {
       });
 
       // Redirigir como 302 porque es un GET request del navegador
-      return Response.redirect(new URL("/ayudar", context.request.url), 302);
+      return context.redirect("/ayudar", 302);
     } else {
       // 3b. El usuario NO EXISTE: Redirigir para completar registro
       // Guardamos la verificación temporal en una cookie segura y corta (1 hora)
@@ -82,7 +82,7 @@ export const GET: APIRoute = async (context) => {
       });
 
       // Redirigir al usuario al formulario para completar su registro
-      return Response.redirect(new URL("/ayudar?register=telegram", context.request.url), 302);
+      return context.redirect("/ayudar?register=telegram", 302);
     }
   } catch (error: any) {
     console.error("Error en auth telegram web:", error);
