@@ -30,20 +30,19 @@ try {
 
 const formatFechaHora = (fechaStr: string) => {
   try {
-    const d = new Date(fechaStr + " UTC");
-    const dateStr = d.toLocaleDateString("es-ES", { 
-      timeZone: "America/Caracas",
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    const timeStr = d.toLocaleTimeString("es-ES", {
-      timeZone: "America/Caracas",
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-    return `Reportado el: ${dateStr} a las ${timeStr}`;
+    if (!fechaStr) return "";
+    const cleanFecha = fechaStr.replace("T", " ");
+    if (cleanFecha.includes(" ")) {
+      const [datePart, timePart] = cleanFecha.split(" ");
+      const [year, month, day] = datePart.split("-");
+      const [hour, minute] = timePart.split(":");
+      let h = parseInt(hour, 10);
+      const ampm = h >= 12 ? "p.m." : "a.m.";
+      h = h % 12;
+      if (h === 0) h = 12;
+      return `Reportado el: ${day}/${month}/${year} a las ${h}:${minute} ${ampm}`;
+    }
+    return fechaStr;
   } catch (e) {
     return fechaStr;
   }

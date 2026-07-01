@@ -156,6 +156,24 @@ export const GET: APIRoute = async (context) => {
     let extraDetails = rawDescription.replace(/\n{2,}/g, "\n").trim();
     const ubiText = ubicaciones.length > 0 ? Array.from(new Set(ubicaciones)).join(" / ") : "";
 
+    let dateStrText = "";
+    const rawDate = flyer.created_at || "";
+    if (rawDate) {
+      try {
+        const cleanFecha = rawDate.replace("T", " ");
+        if (cleanFecha.includes(" ")) {
+          const [dPart, tPart] = cleanFecha.split(" ");
+          const [yy, mm, dd] = dPart.split("-");
+          const [hh, mmm] = tPart.split(":");
+          let h = parseInt(hh, 10);
+          const am = h >= 12 ? "p.m." : "a.m.";
+          h = h % 12;
+          if (h === 0) h = 12;
+          dateStrText = `${dd}/${mm}/${yy} a las ${h}:${mmm} ${am}`;
+        }
+      } catch (e) {}
+    }
+
     const descriptionChildren: any[] = [];
     const fieldStyle = { display: "flex", flexDirection: "column" as any, marginBottom: "8px" };
     const labelStyle = { display: "flex", fontSize: "11px", fontWeight: "bold", color: themeColor, textTransform: "uppercase" as any, marginBottom: "2px" };
@@ -411,6 +429,19 @@ export const GET: APIRoute = async (context) => {
                               },
                             }
                           : null,
+                        dateStrText ? {
+                          type: "span",
+                          props: {
+                            style: {
+                              display: "flex",
+                              fontSize: "12px",
+                              fontWeight: "normal",
+                              color: "#6b7280",
+                              marginTop: phones.length > 0 ? "4px" : "0px",
+                            },
+                            children: dateStrText,
+                          },
+                        } : null,
                         {
                           type: "div",
                           props: {
