@@ -10,7 +10,7 @@ interface Props {
 const { class: className = "", url, text, buttonText } = Astro.props;
 ---
 <div class={`dropdown dropdown-end ${className}`} data-share-url={url} data-share-text={text}>
-  <div tabindex="0" role="button" class={buttonText ? "btn btn-xs bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text font-semibold px-3 py-1.5 rounded-lg border border-canvas-soft cursor-pointer flex items-center gap-1" : "w-10 h-10 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors active:bg-surface-pressed"} title="Compartir">
+  <div tabindex="0" role="button" class={buttonText ? "py-1.5 px-3.5 rounded-full bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-xs text-ink font-semibold cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap" : "w-10 h-10 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors active:bg-surface-pressed"} title="Compartir">
     {buttonText ? (
       <>
         📤 {buttonText}

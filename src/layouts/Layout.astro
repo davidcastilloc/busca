@@ -162,8 +162,10 @@ const {
         try {
           tg.MainButton.hide();
           tg.MainButton.offClick();
-          tg.BackButton.hide();
-          tg.BackButton.offClick();
+          if (tg.isVersionAtLeast && tg.isVersionAtLeast('6.1')) {
+            tg.BackButton.hide();
+            tg.BackButton.offClick();
+          }
         } catch (e) {
           console.error("Error al resetear botones de Telegram:", e);
         }
@@ -177,17 +179,21 @@ const {
         // Aplicar theming dinámico basado en Telegram
         document.documentElement.style.setProperty('--tg-theme-bg-color', tg.backgroundColor || '#000000');
         document.documentElement.style.setProperty('--tg-theme-text-color', tg.textColor || '#ffffff');
-        tg.setHeaderColor(tg.themeParams.bg_color || tg.backgroundColor || '#000000');
-        tg.setBackgroundColor(tg.themeParams.secondary_bg_color || tg.backgroundColor || '#000000');
+        if (tg.isVersionAtLeast && tg.isVersionAtLeast('6.1')) {
+          tg.setHeaderColor(tg.themeParams.bg_color || tg.backgroundColor || '#000000');
+          tg.setBackgroundColor(tg.themeParams.secondary_bg_color || tg.backgroundColor || '#000000');
+        }
 
         // Control del BackButton de Telegram
-        if (window.location.pathname !== '/') {
-          tg.BackButton.show();
-          tg.BackButton.onClick(() => {
-            window.history.back();
-          });
-        } else {
-          tg.BackButton.hide();
+        if (tg.isVersionAtLeast && tg.isVersionAtLeast('6.1')) {
+          if (window.location.pathname !== '/') {
+            tg.BackButton.show();
+            tg.BackButton.onClick(() => {
+              window.history.back();
+            });
+          } else {
+            tg.BackButton.hide();
+          }
         }
 
         // Ruteo dinámico según start_param de Telegram
