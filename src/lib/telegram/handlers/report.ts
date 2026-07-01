@@ -66,6 +66,24 @@ export async function handleReportState(
       data.cedula_buscado = null;
     }
 
+    await setSession(db, telegramId, chatId, "rep_contacto", data);
+    
+    await client.sendMessage(
+      chatId,
+      "Cédula registrada.\n\nPor favor, ingresa tu <b>número de teléfono de contacto</b> (ej. 0414-1234567):",
+      { reply_markup: { remove_keyboard: true } }
+    );
+    return;
+  }
+
+  // 2.3 Esperando Contacto
+  if (currentStep === "rep_contacto") {
+    if (!text || text.trim().length < 5) {
+      await client.sendMessage(chatId, "⚠️ Por favor, ingresa un número de teléfono válido:");
+      return;
+    }
+    data.reportante_contacto = text.trim();
+
     await setSession(db, telegramId, chatId, "rep_ubicacion", data);
     
     let keyboardOptions: any = {
@@ -84,7 +102,7 @@ export async function handleReportState(
 
     await client.sendMessage(
       chatId,
-      "Cédula registrada.\n\nAhora, escribe <b>dónde estuvo últimamente</b> (última ubicación conocida) o envía tu <b>Ubicación GPS (📎)</b> si estás en el sitio:",
+      "Contacto registrado.\n\nAhora, escribe <b>dónde estuvo últimamente</b> (última ubicación conocida) o envía tu <b>Ubicación GPS (📎)</b> si estás en el sitio:",
       { reply_markup: keyboardOptions }
     );
     return;
@@ -212,7 +230,7 @@ export async function handleReportState(
            refugio_id: data.refugio_id || null,
            hospital_id: data.hospital_id || null,
           reportante_nombre: `Bot Telegram`,
-          reportante_contacto: `User ID: ${telegramId}`,
+          reportante_contacto: data.reportante_contacto || `User ID: ${telegramId}`,
           foto_key: data.foto_key,
           created_by: voluntarioId
         };
