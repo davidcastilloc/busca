@@ -1,6 +1,9 @@
 import type { TelegramClient } from "../client";
 import { setSession, clearSession, type TelegramSession } from "../session";
 import { getShelterKeyboard, resolveLocation } from "../utils";
+import { startFound } from "./found";
+import { startShelter } from "./shelter";
+import { startSos } from "./sos";
 
 export async function startReport(
   client: TelegramClient,
@@ -8,11 +11,23 @@ export async function startReport(
   chatId: string | number,
   telegramId: string | number
 ): Promise<void> {
-  // Inicializar flujo
-  await setSession(db, telegramId, chatId, "rep_reporter_name", {});
+  // Inicializar flujo de selección de tipo de reporte
+  await setSession(db, telegramId, chatId, "rep_select_type", {});
+  
+  const keyboard = {
+    keyboard: [
+      [{ text: "🔴 Persona Desaparecida" }, { text: "✅ Persona Localizada" }],
+      [{ text: "🏠 Refugio / Centro" }, { text: "🆘 Necesidad Crítica" }],
+      [{ text: "/cancelar" }]
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: true
+  };
+
   await client.sendMessage(
     chatId,
-    "🔍 <b>Reportar Persona Desaparecida</b>\n\nPara comenzar, indícame tu <b>Nombre y Apellido</b> (de ti, que estás reportando):\n\n<i>/cancelar para salir.</i>"
+    "📋 <b>Reportar una Emergencia</b>\n\n¿Qué tipo de reporte deseas registrar?",
+    { reply_markup: keyboard }
   );
 }
 
@@ -35,6 +50,60 @@ export async function handleReportState(
   if (text === "/cancelar") {
     await clearSession(db, telegramId);
     await client.sendMessage(chatId, "❌ Reporte cancelado.", { reply_markup: { remove_keyboard: true } });
+    return;
+  }
+
+  // 0. Esperando Selección de Tipo de Reporte
+  if (currentStep === "rep_select_type") {
+    if (!text) {
+      await client.sendMessage(chatId, "⚠️ Por favor selecciona una opción del teclado.");
+      return;
+    }
+
+    const cleanText = text.trim();
+
+    if (cleanText.includes("Desaparecida")) {
+      data.tipo = "desaparecido";
+      await setSession(db, telegramId, chatId, "rep_reporter_name", data);
+      await client.sendMessage(
+        chatId,
+        "🔍 <b>Reportar Persona Desaparecida</b>\n\nPara comenzar, indícame tu <b>Nombre y Apellido</b> (de ti, que estás reportando):\n\n<i>/cancelar para salir.</i>",
+        { reply_markup: { remove_keyboard: true } }
+      );
+      return;
+    }
+
+    if (cleanText.includes("Localizada")) {
+      if (!isAuthorized) {
+        await client.sendMessage(chatId, "🚷 Acceso denegado. Reportar personas localizadas es una función exclusiva para voluntarios autorizados. Inicia sesión con /login.");
+        return;
+      }
+      await clearSession(db, telegramId);
+      await startFound(client, db, chatId, telegramId);
+      return;
+    }
+
+    if (cleanText.includes("Refugio")) {
+      if (!isAuthorized) {
+        await client.sendMessage(chatId, "🚷 Acceso denegado. Registrar o actualizar refugios es una función exclusiva para voluntarios autorizados. Inicia sesión con /login.");
+        return;
+      }
+      await clearSession(db, telegramId);
+      await startShelter(client, db, chatId, telegramId);
+      return;
+    }
+
+    if (cleanText.includes("Necesidad")) {
+      if (!isAuthorized) {
+        await client.sendMessage(chatId, "🚷 Acceso denegado. Reportar necesidades críticas requiere credenciales de voluntario autorizado. Inicia sesión con /login.");
+        return;
+      }
+      await clearSession(db, telegramId);
+      await startSos(client, db, chatId, telegramId);
+      return;
+    }
+
+    await client.sendMessage(chatId, "⚠️ Opción no válida. Por favor selecciona una del menú.");
     return;
   }
 
