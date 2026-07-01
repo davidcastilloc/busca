@@ -76,31 +76,8 @@ export const PATCH: APIRoute = async (context) => {
       });
     }
 
-    // Verificar existencia y determinar tabla
-    let table = "";
-    let existente = await DB.prepare("SELECT id FROM refugios WHERE id = ?").bind(id).first();
-    if (existente) {
-      table = "refugios";
-    } else {
-      existente = await DB.prepare("SELECT id FROM centros_acopio WHERE id = ?").bind(id).first();
-      if (existente) {
-        table = "centros_acopio";
-      } else {
-        existente = await DB.prepare("SELECT id FROM hospitales WHERE id = ?").bind(id).first();
-        if (existente) {
-          table = "hospitales";
-        }
-      }
-    }
-
-    if (!table) {
-      return new Response(JSON.stringify({ error: "Registro no encontrado." }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-
     const { 
+      tipo,
       ocupacion_actual, 
       capacidad_maxima, 
       necesidades, 
@@ -117,6 +94,42 @@ export const PATCH: APIRoute = async (context) => {
       longitud,
       fotos
     } = body;
+
+    // Verificar existencia y determinar tabla
+    let table = "";
+    if (tipo === "refugio") {
+      const existente = await DB.prepare("SELECT id FROM refugios WHERE id = ?").bind(id).first();
+      if (existente) table = "refugios";
+    } else if (tipo === "centro_acopio" || tipo === "centros_acopio") {
+      const existente = await DB.prepare("SELECT id FROM centros_acopio WHERE id = ?").bind(id).first();
+      if (existente) table = "centros_acopio";
+    } else if (tipo === "hospital" || tipo === "hospitales") {
+      const existente = await DB.prepare("SELECT id FROM hospitales WHERE id = ?").bind(id).first();
+      if (existente) table = "hospitales";
+    } else {
+      // Fallback a detección secuencial por ID si no viene tipo
+      let existente = await DB.prepare("SELECT id FROM refugios WHERE id = ?").bind(id).first();
+      if (existente) {
+        table = "refugios";
+      } else {
+        existente = await DB.prepare("SELECT id FROM centros_acopio WHERE id = ?").bind(id).first();
+        if (existente) {
+          table = "centros_acopio";
+        } else {
+          existente = await DB.prepare("SELECT id FROM hospitales WHERE id = ?").bind(id).first();
+          if (existente) {
+            table = "hospitales";
+          }
+        }
+      }
+    }
+
+    if (!table) {
+      return new Response(JSON.stringify({ error: "Registro no encontrado." }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
 
     // Helper para verificar campos soportados
     const hasField = (fieldName: string) => {
