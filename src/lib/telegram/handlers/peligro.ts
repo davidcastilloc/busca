@@ -142,7 +142,7 @@ export async function handlePeligroState(
       );
 
       // Notificar a voluntarios suscritos cercanos (radio de 10km) inmediatamente
-      await notificarVoluntariosCercanos(client, db, data.tipo_peligro, data.descripcion, data.ubicacion_nombre, data.latitud, data.longitud);
+      await notificarVoluntariosCercanos(client, db, dangerId, data.tipo_peligro, data.descripcion, data.ubicacion_nombre, data.latitud, data.longitud);
 
     } catch (err) {
       console.error("Error al registrar peligro en D1:", err);
@@ -158,6 +158,7 @@ export async function handlePeligroState(
 async function notificarVoluntariosCercanos(
   client: TelegramClient,
   db: D1Database,
+  dangerId: string,
   tipo: string,
   desc: string,
   sector: string,
@@ -192,6 +193,7 @@ async function notificarVoluntariosCercanos(
       `📌 <b>Tipo:</b> ${emojiMap[tipo] || tipo}\n` +
       `📍 <b>Sector:</b> ${sector}\n` +
       `📝 <b>Detalle:</b> ${desc}\n\n` +
+      `🔗 <a href="https://dondeestan.org/mapa?tipo=peligro&id=${dangerId}">Ver en el mapa</a>\n\n` +
       `🚗 <i>Evita transitar por esta zona si estás en ruta de entrega.</i>`;
 
     for (const sub of results) {

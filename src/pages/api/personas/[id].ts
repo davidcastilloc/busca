@@ -125,7 +125,7 @@ export const PATCH: APIRoute = async (context) => {
           `• <b>Cédula:</b> ${existente.cedula || "No especificada"}\n` +
           `• <b>Contacto reportante:</b> ${body.contacto}\n` +
           `• <b>Notas:</b> <i>"${body.notes || body.notas || "Sin comentarios"}"</i>\n\n` +
-          `🔗 <a href="https://dondeestan.org/admin/dashboard">Verificar en Panel de Rescatistas</a>`;
+          `🔗 <a href="https://dondeestan.org/mapa?tipo=persona&id=${id}">Ver en el mapa</a>`;
         
         const cfContext = context.locals.cfContext || context.locals.runtime?.ctx;
         if (cfContext?.waitUntil) {
