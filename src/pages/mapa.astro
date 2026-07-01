@@ -553,6 +553,7 @@ const isVolunteer = !!voluntario;
 
     // 1. Refugios
     dataStore.refugios.forEach((r: any) => {
+      if (!r.lat || !r.lng || isNaN(r.lat) || isNaN(r.lng)) return;
       const emoji = r.tipo === "hospital" ? "🏥" : r.tipo === "centro_acopio" ? "📦" : "🏠";
       const markerClass = r.tipo === "hospital" ? "marker-hospital" : r.tipo === "centro_acopio" ? "marker-acopio" : "marker-refugio";
 
@@ -594,6 +595,7 @@ const isVolunteer = !!voluntario;
 
     // 2. Necesidades
     dataStore.necesidades.forEach((n: any) => {
+      if (!n.lat || !n.lng || isNaN(n.lat) || isNaN(n.lng)) return;
       const icon = L.divIcon({
         html: `<div class="custom-marker marker-necesidad" data-id="${n.id}">📦</div>`,
         className: "",
@@ -613,12 +615,11 @@ const isVolunteer = !!voluntario;
 
       markers.set(`necesidad-${n.id}`, marker);
       necesidadesCluster.addLayer(marker);
-
-      // Comprobar cobertura (distancia al refugio más cercano)
     });
 
     // 3. Personas
     dataStore.personas.forEach((p: any) => {
+      if (!p.lat || !p.lng || isNaN(p.lat) || isNaN(p.lng)) return;
       let emojiStatus = "👥";
       if (p.estado === "herido") emojiStatus = "🤕";
       else if (p.estado === "fallecido") emojiStatus = "💀";
@@ -643,12 +644,11 @@ const isVolunteer = !!voluntario;
 
       markers.set(`persona-${p.id}`, marker);
       personasCluster.addLayer(marker);
-
-      // Comprobar cobertura (distancia al refugio más cercano)
     });
 
     // 4. Peligros
     dataStore.peligros.forEach((p: any) => {
+      if (!p.lat || !p.lng || isNaN(p.lat) || isNaN(p.lng)) return;
       const emoji = p.tipo === "bloqueo" ? "🚧" : p.tipo === "derrumbe" ? "⛰️" : "🌊";
       const icon = L.divIcon({
         html: `<div class="custom-marker marker-peligro" data-id="${p.id}">${emoji}</div>`,
@@ -673,9 +673,9 @@ const isVolunteer = !!voluntario;
 
     // 5. Mapa de Calor
     const heatPoints = [
-      ...dataStore.necesidades.map(n => [n.lat, n.lng, n.gravedad === "Alta" ? 3 : n.gravedad === "Media" ? 2 : 1]),
-      ...dataStore.personas.map(p => [p.lat, p.lng, p.estado === "desconocido" ? 2.5 : p.estado === "herido" ? 2 : 1]),
-      ...dataStore.peligros.map(p => [p.lat, p.lng, 3])
+      ...dataStore.necesidades.filter((n: any) => n.lat && n.lng && !isNaN(n.lat) && !isNaN(n.lng)).map((n: any) => [n.lat, n.lng, n.gravedad === "Alta" ? 3 : n.gravedad === "Media" ? 2 : 1]),
+      ...dataStore.personas.filter((p: any) => p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng)).map((p: any) => [p.lat, p.lng, p.estado === "desconocido" ? 2.5 : p.estado === "herido" ? 2 : 1]),
+      ...dataStore.peligros.filter((p: any) => p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng)).map((p: any) => [p.lat, p.lng, 3])
     ];
     heatmapLayer = L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 17 });
 
@@ -684,46 +684,73 @@ const isVolunteer = !!voluntario;
 
     // Centrar mapa en la zona más densa
     const allPoints = [
-      ...dataStore.refugios,
-      ...dataStore.necesidades,
-      ...dataStore.personas,
-      ...dataStore.peligros
+      ...dataStore.refugios.filter((r: any) => r.lat && r.lng && !isNaN(r.lat) && !isNaN(r.lng)),
+      ...dataStore.necesidades.filter((n: any) => n.lat && n.lng && !isNaN(n.lat) && !isNaN(n.lng)),
+      ...dataStore.personas.filter((p: any) => p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng)),
+      ...dataStore.peligros.filter((p: any) => p.lat && p.lng && !isNaN(p.lat) && !isNaN(p.lng))
     ];
     
     if (isInitialLoad && allPoints.length > 0) {
-      let maxCount = -1;
-      let bestCenter = allPoints[0];
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlTipo = urlParams.get('tipo');
+      const urlId = urlParams.get('id');
 
-      // Buscar el punto con más vecinos en un radio de 15km (más enfocado)
-      for (let i = 0; i < allPoints.length; i++) {
-        const p1 = allPoints[i];
-        let count = 0;
-        for (let j = 0; j < allPoints.length; j++) {
-          const p2 = allPoints[j];
-          // ponytail: filtro rápido de caja para evitar Haversine en O(N^2)
-          if (Math.abs(p1.lat - p2.lat) < 0.15 && Math.abs(p1.lng - p2.lng) < 0.15) {
-            if (haversine(p1.lat, p1.lng, p2.lat, p2.lng) < 15) {
-              count++;
+      if (urlTipo && urlId) {
+        // Mapear el tipo a la capa activa correcta
+        const layerMap: Record<string, string> = { 
+          "refugio": "refugios", "centro_acopio": "refugios", "hospital": "refugios", 
+          "necesidad": "necesidades", "persona": "personas", "peligro": "peligros" 
+        };
+        if (layerMap[urlTipo]) {
+           activeLayer = layerMap[urlTipo];
+           document.querySelectorAll(".layer-pill").forEach(p => p.classList.remove("active"));
+           const layerPill = document.querySelector(`.layer-pill[data-layer="${activeLayer}"]`);
+           if (layerPill) layerPill.classList.add("active");
+           applyLayerFilter();
+        }
+
+        const marker = markers.get(`${urlTipo}-${urlId}`);
+        if (marker) {
+          map.flyTo(marker.getLatLng(), 17, { duration: 1.5 });
+          setTimeout(() => marker.openPopup(), 1600);
+          showEntityDetail(urlTipo, urlId);
+          expandSheet("medio");
+        }
+      } else {
+        let maxCount = -1;
+        let bestCenter = allPoints[0];
+
+        // Buscar el punto con más vecinos en un radio de 15km (más enfocado)
+        for (let i = 0; i < allPoints.length; i++) {
+          const p1 = allPoints[i];
+          let count = 0;
+          for (let j = 0; j < allPoints.length; j++) {
+            const p2 = allPoints[j];
+            // ponytail: filtro rápido de caja para evitar Haversine en O(N^2)
+            if (Math.abs(p1.lat - p2.lat) < 0.15 && Math.abs(p1.lng - p2.lng) < 0.15) {
+              if (haversine(p1.lat, p1.lng, p2.lat, p2.lng) < 15) {
+                count++;
+              }
             }
           }
+          if (count > maxCount) {
+            maxCount = count;
+            bestCenter = p1;
+          }
         }
-        if (count > maxCount) {
-          maxCount = count;
-          bestCenter = p1;
-        }
-      }
 
-      // Obtener todos los puntos dentro de ese radio para hacer bounds
-      // ponytail: filtro rápido
-      const clusterPoints = allPoints.filter(p => 
-        Math.abs(bestCenter.lat - p.lat) < 0.15 && 
-        Math.abs(bestCenter.lng - p.lng) < 0.15 && 
-        haversine(bestCenter.lat, bestCenter.lng, p.lat, p.lng) < 15
-      );
-      const bounds = L.latLngBounds(clusterPoints.map(p => [p.lat, p.lng]));
-      
-      // Ajustar la vista: menos padding y maxZoom=16 para que la cámara baje más
-      map.fitBounds(bounds.pad(0.05), { maxZoom: 16 });
+        // Obtener todos los puntos dentro de ese radio para hacer bounds
+        // ponytail: filtro rápido
+        const clusterPoints = allPoints.filter(p => 
+          Math.abs(bestCenter.lat - p.lat) < 0.15 && 
+          Math.abs(bestCenter.lng - p.lng) < 0.15 && 
+          haversine(bestCenter.lat, bestCenter.lng, p.lat, p.lng) < 15
+        );
+        const bounds = L.latLngBounds(clusterPoints.map(p => [p.lat, p.lng]));
+        
+        // Ajustar la vista: menos padding y maxZoom=16 para que la cámara baje más
+        map.fitBounds(bounds.pad(0.05), { maxZoom: 16 });
+      }
       isInitialLoad = false;
     }
   }

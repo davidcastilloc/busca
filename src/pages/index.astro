@@ -118,10 +118,11 @@ try {
           <div class="space-y-4">
             {necesidadesCriticas.map((n) => (
               <div 
-                class="relative overflow-hidden bg-gradient-to-br from-red-50 to-white border border-red-100 rounded-2xl p-5 flex flex-col sm:flex-row gap-4 shadow-[0_2px_10px_-3px_rgba(220,38,38,0.1)] hover:shadow-[0_8px_20px_-6px_rgba(220,38,38,0.15)] transition-all duration-300"
+                class="relative overflow-hidden bg-gradient-to-br from-red-50 to-white border border-red-100 rounded-2xl p-5 flex flex-col sm:flex-row gap-4 shadow-[0_2px_10px_-3px_rgba(220,38,38,0.1)] hover:shadow-[0_8px_20px_-6px_rgba(220,38,38,0.15)] transition-all duration-300 cursor-pointer"
                 x-data={`{ id: ${n.id}, marcando: false, resuelto: false }`}
                 x-show="!resuelto"
                 x-transition.opacity.duration.300ms
+                @click="if (!$event.target.closest('button')) window.location.href = `/mapa?tipo=necesidad&id=${id}`"
               >
                 <div class="flex items-start gap-4 flex-grow">
                   <div class="flex-shrink-0 w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-2xl shadow-inner border border-red-200">
