@@ -8,143 +8,172 @@ interface Props {
 }
 
 const { class: className = "", url, text, buttonText } = Astro.props;
+// ID único para el modal
+const modalId = `share_modal_${Math.random().toString(36).substring(2, 9)}`;
 ---
-<div class={`dropdown dropdown-end ${className}`} data-share-url={url} data-share-text={text}>
-  <div tabindex="0" role="button" class={buttonText ? "py-1.5 px-3.5 rounded-full bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-xs text-ink font-semibold cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap" : "w-10 h-10 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors active:bg-surface-pressed"} title="Compartir">
+<div class="contents" data-share-url={url} data-share-text={text}>
+  <button 
+    type="button" 
+    class={`btn-share-trigger btn ${className || (buttonText ? "btn-sm btn-outline rounded-full font-semibold" : "btn-sm btn-outline btn-circle")} flex items-center justify-center gap-1.5 cursor-pointer`} 
+    title="Compartir"
+    data-modal-target={modalId}
+  >
     {buttonText ? (
       <>
         📤 {buttonText}
       </>
     ) : (
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
       </svg>
     )}
-  </div>
-  <ul tabindex="0" class="dropdown-content z-[60] menu p-2 shadow-lg bg-canvas border border-canvas-soft rounded-xl w-56 mt-2 gap-1">
-    <li>
-      <button class="share-wa flex items-center gap-3 text-ink hover:bg-canvas-soft px-3 py-2 rounded-lg">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.65 -3.8a9 9 0 1 1 3.4 2.9l-5.05 .9" /><path d="M9 10a.5 .5 0 0 0 1 0v-1a.5 .5 0 0 0 -1 0v1a5 5 0 0 0 5 5h1a.5 .5 0 0 0 0 -1h-1a.5 .5 0 0 0 0 1" /></svg>
-        WhatsApp
-      </button>
-    </li>
-    <li>
-      <button class="share-tg flex items-center gap-3 text-ink hover:bg-canvas-soft px-3 py-2 rounded-lg">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0088cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l-4 4l6 6l4 -16l-18 7l4 2l2 6l3 -4" /></svg>
-        Telegram
-      </button>
-    </li>
-    <li>
-      <button class="share-ig flex items-center gap-3 text-ink hover:bg-canvas-soft px-3 py-2 rounded-lg" title="Copiar para historias de Instagram">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E1306C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4" /><circle cx="12" cy="12" r="3" /><line x1="16.5" y1="7.5" x2="16.5" y2="7.501" /></svg>
-        Instagram (Copiar)
-      </button>
-    </li>
-    <li>
-      <button class="share-fb flex items-center gap-3 text-ink hover:bg-canvas-soft px-3 py-2 rounded-lg">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1877F2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v4h3v7h4v-7h3l1 -4h-4v-2a1 1 0 0 1 1 -1h3v-4h-3a5 5 0 0 0 -5 5v2h-3" /></svg>
-        Facebook
-      </button>
-    </li>
-    <li>
-      <button class="share-x flex items-center gap-3 text-ink hover:bg-canvas-soft px-3 py-2 rounded-lg">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z" /><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772" /></svg>
-        X (Twitter)
-      </button>
-    </li>
-    <li class="share-native-li hidden">
-      <div class="divider my-0"></div>
-      <button class="share-native flex items-center gap-3 text-ink hover:bg-canvas-soft px-3 py-2 rounded-lg">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>
-        Más opciones...
-      </button>
-    </li>
-  </ul>
+  </button>
+
+  <dialog id={modalId} class="modal modal-bottom sm:modal-middle z-[9999]">
+    <div class="modal-box bg-base-100 border border-base-300 text-base-content rounded-2xl max-w-sm mx-auto shadow-2xl p-6">
+      <h3 class="font-bold text-lg text-ink flex items-center gap-2 mb-2">
+        📤 Compartir recurso
+      </h3>
+      <p class="text-xs text-body mb-4">Selecciona el canal para compartir la información:</p>
+      
+      <div class="grid grid-cols-2 gap-3 mb-6">
+        <button class="share-wa btn btn-outline btn-sm justify-start gap-3 w-full font-semibold rounded-xl py-2.5 h-auto text-xs cursor-pointer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.65 -3.8a9 9 0 1 1 3.4 2.9l-5.05 .9" /><path d="M9 10a.5 .5 0 0 0 1 0v-1a.5 .5 0 0 0 -1 0v1a5 5 0 0 0 5 5h1a.5 .5 0 0 0 0 -1h-1a.5 .5 0 0 0 0 1" /></svg>
+          WhatsApp
+        </button>
+        <button class="share-tg btn btn-outline btn-sm justify-start gap-3 w-full font-semibold rounded-xl py-2.5 h-auto text-xs cursor-pointer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0088cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l-4 4l6 6l4 -16l-18 7l4 2l2 6l3 -4" /></svg>
+          Telegram
+        </button>
+        <button class="share-ig btn btn-outline btn-sm justify-start gap-3 w-full font-semibold rounded-xl py-2.5 h-auto text-xs cursor-pointer" title="Copiar enlace para historias de Instagram">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E1306C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4" /><circle cx="12" cy="12" r="3" /><line x1="16.5" y1="7.5" x2="16.5" y2="7.501" /></svg>
+          Instagram (Link)
+        </button>
+        <button class="share-fb btn btn-outline btn-sm justify-start gap-3 w-full font-semibold rounded-xl py-2.5 h-auto text-xs cursor-pointer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1877F2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v4h3v7h4v-7h3l1 -4h-4v-2a1 1 0 0 1 1 -1h3v-4h-3a5 5 0 0 0 -5 5v2h-3" /></svg>
+          Facebook
+        </button>
+        <button class="share-x btn btn-outline btn-sm justify-start gap-3 w-full font-semibold rounded-xl py-2.5 h-auto text-xs cursor-pointer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733 -16z" /><path d="M4 20l6.768 -6.768m2.46 -2.46l6.772 -6.772" /></svg>
+          X (Twitter)
+        </button>
+        <button class="share-native-btn btn btn-outline btn-sm justify-start gap-3 w-full font-semibold rounded-xl py-2.5 h-auto text-xs share-native-btn-el hidden cursor-pointer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>
+          Más opciones
+        </button>
+      </div>
+
+      <div class="modal-action mt-2">
+        <form method="dialog" class="w-full">
+          <button class="btn btn-neutral btn-sm rounded-xl w-full cursor-pointer">Cerrar</button>
+        </form>
+      </div>
+    </div>
+    
+    <form method="dialog" class="modal-backdrop">
+      <button class="cursor-default">close</button>
+    </form>
+  </dialog>
 </div>
 
 <script>
-  function initShare() {
-    // Only run if we haven't already bound the dropdowns for this page-load
-    const dropdowns = document.querySelectorAll('.dropdown:not(.share-initialized)');
+  function initShareModals() {
+    const triggers = document.querySelectorAll('.btn-share-trigger:not(.share-modal-initialized)');
     
-    dropdowns.forEach(dropdown => {
-      // Find all buttons inside this dropdown
-      const btnWa = dropdown.querySelector('.share-wa');
-      const btnTg = dropdown.querySelector('.share-tg');
-      const btnIg = dropdown.querySelector('.share-ig');
-      const btnFb = dropdown.querySelector('.share-fb');
-      const btnX = dropdown.querySelector('.share-x');
-      const btnNative = dropdown.querySelector('.share-native');
-      const liNative = dropdown.querySelector('.share-native-li');
+    triggers.forEach(btn => {
+      btn.classList.add('share-modal-initialized');
+      const targetId = btn.getAttribute('data-modal-target');
+      if (!targetId) return;
 
-      if (!btnWa) return; // Not our share dropdown
-      dropdown.classList.add('share-initialized');
+      const modal = document.getElementById(targetId) as HTMLDialogElement;
+      if (!modal) return;
 
-      const customText = dropdown.getAttribute('data-share-text');
-      const customUrl = dropdown.getAttribute('data-share-url');
+      const container = btn.closest('[data-share-url]');
+      if (!container) return;
 
-      const text = customText || 'dondeestan.org - Censo y Búsqueda de Emergencia. Ayuda a encontrar a las víctimas y colabora con refugios.';
-      
-      const getUrl = () => customUrl || window.location.href;
-      
-      const closeDropdown = () => {
-        if (document.activeElement instanceof HTMLElement) {
-          document.activeElement.blur();
+      const customText = container.getAttribute('data-share-text');
+      const customUrl = container.getAttribute('data-share-url');
+      const text = customText || 'dondeestan.org - Censo y Búsqueda de Emergencia.';
+      const getUrl = () => {
+        if (!customUrl) return window.location.href;
+        if (customUrl.startsWith('/')) {
+          return window.location.origin + customUrl;
         }
+        return customUrl;
       };
 
-      btnWa.addEventListener('click', () => {
-        closeDropdown();
-        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text + " \n" + getUrl())}`, '_blank');
+      btn.addEventListener('click', () => {
+        modal.showModal();
       });
 
-      btnTg.addEventListener('click', () => {
-        closeDropdown();
-        window.open(`https://t.me/share/url?url=${encodeURIComponent(getUrl())}&text=${encodeURIComponent(text)}`, '_blank');
-      });
+      const btnWa = modal.querySelector('.share-wa');
+      const btnTg = modal.querySelector('.share-tg');
+      const btnIg = modal.querySelector('.share-ig');
+      const btnFb = modal.querySelector('.share-fb');
+      const btnX = modal.querySelector('.share-x');
+      const btnNative = modal.querySelector('.share-native-btn-el');
 
-      btnIg.addEventListener('click', async () => {
-        closeDropdown();
-        try {
-          await navigator.clipboard.writeText(getUrl());
-          alert('Enlace copiado. Pégalo en tu historia de Instagram.');
-        } catch(e) {
-          console.error(e);
-        }
-      });
+      const closeModal = () => modal.close();
 
-      btnFb.addEventListener('click', () => {
-        closeDropdown();
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(getUrl())}`, '_blank');
-      });
+      if (btnWa) {
+        btnWa.addEventListener('click', () => {
+          closeModal();
+          window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text + " \n" + getUrl())}`, '_blank');
+        });
+      }
 
-      btnX.addEventListener('click', () => {
-        closeDropdown();
-        window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(getUrl())}&text=${encodeURIComponent(text)}`, '_blank');
-      });
+      if (btnTg) {
+        btnTg.addEventListener('click', () => {
+          closeModal();
+          window.open(`https://t.me/share/url?url=${encodeURIComponent(getUrl())}&text=${encodeURIComponent(text)}`, '_blank');
+        });
+      }
 
-      if (navigator.share) {
-        if (liNative) liNative.classList.remove('hidden');
-        if (btnNative) {
-          btnNative.addEventListener('click', async () => {
-            closeDropdown();
-            try {
-              await navigator.share({
-                title: document.title,
-                text: text,
-                url: getUrl(),
-              });
-            } catch (err) {
-              if (err.name !== 'AbortError') {
-                console.log('Error al compartir', err);
-              }
+      if (btnIg) {
+        btnIg.addEventListener('click', async () => {
+          closeModal();
+          try {
+            await navigator.clipboard.writeText(getUrl());
+            alert('Enlace copiado. Pégalo en tu historia de Instagram.');
+          } catch(e) {
+            console.error(e);
+          }
+        });
+      }
+
+      if (btnFb) {
+        btnFb.addEventListener('click', () => {
+          closeModal();
+          window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(getUrl())}`, '_blank');
+        });
+      }
+
+      if (btnX) {
+        btnX.addEventListener('click', () => {
+          closeModal();
+          window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(getUrl())}&text=${encodeURIComponent(text)}`, '_blank');
+        });
+      }
+
+      if (navigator.share && btnNative) {
+        btnNative.classList.remove('hidden');
+        btnNative.addEventListener('click', async () => {
+          closeModal();
+          try {
+            await navigator.share({
+              title: document.title,
+              text: text,
+              url: getUrl(),
+            });
+          } catch (err) {
+            if (err.name !== 'AbortError') {
+              console.log('Error al compartir', err);
             }
-          });
-        }
+          }
+        });
       }
     });
   }
-  
-  window.initShareDropdowns = initShare;
-  document.addEventListener('astro:page-load', initShare);
+
+  document.addEventListener('astro:page-load', initShareModals);
 </script>

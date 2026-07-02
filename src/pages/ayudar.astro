@@ -79,359 +79,306 @@ const formatFecha = (fechaStr: string) => {
 <Layout title="Panel de Voluntarios - dondeestan.org">
   <Navbar />
   
-  <main class="flex-grow py-6 sm:py-12 px-4 bg-canvas max-w-3xl mx-auto w-full">
-    {voluntario ? (
-      // Vista de Voluntario Autenticado
-      <div class="space-y-8">
-        <!-- Encabezado y Cerrar Sesión -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-canvas-soft">
-          <div>
-            <h1 class="font-uber-display text-3xl text-ink tracking-tight">¡Hola, {voluntario.nombre}!</h1>
-            <p class="text-sm text-body font-uber-text mt-1">
-              Panel de control de voluntarios. Gestiona refugios e inventarios desde el terreno.
-            </p>
-          </div>
-          <button id="btn-logout" class="btn bg-canvas-soft text-ink hover:bg-red-50 hover:text-red-600 font-uber-text uber-body-md-strong border border-canvas-soft h-10 px-4 flex items-center justify-center cursor-pointer">
-            🚪 Cerrar sesión
-          </button>
-        </div>
-
-        {errorMsg && (
-          <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl font-uber-text text-sm animate-fade-in">
-            ⚠️ {errorMsg}
-          </div>
-        )}
-        {successMsg && (
-          <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl font-uber-text text-sm animate-fade-in">
-            ✅ {successMsg}
-          </div>
-        )}
-
-        <!-- Tarjetas de herramientas y cuenta -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="bg-canvas border border-canvas-soft p-5 rounded-2xl shadow-sm md:col-span-2 flex flex-col justify-between">
+  <main class="flex-grow py-6 sm:py-12 px-4 bg-base-200 min-h-screen">
+    <div class="max-w-3xl mx-auto w-full">
+      {voluntario ? (
+        // Vista de Voluntario Autenticado
+        <div class="space-y-8 animate-fade-in">
+          <!-- Encabezado y Cerrar Sesión -->
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-base-300">
             <div>
-              <h3 class="text-xs font-bold text-mute uppercase tracking-wider font-uber-text mb-3">Acciones Rápidas</h3>
-              <p class="text-xs text-body font-uber-text mb-4">Registra nuevos centros de acopio o gestiona inventario detallado (insumos médicos, comida, agua).</p>
+              <h1 class="text-3xl font-black text-base-content tracking-tight">¡Hola, {voluntario.nombre}!</h1>
+              <p class="text-sm text-base-content/70 mt-1">
+                Panel de control de voluntarios. Gestiona refugios e inventarios desde el terreno.
+              </p>
             </div>
-            <div class="flex flex-col sm:flex-row gap-3">
-              <a href="/refugios/nuevo" class="flex-1 btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong h-11 flex items-center justify-center gap-2 shadow-sm rounded-xl">
-                ➕ Registrar Centro
-              </a>
-              <a href="/" class="flex-1 btn bg-canvas text-ink hover:bg-canvas-soft border border-canvas-soft font-uber-text uber-body-md-strong h-11 flex items-center justify-center gap-2 shadow-sm rounded-xl">
-                📋 Ver Inventarios
-              </a>
-            </div>
+            <button id="btn-logout" class="btn btn-outline btn-sm hover:btn-error">
+              🚪 Cerrar sesión
+            </button>
           </div>
 
-          <div class="bg-canvas-soft border border-canvas-soft p-5 rounded-2xl flex flex-col justify-between">
-            <div>
-              <h3 class="text-xs font-bold text-mute uppercase tracking-wider font-uber-text mb-3">Datos de Cuenta</h3>
-              <div class="text-xs text-body font-uber-text space-y-1.5">
-                <div>📞 Teléfono: <strong class="text-ink">{voluntario.telefono}</strong></div>
-                <div>📅 Especialidad: <strong class="text-ink capitalize">{voluntario.rol || "General"}</strong></div>
+          {errorMsg && (
+            <div class="alert alert-error shadow-sm text-sm">
+              <span>⚠️ {errorMsg}</span>
+            </div>
+          )}
+          {successMsg && (
+            <div class="alert alert-success shadow-sm text-sm">
+              <span>✅ {successMsg}</span>
+            </div>
+          )}
+
+          <!-- Tarjetas de herramientas y cuenta -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="card bg-base-100 border border-base-200 p-6 shadow-sm md:col-span-2 flex flex-col justify-between gap-4">
+              <div>
+                <h3 class="text-xs font-bold text-base-content/50 uppercase tracking-widest mb-2">Acciones Rápidas</h3>
+                <p class="text-sm text-base-content/70">Registra nuevos centros de acopio o gestiona inventario detallado (insumos médicos, comida, agua).</p>
+              </div>
+              <div class="flex flex-col sm:flex-row gap-3">
+                <a href="/refugios/nuevo" class="btn btn-primary flex-1 btn-md gap-2">
+                  ➕ Registrar Centro
+                </a>
+                <a href="/" class="btn btn-outline flex-1 btn-md gap-2">
+                  📋 Ver Inventarios
+                </a>
               </div>
             </div>
-            <div class="text-[10px] text-mute font-uber-text mt-4">
-              Registrado: {voluntario.created_at ? new Date(voluntario.created_at.replace("T", " ") + " UTC").toLocaleDateString("es-ES", { timeZone: "UTC" }) : ""}
-            </div>
-          </div>
-        </div>
 
-        <!-- Lista de Refugios para Ocupación Rápida -->
-        <div class="space-y-6 pt-4">
-          <h2 class="font-uber-display text-xl text-ink flex items-center gap-2">
-            ⛺ Ocupación de Refugios en Vivo
-          </h2>
-
-          {refugios.length === 0 ? (
-            <div class="text-center py-10 bg-canvas border border-canvas-soft rounded-2xl">
-              <p class="font-uber-text text-body text-sm">No hay refugios registrados en la base de datos.</p>
-            </div>
-          ) : (
-            refugios.map((r) => {
-              const cap = r.capacidad_maxima || 100;
-              const ocu = r.ocupacion_actual || 0;
-              const pct = Math.min(100, Math.round((ocu / cap) * 100));
-
-              let pctColor = "bg-green-500";
-              if (pct >= 90) pctColor = "bg-red-600";
-              else if (pct >= 75) pctColor = "bg-yellow-500";
-
-              return (
-                <div class="bg-canvas border border-canvas-soft rounded-2xl p-6 shadow-sm hover:shadow transition-shadow">
-                  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                    <div>
-                      <h3 class="font-uber-display text-lg text-ink font-semibold">{r.nombre}</h3>
-                      {r.direccion && <p class="text-xs text-body font-uber-text mt-0.5">{r.direccion}</p>}
-                    </div>
-                    <div class="text-xs text-mute font-uber-text">
-                      Modificado: {formatFecha(r.updated_at)}
-                    </div>
-                  </div>
-
-                  <!-- Progreso -->
-                  <div class="mb-4">
-                    <div class="flex justify-between text-xs font-uber-text mb-1">
-                      <span class="text-body">Estado de capacidad</span>
-                      <span class="text-ink font-bold">{ocu} / {cap} personas ({pct}%)</span>
-                    </div>
-                    <div class="w-full bg-canvas-soft h-2.5 rounded-full overflow-hidden border border-canvas-soft/40">
-                      <div class={`h-full ${pctColor} transition-all duration-500`} style={`width: ${pct}%`}></div>
-                    </div>
-                  </div>
-
-                  <!-- Formulario rápido -->
-                  <form method="POST" class="flex flex-wrap items-end gap-3 bg-canvas-soft/40 p-4 rounded-xl border border-canvas-soft/30">
-                    <input type="hidden" name="action" value="update_refugio" />
-                    <input type="hidden" name="refugio_id" value={r.id} />
-
-                    <div class="flex-grow min-w-[140px]">
-                      <label class="block text-[10px] font-uber-text font-bold text-mute uppercase tracking-wider mb-1">Nº Personas en Sitio</label>
-                      <input 
-                        type="number" 
-                        name="ocupacion" 
-                        value={ocu} 
-                        min="0"
-                        max={cap * 2}
-                        class="input w-full h-10 bg-canvas border-canvas-soft text-ink font-uber-text font-semibold text-center rounded-lg" 
-                        id={`input-${r.id}`}
-                        required 
-                      />
-                    </div>
-
-                    <!-- Botones rápidos -->
-                    <div class="flex gap-1.5">
-                      <button 
-                        type="button" 
-                        class="btn btn-sm bg-canvas text-xs text-ink border border-canvas-soft hover:bg-surface-pressed h-10 px-3 cursor-pointer rounded-lg"
-                        onclick={`document.getElementById('input-${r.id}').value = Math.round(${cap} * 0.25)`}
-                      >
-                        25%
-                      </button>
-                      <button 
-                        type="button" 
-                        class="btn btn-sm bg-canvas text-xs text-ink border border-canvas-soft hover:bg-surface-pressed h-10 px-3 cursor-pointer rounded-lg"
-                        onclick={`document.getElementById('input-${r.id}').value = Math.round(${cap} * 0.75)`}
-                      >
-                        75%
-                      </button>
-                      <button 
-                        type="button" 
-                        class="btn btn-sm bg-canvas text-xs text-ink border border-canvas-soft hover:bg-surface-pressed h-10 px-3 cursor-pointer rounded-lg"
-                        onclick={`document.getElementById('input-${r.id}').value = ${cap}`}
-                      >
-                        100%
-                      </button>
-                    </div>
-
-                    <button type="submit" class="btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong h-10 px-5 ml-auto flex items-center justify-center cursor-pointer rounded-lg">
-                      Actualizar
-                    </button>
-                  </form>
+            <div class="card bg-base-100 border border-base-200 p-6 shadow-sm flex flex-col justify-between gap-4">
+              <div>
+                <h3 class="text-xs font-bold text-base-content/50 uppercase tracking-widest mb-3">Datos de Cuenta</h3>
+                <div class="text-sm text-base-content/80 space-y-2">
+                  <div>📞 Teléfono: <strong class="text-base-content">{voluntario.telefono}</strong></div>
+                  <div>📅 Especialidad: <strong class="text-base-content capitalize">{voluntario.rol || "General"}</strong></div>
                 </div>
-              );
-            })
-          )}
+              </div>
+              <div class="text-[10px] text-base-content/50">
+                Registrado: {voluntario.created_at ? new Date(voluntario.created_at.replace("T", " ") + " UTC").toLocaleDateString("es-ES", { timeZone: "UTC" }) : ""}
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista de Refugios para Ocupación Rápida -->
+          <div class="space-y-6 pt-4">
+            <h2 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+              ⛺ Ocupación de Refugios en Vivo
+            </h2>
+
+            {refugios.length === 0 ? (
+              <div class="text-center py-12 bg-base-100 border border-base-200 rounded-3xl">
+                <p class="text-base-content/60 text-sm font-medium">No hay refugios registrados en la base de datos.</p>
+              </div>
+            ) : (
+              refugios.map((r) => {
+                const cap = r.capacidad_maxima || 100;
+                const ocu = r.ocupacion_actual || 0;
+                const pct = Math.min(100, Math.round((ocu / cap) * 100));
+
+                let pctColor = "progress-success";
+                if (pct >= 90) pctColor = "progress-error";
+                else if (pct >= 75) pctColor = "progress-warning";
+
+                return (
+                  <div class="card bg-base-100 border border-base-200 p-6 shadow-sm hover:shadow transition-shadow overflow-hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                      <div>
+                        <h3 class="text-xl font-bold text-base-content">{r.nombre}</h3>
+                        {r.direccion && <p class="text-xs text-base-content/70 mt-1">📍 {r.direccion}</p>}
+                      </div>
+                      <div class="text-xs text-base-content/50">
+                        Modificado: {formatFecha(r.updated_at)}
+                      </div>
+                    </div>
+
+                    <!-- Progreso -->
+                    <div class="mb-4">
+                      <div class="flex justify-between text-xs font-semibold text-base-content/70 mb-1.5">
+                        <span>Estado de capacidad</span>
+                        <span>{ocu} / {cap} personas ({pct}%)</span>
+                      </div>
+                      <progress class={`progress w-full h-2.5 ${pctColor}`} value={pct} max="100"></progress>
+                    </div>
+
+                    <!-- Formulario rápido -->
+                    <form method="POST" class="flex flex-wrap items-end gap-4 bg-base-200/50 p-4 rounded-2xl border border-base-300/50">
+                      <input type="hidden" name="action" value="update_refugio" />
+                      <input type="hidden" name="refugio_id" value={r.id} />
+
+                      <div class="flex-grow min-w-[140px]">
+                        <label class="block text-[10px] font-bold text-base-content/50 uppercase tracking-wider mb-1.5">Nº Personas en Sitio</label>
+                        <input 
+                          type="number" 
+                          name="ocupacion" 
+                          value={ocu} 
+                          min="0"
+                          max={cap * 2}
+                          class="input input-bordered input-sm w-full font-semibold text-center bg-base-100" 
+                          id={`input-${r.id}`}
+                          required 
+                        />
+                      </div>
+
+                      <!-- Botones rápidos -->
+                      <div class="flex gap-1.5">
+                        <button 
+                          type="button" 
+                          class="btn btn-sm btn-outline"
+                          onclick={`document.getElementById('input-${r.id}').value = Math.round(${cap} * 0.25)`}
+                        >
+                          25%
+                        </button>
+                        <button 
+                          type="button" 
+                          class="btn btn-sm btn-outline"
+                          onclick={`document.getElementById('input-${r.id}').value = Math.round(${cap} * 0.75)`}
+                        >
+                          75%
+                        </button>
+                        <button 
+                          type="button" 
+                          class="btn btn-sm btn-outline"
+                          onclick={`document.getElementById('input-${r.id}').value = ${cap}`}
+                        >
+                          100%
+                        </button>
+                      </div>
+
+                      <button type="submit" class="btn btn-primary btn-sm ml-auto">
+                        Actualizar
+                      </button>
+                    </form>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
-      </div>
-    ) : (
-      // Vista de Registro / Ingreso
-      <div class="space-y-6" x-data="{ tab: 'login' }">
-        <div class="text-center">
-          <span class="text-3xl">🤝</span>
-          <h1 class="font-uber-display text-2xl text-ink tracking-tight mt-2">
-            Quiero ayudar
-          </h1>
-          <p class="text-xs text-body font-uber-text mt-1">
-            Regístrate o inicia sesión como voluntario para reportar y actualizar el estado de los centros.
-          </p>
-        </div>
-
-        <!-- Selector de Pestañas Registro / Login -->
-        {!isTelegramRegister && (
-          <div class="flex gap-1 bg-canvas-soft p-1 rounded-xl">
-            <button 
-              id="tab-login" 
-              @click="tab = 'login'"
-              :class="tab === 'login' ? 'bg-primary text-white' : 'bg-transparent text-ink'"
-              class="flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg border-none cursor-pointer"
-            >
-              Iniciar Sesión
-            </button>
-            <button 
-              id="tab-register" 
-              @click="tab = 'register'"
-              :class="tab === 'register' ? 'bg-primary text-white' : 'bg-transparent text-ink'"
-              class="flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg border-none cursor-pointer"
-            >
-              Registrarse
-            </button>
-          </div>
-        )}
-
-        {/* Flujo Normal - Login */}
-        <form 
-          id="form-login" 
-          x-show="tab === 'login'" 
-          class="space-y-4 bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm"
-          style={isTelegramRegister ? "display: none;" : ""}
-        >
-          <h3 class="text-sm font-bold text-ink uppercase tracking-wider font-uber-text">Ingresar a tu cuenta</h3>
-          
-          <TelegramLoginWidget 
-            botName="DondeEstanBot" 
-            authUrl="/api/auth/telegram-web" 
-          />
-          
-          <div class="relative flex py-2 items-center">
-            <div class="flex-grow border-t border-canvas-soft"></div>
-            <span class="flex-shrink-0 mx-4 text-mute text-xs font-uber-text">o con teléfono</span>
-            <div class="flex-grow border-t border-canvas-soft"></div>
-          </div>
-          
-          <div>
-            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="login-telefono">Teléfono *</label>
-            <input 
-              type="tel" 
-              id="login-telefono" 
-              required 
-              class="input w-full font-uber-text uber-body-md" 
-              placeholder="Ej: 04127654321"
-            />
-          </div>
-
-          <div>
-            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="login-pin">PIN de 4 dígitos *</label>
-            <input 
-              type="password" 
-              id="login-pin" 
-              required 
-              maxlength="4"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              class="input w-full font-uber-text uber-body-md" 
-              placeholder="••••"
-            />
-          </div>
-
-          <div id="login-error" class="hidden text-xs text-red-500 font-uber-text bg-red-500/5 border border-red-500/20 p-3 rounded-lg"></div>
-
-          <button type="submit" id="btn-submit-login" class="btn bg-primary text-white w-full font-uber-text font-semibold py-3 rounded-xl cursor-pointer">
-            Iniciar Sesión
-          </button>
-        </form>
-
-        <!-- Formulario Registro Normal -->
-        <form 
-          id="form-register" 
-          x-show="tab === 'register'" 
-          class="space-y-4 bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm"
-          style="display: none;"
-        >
-          <h3 class="text-sm font-bold text-ink uppercase tracking-wider font-uber-text">Crear cuenta voluntario</h3>
-
-          <div>
-            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reg-nombre">Nombre y Apellido *</label>
-            <input 
-              type="text" 
-              id="reg-nombre" 
-              required 
-              class="input w-full font-uber-text uber-body-md" 
-              placeholder="Ej: Pedro Pérez"
-            />
-          </div>
-          
-          <div>
-            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reg-telefono">Teléfono de contacto *</label>
-            <input 
-              type="tel" 
-              id="reg-telefono" 
-              required 
-              class="input w-full font-uber-text uber-body-md" 
-              placeholder="Ej: 04127654321"
-            />
-          </div>
-
-          <div>
-            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reg-pin">Crear PIN (4 dígitos) *</label>
-            <input 
-              type="password" 
-              id="reg-pin" 
-              required 
-              maxlength="4"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              class="input w-full font-uber-text uber-body-md" 
-              placeholder="Ej: 1234"
-            />
-          </div>
-
-          <div>
-            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reg-rol">Especialidad / Rol *</label>
-            <select id="reg-rol" required class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent text-ink rounded-xl">
-              <option value="general">General (Cualquier ayuda)</option>
-              <option value="busqueda">Búsqueda de Personas</option>
-              <option value="rescate">Rescate en Terreno</option>
-              <option value="logistica">Logística y Refugios</option>
-            </select>
-          </div>
-
-          <div class="flex items-start gap-2.5 my-2">
-            <input 
-              type="checkbox" 
-              id="reg-terminos" 
-              required 
-              class="checkbox mt-0.5"
-            />
-            <label class="text-xs text-body font-uber-text cursor-pointer select-none" for="reg-terminos">
-              Acepto los <a href="/terminos" target="_blank" class="text-primary hover:underline font-semibold">Términos y Condiciones</a> y la <a href="/privacidad" target="_blank" class="text-primary hover:underline font-semibold">Política de Privacidad</a> *
-            </label>
-          </div>
-
-          <div id="reg-error" class="hidden text-xs text-red-500 font-uber-text bg-red-500/5 border border-red-500/20 p-3 rounded-lg"></div>
-
-          <button type="submit" id="btn-submit-reg" class="btn bg-primary text-white w-full font-uber-text font-semibold py-3 rounded-xl cursor-pointer">
-            Registrarse y entrar
-          </button>
-        </form>
-
-        {/* Flujo Completar Registro Telegram */}
-        {isTelegramRegister && (
-          <form id="form-tg-register" class="space-y-4 bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm">
-            <h3 class="text-sm font-bold text-ink uppercase tracking-wider font-uber-text">Completar Registro con Telegram</h3>
-            <p class="text-xs text-body font-uber-text">
-              Hola <b>{pendingTgUser?.first_name}</b>, para finalizar tu registro y vincular tu cuenta de Telegram, necesitamos un número de teléfono. Si ya tienes cuenta, esto la vinculará automáticamente.
+      ) : (
+        // Vista de Registro / Ingreso
+        <div class="space-y-6 max-w-md mx-auto animate-fade-in" x-data="{ tab: 'login' }">
+          <div class="text-center">
+            <span class="text-4xl">🤝</span>
+            <h1 class="text-3xl font-black text-base-content tracking-tight mt-3">
+              Quiero ayudar
+            </h1>
+            <p class="text-sm text-base-content/70 mt-1">
+              Regístrate o inicia sesión como voluntario para reportar y actualizar el estado de los centros.
             </p>
+          </div>
 
-            <div>
-              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="tg-telefono">Teléfono de contacto *</label>
+          <!-- Selector de Pestañas Registro / Login -->
+          {!isTelegramRegister && (
+            <div class="tabs tabs-boxed justify-center p-1 bg-base-300">
+              <button 
+                id="tab-login" 
+                @click="tab = 'login'"
+                :class="tab === 'login' ? 'tab-active' : ''"
+                class="tab flex-1 font-semibold"
+              >
+                Iniciar Sesión
+              </button>
+              <button 
+                id="tab-register" 
+                @click="tab = 'register'"
+                :class="tab === 'register' ? 'tab-active' : ''"
+                class="tab flex-1 font-semibold"
+              >
+                Registrarse
+              </button>
+            </div>
+          )}
+
+          {/* Flujo Normal - Login */}
+          <form 
+            id="form-login" 
+            x-show="tab === 'login'" 
+            class="space-y-4 card bg-base-100 border border-base-200 p-6 shadow-sm"
+            style={isTelegramRegister ? "display: none;" : ""}
+          >
+            <h3 class="text-sm font-bold text-base-content/50 uppercase tracking-widest mb-2">Ingresar a tu cuenta</h3>
+            
+            <div class="flex justify-center py-2">
+              <TelegramLoginWidget 
+                botName="DondeEstanBot" 
+                authUrl="/api/auth/telegram-web" 
+              />
+            </div>
+            
+            <div class="divider text-xs text-base-content/40">o con teléfono</div>
+            
+            <div class="form-control">
+              <label class="label" for="login-telefono">
+                <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Teléfono *</span>
+              </label>
               <input 
                 type="tel" 
-                id="tg-telefono" 
+                id="login-telefono" 
                 required 
-                class="input w-full font-uber-text uber-body-md" 
+                class="input input-bordered w-full" 
                 placeholder="Ej: 04127654321"
               />
             </div>
 
-            <div>
-              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="tg-pin">PIN (4 dígitos) *</label>
+            <div class="form-control">
+              <label class="label" for="login-pin">
+                <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">PIN de 4 dígitos *</span>
+              </label>
               <input 
                 type="password" 
-                id="tg-pin" 
+                id="login-pin" 
                 required 
                 maxlength="4"
                 inputmode="numeric"
                 pattern="[0-9]*"
-                class="input w-full font-uber-text uber-body-md" 
-                placeholder="Si ya tienes cuenta, ingresa tu PIN."
+                class="input input-bordered w-full" 
+                placeholder="••••"
               />
             </div>
 
-            <div>
-              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="tg-rol">Especialidad / Rol *</label>
-              <select id="tg-rol" required class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent text-ink rounded-xl">
+            <div id="login-error" class="hidden alert alert-error text-xs p-3 shadow-sm"></div>
+
+            <button type="submit" id="btn-submit-login" class="btn btn-primary w-full mt-4">
+              Iniciar Sesión
+            </button>
+          </form>
+
+          <!-- Formulario Registro Normal -->
+          <form 
+            id="form-register" 
+            x-show="tab === 'register'" 
+            class="space-y-4 card bg-base-100 border border-base-200 p-6 shadow-sm"
+            style="display: none;"
+          >
+            <h3 class="text-sm font-bold text-base-content/50 uppercase tracking-widest mb-2">Crear cuenta voluntario</h3>
+
+            <div class="form-control">
+              <label class="label" for="reg-nombre">
+                <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Nombre y Apellido *</span>
+              </label>
+              <input 
+                type="text" 
+                id="reg-nombre" 
+                required 
+                class="input input-bordered w-full" 
+                placeholder="Ej: Pedro Pérez"
+              />
+            </div>
+            
+            <div class="form-control">
+              <label class="label" for="reg-telefono">
+                <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Teléfono de contacto *</span>
+              </label>
+              <input 
+                type="tel" 
+                id="reg-telefono" 
+                required 
+                class="input input-bordered w-full" 
+                placeholder="Ej: 04127654321"
+              />
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="reg-pin">
+                <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Crear PIN (4 dígitos) *</span>
+              </label>
+              <input 
+                type="password" 
+                id="reg-pin" 
+                required 
+                maxlength="4"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                class="input input-bordered w-full" 
+                placeholder="Ej: 1234"
+              />
+            </div>
+
+            <div class="form-control">
+              <label class="label" for="reg-rol">
+                <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Especialidad / Rol *</span>
+              </label>
+              <select id="reg-rol" required class="select select-bordered w-full">
                 <option value="general">General (Cualquier ayuda)</option>
                 <option value="busqueda">Búsqueda de Personas</option>
                 <option value="rescate">Rescate en Terreno</option>
@@ -439,31 +386,99 @@ const formatFecha = (fechaStr: string) => {
               </select>
             </div>
 
-            <div class="flex items-start gap-2.5 my-2">
+            <div class="form-control flex flex-row items-start gap-2.5 my-2">
               <input 
                 type="checkbox" 
-                id="tg-terminos" 
+                id="reg-terminos" 
                 required 
-                class="checkbox mt-0.5"
+                class="checkbox checkbox-primary mt-0.5"
               />
-              <label class="text-xs text-body font-uber-text cursor-pointer select-none" for="tg-terminos">
-                Acepto los <a href="/terminos" target="_blank" class="text-primary hover:underline font-semibold">Términos y Condiciones</a> y la <a href="/privacidad" target="_blank" class="text-primary hover:underline font-semibold">Política de Privacidad</a> *
+              <label class="label-text cursor-pointer select-none text-xs text-base-content/70" for="reg-terminos">
+                Acepto los <a href="/terminos" target="_blank" class="link link-primary font-semibold">Términos y Condiciones</a> y la <a href="/privacidad" target="_blank" class="link link-primary font-semibold">Política de Privacidad</a> *
               </label>
             </div>
 
-            <div id="tg-error" class="hidden text-xs text-red-500 font-uber-text bg-red-500/5 border border-red-500/20 p-3 rounded-lg"></div>
+            <div id="reg-error" class="hidden alert alert-error text-xs p-3 shadow-sm"></div>
 
-            <button type="submit" id="btn-submit-tg" class="btn bg-primary text-white w-full font-uber-text font-semibold py-3 rounded-xl cursor-pointer flex items-center justify-center gap-2">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21.011 2.94611C21.4647 2.80218 21.8906 3.22815 21.7466 3.68176L16.4862 20.2524C16.3275 20.7523 15.6517 20.8524 15.3414 20.4194L11.5 15.0538M21.011 2.94611L3.92135 9.07166C3.43398 9.2464 3.46822 9.94821 3.9723 10.0742L11.5 11.9566M21.011 2.94611L11.5 11.9566M11.5 11.9566V15.0538M11.5 15.0538L9.04306 18.2917C8.7501 18.6778 8.13111 18.5284 8.05834 18.054L7.54581 14.717L11.5 11.9566Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              Finalizar Registro
+            <button type="submit" id="btn-submit-reg" class="btn btn-primary w-full mt-4">
+              Registrarse y entrar
             </button>
           </form>
-        )}
-      </div>
-    )}
 
+          {/* Flujo Completar Registro Telegram */}
+          {isTelegramRegister && (
+            <form id="form-tg-register" class="space-y-4 card bg-base-100 border border-base-200 p-6 shadow-sm">
+              <h3 class="text-sm font-bold text-base-content/50 uppercase tracking-widest mb-2">Completar Registro con Telegram</h3>
+              <p class="text-xs text-base-content/70">
+                Hola <b>{pendingTgUser?.first_name}</b>, para finalizar tu registro y vincular tu cuenta de Telegram, necesitamos un número de teléfono. Si ya tienes cuenta, esto la vinculará automáticamente.
+              </p>
+
+              <div class="form-control">
+                <label class="label" for="tg-telefono">
+                  <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Teléfono de contacto *</span>
+                </label>
+                <input 
+                  type="tel" 
+                  id="tg-telefono" 
+                  required 
+                  class="input input-bordered w-full" 
+                  placeholder="Ej: 04127654321"
+                />
+              </div>
+
+              <div class="form-control">
+                <label class="label" for="tg-pin">
+                  <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">PIN (4 dígitos) *</span>
+                </label>
+                <input 
+                  type="password" 
+                  id="tg-pin" 
+                  required 
+                  maxlength="4"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  class="input input-bordered w-full" 
+                  placeholder="Si ya tienes cuenta, ingresa tu PIN."
+                />
+              </div>
+
+              <div class="form-control">
+                <label class="label" for="tg-rol">
+                  <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Especialidad / Rol *</span>
+                </label>
+                <select id="tg-rol" required class="select select-bordered w-full">
+                  <option value="general">General (Cualquier ayuda)</option>
+                  <option value="busqueda">Búsqueda de Personas</option>
+                  <option value="rescate">Rescate en Terreno</option>
+                  <option value="logistica">Logística y Refugios</option>
+                </select>
+              </div>
+
+              <div class="form-control flex flex-row items-start gap-2.5 my-2">
+                <input 
+                  type="checkbox" 
+                  id="tg-terminos" 
+                  required 
+                  class="checkbox checkbox-primary mt-0.5"
+                />
+                <label class="label-text cursor-pointer select-none text-xs text-base-content/70" for="tg-terminos">
+                  Acepto los <a href="/terminos" target="_blank" class="link link-primary font-semibold">Términos y Condiciones</a> y la <a href="/privacidad" target="_blank" class="link link-primary font-semibold">Política de Privacidad</a> *
+                </label>
+              </div>
+
+              <div id="tg-error" class="hidden alert alert-error text-xs p-3 shadow-sm"></div>
+
+              <button type="submit" id="btn-submit-tg" class="btn btn-primary w-full mt-4 flex items-center justify-center gap-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M21.011 2.94611C21.4647 2.80218 21.8906 3.22815 21.7466 3.68176L16.4862 20.2524C16.3275 20.7523 15.6517 20.8524 15.3414 20.4194L11.5 15.0538M21.011 2.94611L3.92135 9.07166C3.43398 9.2464 3.46822 9.94821 3.9723 10.0742L11.5 11.9566M21.011 2.94611L11.5 11.9566M11.5 11.9566V15.0538M11.5 15.0538L9.04306 18.2917C8.7501 18.6778 8.13111 18.5284 8.05834 18.054L7.54581 14.717L11.5 11.9566Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Finalizar Registro
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+    </div>
   </main>
 </Layout>
 

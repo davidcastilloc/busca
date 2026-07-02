@@ -9,22 +9,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
 
   // ═══════════════════════════════════════════════════════════
-  // Protección de rutas /admin/* con Cloudflare Access
+  // Protección de rutas /panel/* y /api/panel/* con Cloudflare Access
   // ═══════════════════════════════════════════════════════════
-  if (url.pathname.startsWith("/admin/") || url.pathname === "/admin") {
+  if (
+    url.pathname.startsWith("/panel/") || 
+    url.pathname === "/panel" || 
+    url.pathname.startsWith("/api/panel/") || 
+    url.pathname === "/api/panel"
+  ) {
     // Verificar header de Cloudflare Access JWT
     const accessJwt = context.request.headers.get("Cf-Access-Jwt-Assertion");
     
     // En producción, Cloudflare Access inyecta este header automáticamente
     // Si no existe Y estamos en producción, bloquear acceso
     if (!accessJwt && !host.includes("localhost") && !host.includes("127.0.0.1")) {
-      // Verificar si Cloudflare Access está configurado
-      // Si el header no existe, podría ser que Access no está configurado aún
-      // En ese caso, permitir pero loguear warning
       console.warn(`Acceso a ${url.pathname} sin Cloudflare Access JWT desde ${context.request.headers.get("cf-connecting-ip")}`);
-      
-      // Descomentar la siguiente línea cuando Cloudflare Access esté configurado:
-      // return new Response("Acceso no autorizado. Se requiere autenticación de Cloudflare Access.", { status: 403 });
+      return new Response("Acceso no autorizado. Se requiere autenticación de Cloudflare Access.", { status: 403 });
     }
 
     // Proteger endpoints de push-send (POST) — requieren admin
@@ -37,6 +37,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       }
     }
   }
+
 
 
 

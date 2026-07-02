@@ -19,196 +19,218 @@ if (!voluntario) {
 <Layout title="Registrar Refugio / Centro de Acopio - dondeestan.org">
   <Navbar />
   
-  <main class="flex-grow py-6 sm:py-12 px-4 bg-canvas max-w-lg mx-auto w-full">
-    <div class="space-y-6">
+  <main class="flex-grow py-6 sm:py-12 px-4 bg-base-200 min-h-screen">
+    <div class="max-w-lg mx-auto w-full space-y-6">
       <div>
-        <a href="/" class="text-xs text-primary hover:underline font-semibold font-uber-text">
+        <a href="/" class="text-xs link link-primary font-semibold">
           ← Volver al listado
         </a>
-        <h1 class="font-uber-display text-2xl sm:text-3xl text-ink tracking-tight mt-2">
+        <h1 class="text-3xl font-black text-base-content tracking-tight mt-2">
           Registrar Albergue / Acopio
         </h1>
-        <p class="text-xs text-body font-uber-text mt-1">
+        <p class="text-xs text-base-content/70 mt-1">
           Añade un nuevo refugio voluntario o formal para geolocalizarlo e indicar sus necesidades.
         </p>
       </div>
 
-      <form id="form-nuevo-refugio" class="space-y-4 bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm">
-        <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-tipo">Tipo de Centro *</label>
-          <select id="ref-tipo" required class="select w-full font-uber-text uber-body-md">
+      <form id="form-nuevo-refugio" class="space-y-4 card bg-base-100 border border-base-200 p-6 shadow-sm">
+        <div class="form-control">
+          <label class="label" for="ref-tipo">
+            <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Tipo de Centro *</span>
+          </label>
+          <select id="ref-tipo" required class="select select-bordered w-full">
             <option value="refugio" selected>Refugio / Albergue</option>
             <option value="centro_acopio">Centro de Acopio</option>
             <option value="hospital">Hospital / Puesto de Salud</option>
           </select>
         </div>
 
-        <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-nombre">Nombre del Centro *</label>
+        <div class="form-control">
+          <label class="label" for="ref-nombre">
+            <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Nombre del Centro *</span>
+          </label>
           <input 
             type="text" 
             id="ref-nombre" 
             required 
-            class="input w-full font-uber-text uber-body-md" 
+            class="input input-bordered w-full" 
             placeholder="Ej: Escuela Bolivariana Petare"
           />
         </div>
 
-        <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-encargado">Encargado *</label>
+        <div class="form-control">
+          <label class="label" for="ref-encargado">
+            <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Encargado *</span>
+          </label>
           <input 
             type="text" 
             id="ref-encargado" 
             required
-            class="input w-full font-uber-text uber-body-md" 
+            class="input input-bordered w-full" 
             placeholder="Nombre del encargado"
           />
         </div>
 
-        <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-direccion">Dirección / Sector *</label>
-          <div class="flex gap-2 mb-3">
+        <div class="form-control">
+          <label class="label" for="ref-direccion">
+            <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Dirección / Sector *</span>
+          </label>
+          <div class="flex gap-2">
             <input 
               type="text" 
               id="ref-direccion" 
               required 
-              class="input flex-grow font-uber-text uber-body-md" 
+              class="input input-bordered flex-grow" 
               placeholder="Ej: Sector La Lucha, Caracas"
             />
-            <button type="button" id="btn-buscar-direccion" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed border border-canvas-soft font-uber-text font-semibold px-3 py-2 rounded-xl text-xs shrink-0 cursor-pointer">
+            <button type="button" id="btn-buscar-direccion" class="btn btn-outline">
               📍 Ubicar
             </button>
           </div>
+        </div>
 
-          <!-- Bloque de ubicación integrado -->
-          <div class="p-4 bg-canvas-soft rounded-xl flex flex-col gap-3 border border-canvas-soft">
-            <span class="text-[10px] font-bold text-mute uppercase tracking-wider font-uber-text">📍 Método de Ubicación GPS *</span>
-            
-            <!-- Tabs de selección de método -->
-            <div class="flex gap-1 bg-canvas p-1 rounded-lg border border-canvas-soft">
-              <button type="button" id="tab-loc-gps" class="flex-1 text-center py-1.5 px-2 text-[10px] font-bold font-uber-text rounded-md bg-primary text-white border-none cursor-pointer">
-                GPS Móvil
-              </button>
-              <button type="button" id="tab-loc-gmaps" class="flex-1 text-center py-1.5 px-2 text-[10px] font-bold font-uber-text rounded-md bg-transparent text-ink border-none cursor-pointer">
-                Pegar Enlace
-              </button>
-              <button type="button" id="tab-loc-map" class="flex-1 text-center py-1.5 px-2 text-[10px] font-bold font-uber-text rounded-md bg-transparent text-ink border-none cursor-pointer">
-                Mapa Manual
-              </button>
-            </div>
-
-            <!-- Inputs ocultos para lat/lng -->
-            <input type="hidden" id="ref-latitud" />
-            <input type="hidden" id="ref-longitud" />
-
-            <!-- Panel 1: GPS Móvil -->
-            <div id="panel-loc-gps" class="flex items-center justify-between gap-2">
-              <span class="text-[10px] text-body font-uber-text">Usa el GPS del celular para geolocalizar de inmediato.</span>
-              <button id="btn-ref-gps" type="button" class="btn btn-xs bg-primary text-white font-uber-text px-3 py-1.5 rounded-lg text-[10px] cursor-pointer shrink-0">
-                Detectar GPS
-              </button>
-            </div>
-
-            <!-- Panel 2: Pegar Enlace -->
-            <div id="panel-loc-gmaps" class="space-y-2 hidden">
-              <div class="flex gap-2">
-                <input 
-                  type="url" 
-                  id="ref-gmaps-link" 
-                  class="input flex-grow font-uber-text text-xs p-2.5 min-h-[36px]" 
-                  placeholder="Pegar enlace de Google Maps..."
-                />
-                <button type="button" id="btn-resolver-gmaps" class="btn bg-primary text-white font-uber-text font-semibold px-3 py-1.5 rounded-lg text-[10px] shrink-0 cursor-pointer">
-                  Extraer
-                </button>
-              </div>
-            </div>
-
-            <!-- Panel 3: Mapa Manual -->
-            <div id="panel-loc-map" class="text-[10px] text-mute font-uber-text italic hidden">
-              Toca el mapa abajo para ajustar el marcador manualmente.
-            </div>
-
-            <!-- Contenedor del mapa (común) -->
-            <div id="ref-gps-map" class="w-full h-44 rounded-lg overflow-hidden border border-canvas-soft bg-canvas"></div>
-            
-            <!-- Tarjeta de Info de Google Places (oculta por defecto) -->
-            <div id="google-place-info" class="hidden mt-2 p-3 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/80 to-indigo-50/60 space-y-2">
-              <div class="flex items-center gap-1.5 text-[11px] font-uber-text font-bold text-blue-700 uppercase tracking-wider">
-                <span>📍</span> Datos del lugar (Google)
-              </div>
-              <div id="gpi-content" class="grid gap-1.5 text-[11px] font-uber-text text-body">
-                <!-- Se llena dinámicamente -->
-              </div>
-            </div>
-
-            <!-- Estatus de Ubicación -->
-            <div id="ref-gps-status" class="text-[11px] text-mute font-uber-text italic">Obteniendo ubicación actual...</div>
+        <!-- Bloque de ubicación integrado -->
+        <div class="p-4 bg-base-200 rounded-2xl flex flex-col gap-3 border border-base-300">
+          <span class="text-[10px] font-bold text-base-content/50 uppercase tracking-wider">📍 Método de Ubicación GPS *</span>
+          
+          <!-- Tabs de selección de método -->
+          <div class="tabs tabs-boxed justify-center p-1 bg-base-300">
+            <button type="button" id="tab-loc-gps" class="tab tab-active flex-grow font-semibold text-xs border-none">
+              GPS Móvil
+            </button>
+            <button type="button" id="tab-loc-gmaps" class="tab flex-grow font-semibold text-xs border-none">
+              Pegar Enlace
+            </button>
+            <button type="button" id="tab-loc-map" class="tab flex-grow font-semibold text-xs border-none">
+              Mapa Manual
+            </button>
           </div>
+
+          <!-- Inputs ocultos para lat/lng -->
+          <input type="hidden" id="ref-latitud" />
+          <input type="hidden" id="ref-longitud" />
+
+          <!-- Panel 1: GPS Móvil -->
+          <div id="panel-loc-gps" class="flex items-center justify-between gap-2">
+            <span class="text-[10px] text-base-content/75">Usa el GPS del celular para geolocalizar de inmediato.</span>
+            <button id="btn-ref-gps" type="button" class="btn btn-xs btn-primary">
+              Detectar GPS
+            </button>
+          </div>
+
+          <!-- Panel 2: Pegar Enlace -->
+          <div id="panel-loc-gmaps" class="space-y-2 hidden">
+            <div class="flex gap-2">
+              <input 
+                type="url" 
+                id="ref-gmaps-link" 
+                class="input input-bordered input-sm flex-grow" 
+                placeholder="Pegar enlace de Google Maps..."
+              />
+              <button type="button" id="btn-resolver-gmaps" class="btn btn-xs btn-primary">
+                Extraer
+              </button>
+            </div>
+          </div>
+
+          <!-- Panel 3: Mapa Manual -->
+          <div id="panel-loc-map" class="text-[10px] text-base-content/50 italic hidden">
+            Toca el mapa abajo para ajustar el marcador manualmente.
+          </div>
+
+          <!-- Contenedor del mapa (común) -->
+          <div id="ref-gps-map" class="w-full h-44 rounded-xl overflow-hidden border border-base-300 bg-base-100"></div>
+          
+          <!-- Tarjeta de Info de Google Places (oculta por defecto) -->
+          <div id="google-place-info" class="hidden mt-2 p-3 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50/80 to-indigo-50/60 space-y-2">
+            <div class="flex items-center gap-1.5 text-[11px] font-bold text-blue-700 uppercase tracking-wider">
+              <span>📍</span> Datos del lugar (Google)
+            </div>
+            <div id="gpi-content" class="grid gap-1.5 text-[11px] text-base-content">
+              <!-- Se llena dinámicamente -->
+            </div>
+          </div>
+
+          <!-- Estatus de Ubicación -->
+          <div id="ref-gps-status" class="text-[11px] text-base-content/50 italic">Obteniendo ubicación actual...</div>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-capacidad">Capacidad Máxima *</label>
+          <div class="form-control">
+            <label class="label" for="ref-capacidad">
+              <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Capacidad Máxima *</span>
+            </label>
             <input 
               type="number" 
               id="ref-capacidad" 
               min="1"
               value="100"
               required
-              class="input w-full font-uber-text uber-body-md" 
+              class="input input-bordered w-full" 
             />
           </div>
-          <div>
-            <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-ocupacion">Población Total *</label>
+          <div class="form-control">
+            <label class="label" for="ref-ocupacion">
+              <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Población Total *</span>
+            </label>
             <input 
               type="number" 
               id="ref-ocupacion" 
               min="0"
               value="0"
               required
-              class="input w-full font-uber-text uber-body-md" 
+              class="input input-bordered w-full" 
             />
           </div>
         </div>
 
-        <div class="bg-canvas border border-canvas-soft p-4 rounded-xl space-y-3">
-          <span class="text-xs font-semibold text-ink font-uber-text block">👥 Desglose de Población</span>
+        <div class="bg-base-200 p-4 rounded-xl border border-base-300 space-y-3">
+          <span class="text-xs font-bold text-base-content block">👥 Desglose de Población</span>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div>
-              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-ninos">Niños</label>
-              <input type="number" id="ref-ninos" min="0" value="0" class="input w-full font-uber-text uber-body-md" />
+            <div class="form-control">
+              <label class="label" for="ref-ninos">
+                <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Niños</span>
+              </label>
+              <input type="number" id="ref-ninos" min="0" value="0" class="input input-bordered w-full bg-base-100" />
             </div>
-            <div>
-              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-bebes-lactantes">Bebés Lactantes</label>
-              <input type="number" id="ref-bebes-lactantes" min="0" value="0" class="input w-full font-uber-text uber-body-md" />
+            <div class="form-control">
+              <label class="label" for="ref-bebes-lactantes">
+                <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Bebés Lactantes</span>
+              </label>
+              <input type="number" id="ref-bebes-lactantes" min="0" value="0" class="input input-bordered w-full bg-base-100" />
             </div>
-            <div>
-              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-adultos-mayores">Adultos Mayores</label>
-              <input type="number" id="ref-adultos-mayores" min="0" value="0" class="input w-full font-uber-text uber-body-md" />
+            <div class="form-control">
+              <label class="label" for="ref-adultos-mayores">
+                <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Adultos Mayores</span>
+              </label>
+              <input type="number" id="ref-adultos-mayores" min="0" value="0" class="input input-bordered w-full bg-base-100" />
             </div>
-            <div>
-              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-personal-profesional">Personal Prof.</label>
-              <input type="number" id="ref-personal-profesional" min="0" value="0" class="input w-full font-uber-text uber-body-md" />
+            <div class="form-control">
+              <label class="label" for="ref-personal-profesional">
+                <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Personal Prof.</span>
+              </label>
+              <input type="number" id="ref-personal-profesional" min="0" value="0" class="input input-bordered w-full bg-base-100" />
             </div>
-            <div>
-              <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-voluntarios">Voluntarios</label>
-              <input type="number" id="ref-voluntarios" min="0" value="0" class="input w-full font-uber-text uber-body-md" />
+            <div class="form-control">
+              <label class="label" for="ref-voluntarios">
+                <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Voluntarios</span>
+              </label>
+              <input type="number" id="ref-voluntarios" min="0" value="0" class="input input-bordered w-full bg-base-100" />
             </div>
           </div>
-          <div id="demografia-warning" class="hidden text-[11px] text-red-500 font-uber-text font-medium bg-red-500/5 p-2 rounded">
-            ⚠️ La Población Total debe ser mayor o igual a la suma de los subgrupos.
+          <div id="demografia-warning" class="hidden alert alert-error text-xs p-2.5 shadow-sm mt-2">
+            <span>⚠️ La Población Total debe ser mayor o igual a la suma de los subgrupos.</span>
           </div>
         </div>
 
-        <div class="bg-canvas border border-canvas-soft p-4 rounded-xl space-y-4">
-          <span class="text-xs font-semibold text-ink font-uber-text block">📋 Estado del Inventario ({TOTAL_ITEMS} Ítems)</span>
+        <div class="bg-base-200 p-4 rounded-xl border border-base-300 space-y-4">
+          <span class="text-xs font-bold text-base-content block">📋 Estado del Inventario ({TOTAL_ITEMS} Ítems)</span>
           
-          <div class="flex gap-1 overflow-x-auto pb-2 border-b border-canvas-soft scrollbar-none" id="tabs-container">
+          <div class="tabs tabs-boxed gap-1 overflow-x-auto pb-2 border-b border-base-300" id="tabs-container">
             {CATEGORIAS_INVENTARIO.map((cat, idx) => (
               <button 
                 type="button" 
-                class={`tab-btn font-uber-text text-xs whitespace-nowrap px-3 py-1.5 rounded-lg border ${idx === 0 ? 'bg-primary text-white border-primary' : 'bg-canvas-soft text-ink border-transparent'} cursor-pointer`}
+                class={`tab tab-btn tab-sm font-semibold whitespace-nowrap ${idx === 0 ? 'tab-active' : ''}`}
                 data-target={`tab-${idx}`}
               >
                 {cat.nombre}
@@ -220,22 +242,22 @@ if (!voluntario) {
             {CATEGORIAS_INVENTARIO.map((cat, idx) => (
               <div id={`tab-${idx}`} class={`tab-pane space-y-3 ${idx === 0 ? '' : 'hidden'}`}>
                 {cat.items.map((item) => (
-                  <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 py-2 border-b border-canvas-soft last:border-b-0">
-                    <span class="text-xs font-uber-text text-ink font-medium md:max-w-[200px]">
+                  <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 py-2 border-b border-base-300 last:border-b-0">
+                    <span class="text-xs text-base-content font-semibold md:max-w-[200px]">
                       {item.nombre}
-                      {item.unidad_medida && <span class="text-[10px] text-mute ml-1 font-normal">({item.unidad_medida})</span>}
-                      {item.es_critico && <span class="text-[10px] text-red-500 font-bold ml-1" title="Insumo Crítico">⚠️</span>}
+                      {item.unidad_medida && <span class="text-[10px] text-base-content/50 ml-1 font-normal">({item.unidad_medida})</span>}
+                      {item.es_critico && <span class="text-[10px] text-error font-bold ml-1" title="Insumo Crítico">⚠️</span>}
                     </span>
-                    <div class="flex gap-1 bg-canvas-soft p-1 rounded-xl w-full md:w-auto overflow-x-auto">
+                    <div class="flex gap-1 bg-base-300 p-1 rounded-xl w-full md:w-auto overflow-x-auto">
                       {["Crítico", "Alerta", "Estable", "Excedente"].map((est) => {
                         let activeClass = "";
-                        if (est === "Crítico") activeClass = "has-[:checked]:bg-red-500 has-[:checked]:text-white";
-                        else if (est === "Alerta") activeClass = "has-[:checked]:bg-amber-500 has-[:checked]:text-white";
-                        else if (est === "Estable") activeClass = "has-[:checked]:bg-green-600 has-[:checked]:text-white";
-                        else if (est === "Excedente") activeClass = "has-[:checked]:bg-blue-600 has-[:checked]:text-white";
+                        if (est === "Crítico") activeClass = "has-[:checked]:bg-error has-[:checked]:text-error-content";
+                        else if (est === "Alerta") activeClass = "has-[:checked]:bg-warning has-[:checked]:text-warning-content";
+                        else if (est === "Estable") activeClass = "has-[:checked]:bg-success has-[:checked]:text-success-content";
+                        else if (est === "Excedente") activeClass = "has-[:checked]:bg-info has-[:checked]:text-info-content";
 
                         return (
-                          <label class={`flex-grow text-center py-1.5 px-3 text-[10px] rounded-lg cursor-pointer transition-all font-semibold font-uber-text select-none border border-transparent hover:bg-surface-pressed ${activeClass}`}>
+                          <label class={`flex-grow text-center py-1.5 px-3 text-[10px] rounded-lg cursor-pointer transition-all font-semibold select-none border border-transparent hover:bg-base-200/50 ${activeClass}`}>
                             <input 
                               type="radio" 
                               name={`inv-${item.id}`} 
@@ -255,36 +277,40 @@ if (!voluntario) {
           </div>
         </div>
 
-        <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-necesidades">Necesidades de Insumos (Texto Libre)</label>
+        <div class="form-control">
+          <label class="label" for="ref-necesidades">
+            <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Necesidades de Insumos (Texto Libre)</span>
+          </label>
           <textarea 
             id="ref-necesidades" 
             rows="3" 
-            class="textarea w-full font-uber-text uber-body-md" 
+            class="textarea textarea-bordered w-full" 
             placeholder="Ej: Colchonetas, agua potable, pañales, analgésicos..."
           ></textarea>
         </div>
 
-        <div>
-          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="ref-contacto">Teléfono o Datos de Contacto *</label>
+        <div class="form-control">
+          <label class="label" for="ref-contacto">
+            <span class="label-text font-bold uppercase tracking-wider text-[10px] text-base-content/50">Teléfono o Datos de Contacto *</span>
+          </label>
           <input 
             type="text" 
             id="ref-contacto" 
             required
-            class="input w-full font-uber-text uber-body-md" 
+            class="input input-bordered w-full" 
             placeholder="Ej: 0414-7654321, email..."
           />
         </div>
 
-        <div class="bg-canvas border border-canvas-soft p-4 rounded-xl space-y-3">
-          <span class="text-xs font-semibold text-ink font-uber-text block">📸 Fotos del Centro (Máximo 3)</span>
+        <div class="bg-base-200 p-4 rounded-xl border border-base-300 space-y-3">
+          <span class="text-xs font-bold text-base-content block">📸 Fotos del Centro (Máximo 3)</span>
           <div class="flex flex-col gap-2">
             <input 
               type="file" 
               id="ref-fotos" 
               multiple 
               accept="image/*" 
-              class="block w-full text-xs text-mute font-uber-text file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover cursor-pointer"
+              class="file-input file-input-bordered file-input-sm w-full"
             />
             <div id="preview-fotos" class="grid grid-cols-3 gap-2 mt-2">
               <!-- Previsualizaciones de imágenes -->
@@ -292,9 +318,9 @@ if (!voluntario) {
           </div>
         </div>
 
-        <div id="ref-error" class="hidden text-xs text-red-500 font-uber-text bg-red-500/5 border border-red-500/20 p-3 rounded-lg"></div>
+        <div id="ref-error" class="hidden alert alert-error text-xs p-3 shadow-sm"></div>
 
-        <button type="submit" id="btn-submit-ref" class="btn bg-primary text-white w-full font-uber-text font-semibold py-3 rounded-xl cursor-pointer">
+        <button type="submit" id="btn-submit-ref" class="btn btn-primary w-full mt-4">
           Registrar Centro
         </button>
       </form>
@@ -334,7 +360,7 @@ if (!voluntario) {
     const items: string[] = [];
 
     if (data.name) {
-      items.push(`<div class="flex items-center gap-1"><span class="font-semibold text-ink">🏛️ ${data.name}</span></div>`);
+      items.push(`<div class="flex items-center gap-1"><span class="font-semibold text-base-content">🏛️ ${data.name}</span></div>`);
     }
 
     // Estado operativo
@@ -342,15 +368,15 @@ if (!voluntario) {
       const label = data.estado_label || data.estado || data.estado_operativo;
       const isOpen = data.estado_operativo === "OPERATIONAL";
       const isClosed = data.estado_operativo?.includes("CLOSED");
-      const color = isOpen ? "text-green-700 bg-green-100" : isClosed ? "text-red-700 bg-red-100" : "text-gray-700 bg-gray-100";
+      const color = isOpen ? "text-success bg-success/15" : isClosed ? "text-error bg-error/15" : "text-base-content/70 bg-base-300";
       items.push(`<div><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${color}">${isOpen ? "🟢" : isClosed ? "🔴" : "⚪"} ${label}</span></div>`);
     }
 
     // Abierto ahora
     if (data.abierto_ahora !== undefined) {
       const badge = data.abierto_ahora 
-        ? '<span class="text-green-700 font-semibold">✅ Abierto ahora</span>'
-        : '<span class="text-orange-600 font-semibold">🚫 Cerrado ahora</span>';
+        ? '<span class="text-success font-semibold">✅ Abierto ahora</span>'
+        : '<span class="text-warning font-semibold">🚫 Cerrado ahora</span>';
       items.push(`<div>${badge}</div>`);
     }
 
@@ -362,24 +388,24 @@ if (!voluntario) {
     // Horario
     if (data.horario && data.horario.length > 0) {
       const horarioHtml = data.horario.map((h: string) => `<div class="pl-3 text-[10px]">${h}</div>`).join("");
-      items.push(`<details class="cursor-pointer"><summary class="font-semibold text-ink">🕐 Horario</summary><div class="mt-1 space-y-0.5">${horarioHtml}</div></details>`);
+      items.push(`<details class="cursor-pointer"><summary class="font-semibold text-base-content">🕐 Horario</summary><div class="mt-1 space-y-0.5">${horarioHtml}</div></details>`);
     }
 
     // Teléfono
     if (data.phone_international || data.phone) {
       const tel = data.phone_international || data.phone;
-      items.push(`<div>📞 <a href="tel:${tel.replace(/\s/g, '')}" class="text-blue-600 underline font-semibold">${tel}</a></div>`);
+      items.push(`<div>📞 <a href="tel:${tel.replace(/\s/g, '')}" class="text-primary underline font-semibold">${tel}</a></div>`);
     }
 
     // Website
     if (data.website) {
       const domain = data.website.replace(/^https?:\/\//, "").replace(/\/$/, "").substring(0, 40);
-      items.push(`<div>🌐 <a href="${data.website}" target="_blank" rel="noopener" class="text-blue-600 underline">${domain}</a></div>`);
+      items.push(`<div>🌐 <a href="${data.website}" target="_blank" rel="noopener" class="text-primary underline">${domain}</a></div>`);
     }
 
     // Google Maps URL
     if (data.google_maps_url) {
-      items.push(`<div>🗺️ <a href="${data.google_maps_url}" target="_blank" rel="noopener" class="text-blue-600 underline">Ver en Google Maps</a></div>`);
+      items.push(`<div>🗺️ <a href="${data.google_maps_url}" target="_blank" rel="noopener" class="text-primary underline">Ver en Google Maps</a></div>`);
     }
 
     // Estado / Municipio
@@ -424,7 +450,7 @@ if (!voluntario) {
 
         if (gpsStatus) {
           gpsStatus.textContent = `Ubicación marcada en mapa: ${clat.toFixed(5)}, ${clon.toFixed(5)}`;
-          gpsStatus.className = "text-[11px] text-blue-600 font-uber-text italic font-medium";
+          gpsStatus.className = "text-[11px] text-info font-uber-text italic font-medium";
         }
       });
     }
@@ -447,11 +473,11 @@ if (!voluntario) {
   async function obtenerUbicacion() {
     if (!gpsStatus || !latInput || !lonInput) return;
     gpsStatus.textContent = "Detectando ubicación GPS...";
-    gpsStatus.className = "text-[11px] text-yellow-600 font-uber-text italic font-medium";
+    gpsStatus.className = "text-[11px] text-warning font-uber-text italic font-medium";
 
     if (!navigator.geolocation) {
       gpsStatus.textContent = "Geolocalización no soportada por el navegador.";
-      gpsStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+      gpsStatus.className = "text-[11px] text-error font-uber-text italic";
       return;
     }
 
@@ -471,7 +497,7 @@ if (!voluntario) {
           msg = "Permiso de geolocalización denegado.";
         }
         gpsStatus.textContent = msg;
-        gpsStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+        gpsStatus.className = "text-[11px] text-error font-uber-text italic";
       },
       { timeout: 8000, enableHighAccuracy: true }
     );
@@ -492,7 +518,7 @@ if (!voluntario) {
 
     if (gpsStatus) {
       gpsStatus.textContent = "Buscando coordenadas de la dirección...";
-      gpsStatus.className = "text-[11px] text-yellow-600 font-uber-text italic font-medium";
+      gpsStatus.className = "text-[11px] text-warning font-uber-text italic font-medium";
     }
 
     try {
@@ -533,14 +559,14 @@ if (!voluntario) {
       } else {
         if (gpsStatus) {
           gpsStatus.textContent = "No se encontraron coordenadas. Intenta con un sector más específico.";
-          gpsStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+          gpsStatus.className = "text-[11px] text-error font-uber-text italic";
         }
       }
     } catch (err) {
       console.error(err);
       if (gpsStatus) {
         gpsStatus.textContent = "Error al consultar servicio de mapas.";
-        gpsStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+        gpsStatus.className = "text-[11px] text-error font-uber-text italic";
       }
     }
   });
@@ -556,32 +582,28 @@ if (!voluntario) {
 
   function deseleccionarTabs() {
     [tabGps, tabGmaps, tabMap].forEach(tab => {
-      tab?.classList.remove("bg-primary", "text-white");
-      tab?.classList.add("bg-transparent", "text-ink");
+      tab?.classList.remove("tab-active");
     });
     [panelGps, panelGmaps, panelMap].forEach(panel => panel?.classList.add("hidden"));
   }
 
   tabGps?.addEventListener("click", () => {
     deseleccionarTabs();
-    tabGps.classList.add("bg-primary", "text-white");
-    tabGps.classList.remove("bg-transparent", "text-ink");
+    tabGps.classList.add("tab-active");
     panelGps?.classList.remove("hidden");
     setTimeout(() => { if (map) map.invalidateSize(); }, 150);
   });
 
   tabGmaps?.addEventListener("click", () => {
     deseleccionarTabs();
-    tabGmaps.classList.add("bg-primary", "text-white");
-    tabGmaps.classList.remove("bg-transparent", "text-ink");
+    tabGmaps.classList.add("tab-active");
     panelGmaps?.classList.remove("hidden");
     setTimeout(() => { if (map) map.invalidateSize(); }, 150);
   });
 
   tabMap?.addEventListener("click", () => {
     deseleccionarTabs();
-    tabMap.classList.add("bg-primary", "text-white");
-    tabMap.classList.remove("bg-transparent", "text-ink");
+    tabMap.classList.add("tab-active");
     panelMap?.classList.remove("hidden");
     setTimeout(() => { if (map) map.invalidateSize(); }, 150);
   });
@@ -599,7 +621,7 @@ if (!voluntario) {
 
     if (gpsStatus) {
       gpsStatus.textContent = "Resolviendo enlace y extrayendo coordenadas...";
-      gpsStatus.className = "text-[11px] text-yellow-600 font-uber-text italic font-medium";
+      gpsStatus.className = "text-[11px] text-warning font-uber-text italic font-medium";
     }
 
     try {
@@ -638,7 +660,7 @@ if (!voluntario) {
         if (data.aproximado) {
           if (gpsStatus) {
             gpsStatus.textContent = `⚠️ Ubicación aproximada: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)} — Ajusta el pin tocando el mapa.`;
-            gpsStatus.className = "text-[11px] text-amber-600 font-uber-text italic font-semibold";
+            gpsStatus.className = "text-[11px] text-warning font-uber-text italic font-semibold";
           }
           initMap(data.lat, data.lng, 16);
         } else {
@@ -652,14 +674,14 @@ if (!voluntario) {
         const err = await resp.json();
         if (gpsStatus) {
           gpsStatus.textContent = `Error: ${err.error || "No se pudieron extraer coordenadas."}`;
-          gpsStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+          gpsStatus.className = "text-[11px] text-error font-uber-text italic";
         }
       }
     } catch (err) {
       console.error(err);
       if (gpsStatus) {
         gpsStatus.textContent = "Error al conectar con la API de resolución.";
-        gpsStatus.className = "text-[11px] text-red-500 font-uber-text italic";
+        gpsStatus.className = "text-[11px] text-error font-uber-text italic";
       }
     }
   });
@@ -667,18 +689,14 @@ if (!voluntario) {
   // Intentar geolocalizar de inmediato
   obtenerUbicacion();
 
-
-
   // Pestañas de inventario
   const tabBtns = document.querySelectorAll(".tab-btn");
   tabBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
       tabBtns.forEach((b) => {
-        b.classList.remove("bg-primary", "text-white", "border-primary");
-        b.classList.add("bg-canvas-soft", "text-ink", "border-transparent");
+        b.classList.remove("tab-active");
       });
-      btn.classList.add("bg-primary", "text-white", "border-primary");
-      btn.classList.remove("bg-canvas-soft", "text-ink", "border-transparent");
+      btn.classList.add("tab-active");
 
       document.querySelectorAll(".tab-pane").forEach((pane) => pane.classList.add("hidden"));
       const targetId = btn.getAttribute("data-target");
@@ -711,11 +729,11 @@ if (!voluntario) {
     selectedFiles.forEach((file, index) => {
       const url = URL.createObjectURL(file);
       const div = document.createElement("div");
-      div.className = "relative aspect-square rounded-lg overflow-hidden border border-canvas-soft bg-surface-pressed";
+      div.className = "relative aspect-square rounded-xl border border-base-300 bg-base-300";
       
       const img = document.createElement("img");
       img.src = url;
-      img.className = "w-full h-full object-cover";
+      img.className = "w-full h-full object-cover rounded-xl";
       
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";

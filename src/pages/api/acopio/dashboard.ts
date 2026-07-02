@@ -8,20 +8,35 @@ export const GET: APIRoute = async ({ request }) => {
   try {
     const { DB } = env;
     const url = new URL(request.url);
-    const refugio_id = url.searchParams.get("refugio_id");
+    const rawRefugioId = url.searchParams.get("refugio_id");
 
-    if (!refugio_id) {
+    if (!rawRefugioId) {
       return new Response(JSON.stringify({ error: "refugio_id es requerido" }), { status: 400 });
+    }
+
+    let tipo = "refugio";
+    let id = rawRefugioId;
+    if (rawRefugioId.includes(":")) {
+      const parts = rawRefugioId.split(":");
+      tipo = parts[0];
+      id = parts[1];
     }
 
     // 1. Obtener Entradas: Ayudas en camino hacia este refugio
     // Si la ayuda es para una necesidad específica de este refugio, la unimos para dar contexto
+    const columnMap: Record<string, string> = {
+      refugio: "refugio_id",
+      centro_acopio: "centro_acopio_id",
+      hospital: "hospital_id"
+    };
+    const targetColumn = columnMap[tipo] || "refugio_id";
+
     const entradasRes = await DB.prepare(`
       SELECT a.id, a.voluntarios_count, a.estatus, a.created_at, n.categoria as necesidad_categoria, n.descripcion as necesidad_desc
       FROM ayudas_en_camino a
       LEFT JOIN necesidades n ON a.necesidad_id = n.id
-      WHERE a.refugio_id = ? AND a.estatus = 'en_ruta'
-    `).bind(refugio_id).all();
+      WHERE a.${targetColumn} = ? AND a.estatus = 'en_ruta'
+    `).bind(id).all();
 
     // 2. Obtener Salidas: Necesidades críticas de otros refugios/acopios/hospitales
     // Solo las activas.
@@ -34,7 +49,11 @@ export const GET: APIRoute = async ({ request }) => {
       LEFT JOIN centros_acopio c ON n.centro_acopio_id = c.id
       LEFT JOIN hospitales h ON n.hospital_id = h.id
       WHERE n.estado = 'activa' 
-        AND (n.refugio_id IS NULL OR n.refugio_id != ?)
+        AND (
+          (? = 'refugio' AND (n.refugio_id IS NULL OR n.refugio_id != ?)) OR
+          (? = 'centro_acopio' AND (n.centro_acopio_id IS NULL OR n.centro_acopio_id != ?)) OR
+          (? = 'hospital' AND (n.hospital_id IS NULL OR n.hospital_id != ?))
+        )
       ORDER BY 
         CASE n.gravedad 
           WHEN 'sos' THEN 1 
@@ -43,16 +62,13 @@ export const GET: APIRoute = async ({ request }) => {
           ELSE 4 
         END ASC, n.created_at DESC
       LIMIT 50
-    `).bind(refugio_id).all();
+    `).bind(tipo, id, tipo, id, tipo, id).all();
 
     // 3. Inventario actual del refugio/acopio (para tener a la mano qué se puede despachar)
+    const tableName = tipo === "centro_acopio" ? "centros_acopio" : "refugios";
     const refugioRes = await DB.prepare(`
-      SELECT nombre, inventario FROM (
-        SELECT id, nombre, inventario FROM refugios
-        UNION ALL
-        SELECT id, nombre, inventario FROM centros_acopio
-      ) WHERE id = ?
-    `).bind(refugio_id).first<any>();
+      SELECT nombre, inventario FROM ${tableName} WHERE id = ?
+    `).bind(id).first<any>();
 
     let inventarioLimpio: any[] = [];
     if (refugioRes && refugioRes.inventario) {

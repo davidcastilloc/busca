@@ -92,51 +92,59 @@ try {
     </div>
   )}
 
-  <main class="flex-grow py-4 sm:py-12 px-4 bg-canvas">
-    <!-- Hero Section (estilo hero-band-light de Uber) -->
-    <div class="text-center max-w-2xl mx-auto mb-6 sm:mb-10 pt-4">
-      <h1 class="font-uber-display text-3xl sm:text-4xl md:text-5xl text-ink tracking-tight mb-2">
-        Portal de Apoyo y Coordinación
-      </h1>
-      <p class="text-sm sm:text-base text-body font-uber-text max-w-xl mx-auto mb-6 px-2">
-        Consulta refugios, centros de acopio, necesidades críticas y reporta incidencias tras la emergencia.
-      </p>
-
-      <div class="flex justify-center mb-3 px-4 max-w-md mx-auto">
-        <a href="/reportar" class="w-full btn bg-primary text-white hover:bg-black-elevated font-uber-text uber-body-md-strong px-6 py-3.5 rounded-full flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98] cursor-pointer">
-          Reportar emergencia
-        </a>
-      </div>
-
-      <!-- FEED DE NECESIDADES CRÍTICAS -->
-      {necesidadesCriticas.length > 0 && (
-        <div class="px-4 max-w-2xl mx-auto mb-8">
-          <div class="flex justify-between items-end mb-4">
-            <h3 class="font-uber-display text-xl text-ink font-bold tracking-tight">Urgencias (Gravedad Alta)</h3>
-            <a href="/mapa?layer=necesidades" class="text-sm text-primary font-bold hover:underline">Ver todas</a>
+    <main class="flex-grow py-8 md:py-12 px-4 bg-base-100">
+    <!-- Hero Section DaisyUI -->
+    <div class="hero min-h-[40vh] bg-base-200 rounded-3xl overflow-hidden mb-12 shadow-sm px-6 py-12 md:py-16">
+      <div class="hero-content text-center max-w-2xl">
+        <div class="flex flex-col gap-6 items-center">
+          <h1 class="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-base-content balance">
+            Portal de Apoyo y Coordinación
+          </h1>
+          <p class="text-lg md:text-xl text-base-content/70 leading-relaxed max-w-prose">
+            Consulta refugios, centros de acopio, necesidades críticas y reporta incidencias tras la emergencia.
+          </p>
+          <div class="flex flex-wrap gap-4 justify-center w-full mt-2">
+            <a href="/reportar" class="btn btn-primary btn-lg shadow-sm hover:-translate-y-0.5 transition-transform w-full sm:w-auto">
+              Reportar emergencia
+            </a>
           </div>
-          <div class="space-y-4">
-            {necesidadesCriticas.map((n) => (
-              <div 
-                class="relative overflow-hidden bg-gradient-to-br from-red-50 to-white border border-red-100 rounded-2xl p-5 flex flex-col sm:flex-row gap-4 shadow-[0_2px_10px_-3px_rgba(220,38,38,0.1)] hover:shadow-[0_8px_20px_-6px_rgba(220,38,38,0.15)] transition-all duration-300 cursor-pointer"
-                x-data={`{ id: ${n.id}, marcando: false, resuelto: false }`}
-                x-show="!resuelto"
-                x-transition.opacity.duration.300ms
-                @click="if (!$event.target.closest('button')) window.location.href = `/mapa?tipo=necesidad&id=${id}`"
-              >
-                <div class="flex items-start gap-4 flex-grow">
-                  <div class="flex-shrink-0 w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-2xl shadow-inner border border-red-200">
-                    ⚠️
+        </div>
+      </div>
+    </div>
+
+    <!-- FEED DE NECESIDADES CRÍTICAS -->
+    {necesidadesCriticas.length > 0 && (
+      <div class="w-full max-w-4xl mx-auto mb-16">
+        <div class="flex justify-between items-end mb-6 px-2">
+          <h3 class="text-2xl md:text-3xl font-black text-base-content tracking-tight">Urgencias (Gravedad Alta)</h3>
+          <a href="/mapa?layer=necesidades" class="text-sm link link-primary font-bold">Ver todas</a>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {necesidadesCriticas.map((n) => (
+            <div 
+              class="card bg-error/10 border border-error/20 hover:shadow-md transition-all duration-300 cursor-pointer w-full group"
+              x-data={`{ id: ${n.id}, marcando: false, resuelto: false }`}
+              x-show="!resuelto"
+              x-transition.opacity.duration.300ms
+              @click="if (!$event.target.closest('button')) window.location.href = `/mapa?tipo=necesidad&id=${id}`"
+            >
+              <div class="card-body p-6">
+                <div class="flex items-start gap-4">
+                  <div class="avatar placeholder">
+                    <div class="bg-error text-error-content rounded-full w-12 h-12 shadow-sm text-xl flex items-center justify-center">
+                      ⚠️
+                    </div>
                   </div>
-                  <div class="flex-grow">
-                    <h4 class="font-uber-display text-lg font-bold text-red-900 leading-tight">{n.categoria}</h4>
-                    <p class="font-uber-text text-sm text-red-800/80 mt-1.5 line-clamp-2 leading-relaxed">{n.descripcion}</p>
-                    <div class="text-xs text-red-700/80 mt-3 flex items-center justify-between border-t border-red-100/50 pt-3">
-                      <span class="flex items-center gap-1.5 font-medium">
-                        <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>
-                        {n.ubicacion_nombre || 'Sin ubicación'}
+                  <div class="flex-grow min-w-0">
+                    <h4 class="card-title text-error-content/90 font-bold text-lg leading-tight">{n.categoria}</h4>
+                    <p class="text-sm text-base-content/80 mt-2 line-clamp-2 leading-relaxed">{n.descripcion}</p>
+                    
+                    <div class="flex items-center justify-between mt-4 text-xs font-medium text-base-content/70">
+                      <span class="flex items-center gap-1.5 truncate max-w-[60%]">
+                        <svg class="w-4 h-4 text-error shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path></svg>
+                        <span class="truncate">{n.ubicacion_nombre || 'Sin ubicación'}</span>
                       </span>
-                      <span class="bg-red-100/80 text-red-700 px-2.5 py-1 rounded-md font-semibold tracking-wide">
+                      <span class="badge badge-error badge-sm font-semibold shrink-0">
                         Hace {Math.round((new Date().getTime() - new Date(n.created_at).getTime()) / 3600000)}h
                       </span>
                     </div>
@@ -144,7 +152,7 @@ try {
                 </div>
                 
                 {esAdmin && (
-                  <div class="flex sm:flex-col justify-end items-end shrink-0 sm:pl-4 mt-4 sm:mt-0 sm:border-l sm:border-red-100/50 border-t border-red-100/50 sm:border-t-0 pt-4 sm:pt-0">
+                  <div class="card-actions justify-end mt-4 pt-4 border-t border-error/20">
                     <button 
                       @click="
                         marcando = true;
@@ -155,104 +163,111 @@ try {
                         }).then(r => r.ok ? (resuelto = true) : (marcando = false))
                       "
                       :disabled="marcando"
-                      class="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-50 text-green-700 hover:bg-green-500 hover:text-white border border-green-200 hover:border-green-500 rounded-xl px-4 py-2.5 text-sm font-uber-text font-bold transition-all active:scale-95 disabled:opacity-50"
+                      class="btn btn-sm btn-success text-success-content hover:scale-95 transition-transform"
                     >
-                      <span x-show="!marcando">✅ Resuelto</span>
-                      <span x-show="marcando" class="loading loading-spinner loading-sm"></span>
+                      <span x-show="!marcando">✅ Marcar Resuelto</span>
+                      <span x-show="marcando" class="loading loading-spinner loading-xs"></span>
                     </button>
                   </div>
                 )}
               </div>
-            ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <!-- OTRAS ACCIONES: Voluntarios, Telegram -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 justify-center mb-16 max-w-2xl mx-auto">
+      <a href="/ayudar" class="card bg-neutral text-neutral-content hover:-translate-y-1 hover:shadow-lg transition-all cursor-pointer">
+        <div class="card-body p-5 flex flex-row items-center gap-4">
+          <div class="text-4xl">👷</div>
+          <div>
+            <h4 class="card-title text-lg mb-1">Ser Voluntario</h4>
+            <p class="text-xs text-neutral-content/70">Apoya logística y operaciones</p>
           </div>
         </div>
-      )}
-
-      <!-- OTRAS ACCIONES: Voluntarios, Telegram -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 justify-center mb-6 px-4 max-w-lg mx-auto">
-        <a href="/ayudar" class="w-full btn bg-black text-white hover:bg-zinc-800 border-none font-uber-text uber-body-md-strong px-4 py-3 rounded-full flex items-center justify-center gap-3 shadow-sm transition-transform active:scale-[0.98]">
-          <div class="text-2xl">👷</div>
-          <div class="text-center leading-tight">
-            <div class="font-bold text-sm">Ser Voluntario</div>
-            <div class="text-[10px] text-zinc-300 font-normal">Apoya la logística</div>
+      </a>
+      
+      <a href="https://t.me/DondeEstanBot" target="_blank" rel="noopener noreferrer" class="card bg-[#2481cc] text-white hover:-translate-y-1 hover:shadow-lg hover:bg-[#1d6ba8] transition-all cursor-pointer">
+        <div class="card-body p-5 flex flex-row items-center gap-4">
+          <div class="text-4xl flex items-center justify-center shrink-0">
+            <svg class="w-9 h-9 fill-current" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.892-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
           </div>
-        </a>
-        <a href="https://t.me/DondeEstanBot" target="_blank" rel="noopener noreferrer" class="w-full btn bg-[#2481cc] text-white hover:bg-[#1d6ba8] border-none font-uber-text uber-body-md-strong px-4 py-3 rounded-full flex items-center justify-center gap-3 shadow-sm transition-transform active:scale-[0.98]">
-          <div class="text-2xl w-6 flex items-center justify-center">
-            <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.892-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+          <div>
+            <h4 class="card-title text-lg mb-1">Bot de Telegram</h4>
+            <p class="text-xs text-white/70">Reporta emergencias rápido</p>
           </div>
-          <div class="text-center leading-tight">
-            <div class="font-bold text-sm">Usar Telegram</div>
-            <div class="text-[10px] text-blue-100 font-normal">Reporta vía Bot</div>
-          </div>
-        </a>
-      </div>
+        </div>
+      </a>
     </div>
 
-    <!-- SECCIÓN DE REFUGIOS Y CENTROS DE ACOPIO (MIGRADO) -->
-    <div id="refugios-seccion" class="max-w-4xl mx-auto mt-10 mb-10 px-2 animate-fade-in" x-data="{ query: '', filtro: 'todos' }">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <!-- SECCIÓN DE REFUGIOS Y CENTROS DE ACOPIO -->
+    <div id="refugios-seccion" class="max-w-4xl mx-auto mb-16 px-2 animate-fade-in" x-data="{ query: '', filtro: 'todos' }">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h2 class="font-uber-display text-2xl sm:text-3xl text-ink tracking-tight">
-            Refugios y Centros de Acopio
+          <h2 class="text-3xl font-black text-base-content tracking-tight">
+            Refugios y Acopio
           </h2>
-          <p class="text-xs sm:text-sm text-body font-uber-text mt-1">
-            Directorio en tiempo real de albergues activos y sus necesidades críticas.
+          <p class="text-sm text-base-content/70 mt-1">
+            Directorio en tiempo real de albergues activos y necesidades.
           </p>
         </div>
-        <div class="flex flex-wrap gap-2 sm:shrink-0 w-full sm:w-auto">
-          <a href="/mapa?layer=refugios" class="btn !min-h-[38px] !h-auto !py-2 !px-3.5 text-xs sm:text-sm bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text font-semibold rounded-[36px] text-center border border-canvas-soft flex-1 sm:flex-none">
+        <div class="flex flex-wrap gap-3 sm:shrink-0 w-full sm:w-auto">
+          <a href="/mapa?layer=refugios" class="btn btn-outline btn-sm rounded-full">
             🗺️ Mapa Completo
           </a>
           {esVoluntario && (
-            <a href="/refugios/nuevo" class="btn !min-h-[38px] !h-auto !py-2 !px-3.5 text-xs sm:text-sm bg-primary text-white hover:bg-black-elevated font-uber-text font-semibold rounded-[36px] text-center shadow-sm flex-1 sm:flex-none">
-              ➕ Registrar Refugio
+            <a href="/refugios/nuevo" class="btn btn-primary btn-sm rounded-full shadow-sm">
+              ➕ Registrar
             </a>
           )}
         </div>
       </div>
 
       <!-- Mapa Interactivo -->
-      <div class="mb-6 relative">
-        <div id="mapa-refugios" class="w-full h-80 sm:h-96 rounded-xl border border-canvas-soft shadow-sm z-0"></div>
-        <button type="button" id="btn-geolocalizar" class="absolute bottom-4 right-4 z-[400] w-10 h-10 bg-white border border-canvas-soft rounded-full shadow-md hover:bg-canvas-soft active:scale-95 transition-transform flex items-center justify-center cursor-pointer text-lg" title="Encontrar mi ubicación">
+      <div class="mb-8 relative rounded-2xl overflow-hidden border border-base-200 shadow-sm">
+        <div id="mapa-refugios" class="w-full h-[500px] sm:h-[600px] bg-base-200 z-0"></div>
+        <button type="button" id="btn-geolocalizar" class="btn btn-circle btn-primary absolute bottom-4 right-4 z-[400] shadow-md shadow-primary/30" title="Encontrar mi ubicación">
           📍
         </button>
       </div>
 
       <!-- Filtros Rápidos y Buscador -->
-      <div class="space-y-4 mb-6">
-        <!-- Filtros por tipo -->
-        <div class="flex flex-wrap gap-2 overflow-x-auto pb-1 scrollbar-none" id="tipo-filtros">
-          <button type="button" @click="filtro = 'todos'" :class="filtro === 'todos' ? 'bg-primary text-white' : 'bg-canvas text-ink hover:bg-canvas-soft border-canvas-soft'" class="px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border cursor-pointer transition-all">
+      <div class="flex flex-col gap-4 mb-8">
+        <label class="input input-bordered flex items-center gap-2 bg-base-100 shadow-sm rounded-xl">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4 opacity-70"><path fill-rule="evenodd" d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" clip-rule="evenodd" /></svg>
+          <input 
+            type="text" 
+            id="search-refugios" 
+            x-model="query"
+            placeholder="Buscar por nombre, ubicación..." 
+            class="grow"
+          />
+        </label>
+        
+        <div class="flex flex-wrap gap-2 overflow-x-auto pb-2 scrollbar-none" id="tipo-filtros">
+          <button type="button" @click="filtro = 'todos'" :class="filtro === 'todos' ? 'btn-primary' : 'btn-ghost bg-base-200'" class="btn btn-sm rounded-full transition-all">
             Todos
           </button>
-          <button type="button" @click="filtro = 'refugio'" :class="filtro === 'refugio' ? 'bg-primary text-white' : 'bg-canvas text-ink hover:bg-canvas-soft border-canvas-soft'" class="px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border cursor-pointer transition-all">
+          <button type="button" @click="filtro = 'refugio'" :class="filtro === 'refugio' ? 'btn-primary' : 'btn-ghost bg-base-200'" class="btn btn-sm rounded-full transition-all">
             🏠 Refugios
           </button>
-          <button type="button" @click="filtro = 'centro_acopio'" :class="filtro === 'centro_acopio' ? 'bg-primary text-white' : 'bg-canvas text-ink hover:bg-canvas-soft border-canvas-soft'" class="px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border cursor-pointer transition-all">
-            📦 Centros de Acopio
+          <button type="button" @click="filtro = 'centro_acopio'" :class="filtro === 'centro_acopio' ? 'btn-primary' : 'btn-ghost bg-base-200'" class="btn btn-sm rounded-full transition-all">
+            📦 Acopio
           </button>
-          <button type="button" @click="filtro = 'hospital'" :class="filtro === 'hospital' ? 'bg-primary text-white' : 'bg-canvas text-ink hover:bg-canvas-soft border-canvas-soft'" class="px-4 py-1.5 rounded-full text-xs font-semibold font-uber-text border cursor-pointer transition-all">
-            🏥 Hospitales / Salud
+          <button type="button" @click="filtro = 'hospital'" :class="filtro === 'hospital' ? 'btn-primary' : 'btn-ghost bg-base-200'" class="btn btn-sm rounded-full transition-all">
+            🏥 Hospitales
           </button>
         </div>
-
-        <!-- Buscador por texto -->
-        <input 
-          type="text" 
-          id="search-refugios" 
-          x-model="query"
-          placeholder="Buscar refugio por nombre, ubicación o insumos..." 
-          class="input w-full font-uber-text uber-body-md border border-canvas-soft bg-canvas px-4 py-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary shadow-sm animate-fade-in"
-        />
       </div>
 
       <!-- Lista de Refugios -->
-      <div id="refugios-container" class="space-y-4">
+      <div id="refugios-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[650px] overflow-y-auto pr-2">
         {refugiosIniciales.length === 0 ? (
-          <div class="text-center py-12 bg-canvas-soft border border-canvas-soft rounded-xl">
-            <p class="text-sm text-mute font-uber-text">No hay centros registrados en este momento.</p>
+          <div class="flex flex-col items-center justify-center py-16 bg-base-200 rounded-3xl border border-base-300">
+            <span class="text-4xl mb-4">📭</span>
+            <p class="text-base-content/60 font-medium">No hay centros registrados en este momento.</p>
           </div>
         ) : (
           refugiosIniciales.map((r) => {
@@ -260,21 +275,13 @@ try {
             const capacidad = r.capacidad_maxima || 100;
             const pct = Math.min(Math.round((ocupacion / capacidad) * 100), 100);
             
-            let colorBar = "bg-success"; // Verde
-            if (pct >= 90) colorBar = "bg-error"; // Rojo
-            else if (pct >= 70) colorBar = "bg-warning"; // Amarillo/Naranja
-
             let tipoLabel = "Refugio / Albergue";
-            let tipoColor = "bg-blue-100 text-blue-800 border-blue-200";
             if (r.tipo === "hospital") {
               tipoLabel = "Hospital / Salud";
-              tipoColor = "bg-red-100 text-red-800 border-red-200";
             } else if (r.tipo === "centro_acopio") {
               tipoLabel = "Centro de Acopio";
-              tipoColor = "bg-yellow-100 text-yellow-800 border-yellow-200";
             }
 
-            // Parsear inventario para extraer críticos y alertas
             let itemsCriticos: string[] = [];
             let itemsAlerta: string[] = [];
             if (r.inventario) {
@@ -295,7 +302,6 @@ try {
               }
             }
 
-            // Formatear fechas
             const formatFechaStr = (fstr: string) => {
               if (!fstr) return "";
               try {
@@ -311,7 +317,6 @@ try {
             let fechaFormateada = formatFechaStr(r.fecha_registro || r.created_at);
             let fechaActualizada = formatFechaStr(r.updated_at);
 
-            // Parsear fotos
             let fotosArray: string[] = [];
             if (r.fotos) {
               try {
@@ -343,7 +348,7 @@ try {
                 })}
                 x-data="refugioCard"
                 x-show={`(filtro === 'todos' || filtro === '${r.tipo}') && (!query || query.toLowerCase().split(' ').filter(Boolean).every(word => '${r.nombre.replace(/'/g, "").toLowerCase()} \${direccion.toLowerCase()} \${necesidades.toLowerCase()}'.includes(word)))`}
-                class="refugio-card bg-canvas border border-canvas-soft p-5 rounded-xl shadow-sm space-y-4 transition-all hover:shadow-md"
+                class="refugio-card card bg-base-100 border border-base-200 shadow-sm hover:shadow-md transition-shadow overflow-visible"
                 data-id={r.id}
                 data-nombre={r.nombre.toLowerCase()}
                 data-direccion={(r.direccion || "").toLowerCase()}
@@ -359,7 +364,7 @@ try {
                 data-fotos={typeof r.fotos === 'string' ? r.fotos : JSON.stringify(r.fotos || [])}
               >
                 {fotosArray.length > 0 ? (
-                  <div x-show="fotos.length > 0" class="w-full h-40 sm:h-48 rounded-xl overflow-hidden border border-canvas-soft bg-surface-pressed mb-2">
+                  <figure x-show="fotos.length > 0" class="h-48 w-full bg-base-200 rounded-t-[15px] overflow-hidden">
                     <img 
                       src={`/api/upload?key=${fotosArray[0]}`}
                       :src="fotoUrl" 
@@ -368,10 +373,10 @@ try {
                       loading="lazy"
                       decoding="async"
                     />
-                  </div>
+                  </figure>
                 ) : (
                   <template x-if="fotos && fotos.length > 0">
-                    <div class="w-full h-40 sm:h-48 rounded-xl overflow-hidden border border-canvas-soft bg-surface-pressed mb-2">
+                    <figure class="h-48 w-full bg-base-200">
                       <img 
                         :src="fotoUrl" 
                         alt={`Foto de ${r.nombre}`} 
@@ -379,141 +384,156 @@ try {
                         loading="lazy"
                         decoding="async"
                       />
-                    </div>
+                    </figure>
                   </template>
                 )}
-                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-                  <div>
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span class={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${tipoColor} font-uber-text`}>
-                        {tipoLabel}
-                      </span>
-                      <h3 class="font-uber-display text-lg text-ink font-semibold">{r.nombre}</h3>
+                
+                <div class="card-body p-6">
+                  <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                    <div>
+                      <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <div class={`badge badge-sm font-semibold border-0 ${
+                          r.tipo === "hospital" ? "bg-error/20 text-error-content" : 
+                          r.tipo === "centro_acopio" ? "bg-warning/20 text-warning-content" : "bg-info/20 text-info-content"
+                        }`}>
+                          {tipoLabel}
+                        </div>
+                        <h3 class="card-title text-xl font-bold text-base-content leading-tight">{r.nombre}</h3>
+                      </div>
+                      <p class="text-sm text-base-content/70" x-show="direccion">📍 <span x-text="direccion">{(r.direccion || "")}</span></p>
                     </div>
-                    <p class="text-xs text-body font-uber-text mt-1" x-show="direccion">📍 <span x-text="direccion">{(r.direccion || "")}</span></p>
-                  </div>
-                  {r.tipo === "refugio" && (
-                    <div class="text-right shrink-0">
-                      <span class="text-xs font-semibold text-ink font-uber-text bg-canvas-soft px-2.5 py-1 rounded-full border border-canvas-soft" x-text="ocupacion + ' / ' + capacidad + ' personas'">
-                        {ocupacion} / {capacidad} personas
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <!-- Encargado y Fechas -->
-                <div class="flex flex-col gap-2 border-t border-canvas-soft pt-3 mt-2">
-                  <div class="text-xs font-uber-text text-body" x-show="encargado">
-                    👤 Encargado: <strong class="text-ink" x-text="encargado">{r.encargado || ""}</strong>
-                  </div>
-                  <div class="flex flex-wrap gap-x-4 gap-y-2">
-                    <div class="inline-flex items-center gap-1.5 bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded-md text-xs font-semibold font-uber-text shadow-sm" title="Última actualización de la información" x-show="fechaActualizada">
-                      ⏱️ Actualizado: <span x-text="fechaActualizada">{fechaActualizada || ""}</span>
-                    </div>
-                    {(!fechaActualizada && fechaFormateada) && (
-                      <div class="inline-flex items-center gap-1.5 bg-gray-50 text-gray-700 border border-gray-200 px-2.5 py-1 rounded-md text-xs font-semibold font-uber-text shadow-sm" title="Fecha de reporte original" x-show="!fechaActualizada">
-                        📅 Reportado: {fechaFormateada}
+                    {r.tipo === "refugio" && (
+                      <div class="shrink-0">
+                        <div class="badge badge-neutral shadow-sm font-semibold" x-text="ocupacion + ' / ' + capacidad + ' pers.'">
+                          {ocupacion} / {capacidad} pers.
+                        </div>
                       </div>
                     )}
                   </div>
-                </div>
 
-                <!-- Barra de capacidad -->
-                {r.tipo === "refugio" && (
-                  <div class="space-y-1">
-                    <div class="flex justify-between text-[11px] font-uber-text font-medium text-mute">
-                      <span>Capacidad ocupada</span>
-                      <span x-text="Math.min(Math.round((ocupacion / capacidad) * 100), 100) + '%'">{pct}%</span>
+                  <div class="flex flex-col gap-2 mt-4 text-xs">
+                    <div x-show="encargado" class="text-base-content/70">
+                      👤 Encargado: <strong class="text-base-content" x-text="encargado">{r.encargado || ""}</strong>
                     </div>
-                    <div class="w-full bg-canvas-soft h-2.5 rounded-full overflow-hidden border border-canvas-soft">
-                      <div class="h-full" :class="Math.round((ocupacion / capacidad) * 100) >= 90 ? 'bg-error' : (Math.round((ocupacion / capacidad) * 100) >= 70 ? 'bg-warning' : 'bg-success')" :style="'width: ' + Math.min(Math.round((ocupacion / capacidad) * 100), 100) + '%'"></div>
+                    <div class="flex gap-2">
+                      <div class="badge badge-sm badge-ghost gap-1" x-show="fechaActualizada">
+                        ⏱️ Actualizado: <span x-text="fechaActualizada">{fechaActualizada || ""}</span>
+                      </div>
+                      {(!fechaActualizada && fechaFormateada) && (
+                        <div class="badge badge-sm badge-ghost gap-1" x-show="!fechaActualizada">
+                          📅 Reportado: {fechaFormateada}
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
 
-                <!-- Demografía -->
-                {r.tipo === "refugio" && (
-                  <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs font-uber-text bg-canvas-soft p-3 rounded-lg border border-canvas-soft">
-                    <div>👶 Niños: <strong class="text-ink" x-text="ninos">{r.ninos || 0}</strong></div>
-                    <div>🍼 Lactantes: <strong class="text-ink" x-text="bebes">{r.bebes_lactantes || 0}</strong></div>
-                    <div>👵 Mayores: <strong class="text-ink" x-text="mayores">{r.adultos_mayores || 0}</strong></div>
-                    <div>🩺 Personal: <strong class="text-ink" x-text="prof">{r.personal_profesional || 0}</strong></div>
-                    <div>🤝 Vols: <strong class="text-ink" x-text="vols">{r.voluntarios || 0}</strong></div>
+                  {r.tipo === "refugio" && (
+                    <div class="mt-4">
+                      <div class="flex justify-between text-xs font-semibold text-base-content/70 mb-1.5">
+                        <span>Ocupación</span>
+                        <span x-text="Math.min(Math.round((ocupacion / capacidad) * 100), 100) + '%'">{pct}%</span>
+                      </div>
+                      <progress 
+                        class="progress w-full h-2" 
+                        :class="Math.round((ocupacion / capacidad) * 100) >= 90 ? 'progress-error' : (Math.round((ocupacion / capacidad) * 100) >= 70 ? 'progress-warning' : 'progress-success')" 
+                        :value="Math.min(Math.round((ocupacion / capacidad) * 100), 100)" 
+                        max="100"
+                      ></progress>
+                    </div>
+                  )}
+
+                  {r.tipo === "refugio" && (
+                    <div class="grid grid-cols-5 gap-2 mt-5 bg-base-200/50 rounded-xl p-3 text-xs text-center border border-base-200">
+                      <div class="flex flex-col items-center">
+                        <span class="text-base mb-0.5">👶</span>
+                        <strong x-text="ninos">{r.ninos || 0}</strong>
+                      </div>
+                      <div class="flex flex-col items-center">
+                        <span class="text-base mb-0.5">🍼</span>
+                        <strong x-text="bebes">{r.bebes_lactantes || 0}</strong>
+                      </div>
+                      <div class="flex flex-col items-center">
+                        <span class="text-base mb-0.5">👵</span>
+                        <strong x-text="mayores">{r.adultos_mayores || 0}</strong>
+                      </div>
+                      <div class="flex flex-col items-center">
+                        <span class="text-base mb-0.5">🩺</span>
+                        <strong x-text="prof">{r.personal_profesional || 0}</strong>
+                      </div>
+                      <div class="flex flex-col items-center">
+                        <span class="text-base mb-0.5">🤝</span>
+                        <strong x-text="vols">{r.voluntarios || 0}</strong>
+                      </div>
+                    </div>
+                  )}
+
+                  <div class="mt-4 p-3 bg-base-200 rounded-xl space-y-2" x-show="itemsCriticos.length > 0 || itemsAlerta.length > 0">
+                    <div class="flex flex-wrap gap-1.5 items-center" x-show="itemsCriticos.length > 0">
+                      <span class="text-[10px] font-bold text-error uppercase tracking-wider mr-1">Crítico:</span>
+                      <template x-for="item in itemsCriticos">
+                        <span class="badge badge-error badge-sm font-semibold" x-text="item"></span>
+                      </template>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 items-center" x-show="itemsAlerta.length > 0">
+                      <span class="text-[10px] font-bold text-warning uppercase tracking-wider mr-1">Alerta:</span>
+                      <template x-for="item in itemsAlerta">
+                        <span class="badge badge-warning badge-sm font-semibold" x-text="item"></span>
+                      </template>
+                    </div>
                   </div>
-                )}
 
-                <!-- Inventario Crítico/Alerta -->
-                <div class="space-y-1.5 bg-canvas-soft/50 border border-canvas-soft p-3 rounded-lg" x-show="itemsCriticos.length > 0 || itemsAlerta.length > 0">
-                  <div class="flex flex-wrap gap-1 items-center" x-show="itemsCriticos.length > 0">
-                    <span class="text-[9px] font-bold text-red-700 uppercase tracking-wider font-uber-text mr-1">Crítico:</span>
-                    <template x-for="item in itemsCriticos">
-                      <span class="text-[9px] bg-red-500/10 text-red-700 font-semibold px-2 py-0.5 rounded-full border border-red-500/20" x-text="item"></span>
-                    </template>
+                  <div class="mt-4" x-show="necesidades">
+                    <span class="text-[10px] font-bold text-base-content/50 uppercase tracking-wider block mb-1">📝 Notas Adicionales</span>
+                    <p class="text-sm text-base-content/80 whitespace-pre-wrap bg-base-200/50 p-3 rounded-lg border border-base-200" x-text="necesidades">{r.necesidades || ""}</p>
                   </div>
-                  <div class="flex flex-wrap gap-1 items-center" x-show="itemsAlerta.length > 0">
-                    <span class="text-[9px] font-bold text-amber-700 uppercase tracking-wider font-uber-text mr-1">Alerta:</span>
-                    <template x-for="item in itemsAlerta">
-                      <span class="text-[9px] bg-amber-500/10 text-amber-700 font-semibold px-2 py-0.5 rounded-full border border-amber-500/20" x-text="item"></span>
-                    </template>
-                  </div>
-                </div>
 
-                <!-- Notas Adicionales -->
-                <div class="bg-canvas-soft/30 border border-canvas-soft p-3 rounded-lg mt-3" x-show="necesidades">
-                  <span class="text-[10px] font-bold text-mute uppercase tracking-wider font-uber-text block mb-1">📝 Notas Adicionales</span>
-                  <p class="text-xs text-body font-uber-text whitespace-pre-wrap" x-text="necesidades">{r.necesidades || ""}</p>
-                </div>
-
-                <!-- Botones de Acción -->
-                <div class="flex flex-wrap sm:justify-between items-center gap-2 pt-2 border-t border-canvas-soft">
-                  <div class="flex flex-wrap gap-2">
+                  <div class="flex flex-wrap gap-2 mt-6 pt-4 border-t border-base-200 w-full items-center">
                     <button 
-                      class="btn-ver-en-mapa py-1.5 px-3.5 rounded-full bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-xs text-ink font-semibold cursor-pointer whitespace-nowrap"
+                      class="btn-ver-en-mapa btn btn-sm btn-outline rounded-full font-semibold"
                       data-lat={r.latitud || ""}
                       data-lng={r.longitud || ""}
                       data-id={r.id}
                     >
-                      🗺️ Ver mapa
+                      🗺️ Mapa
                     </button>
                     {r.contacto && (
                       <a 
                         href={`tel:${r.contacto}`} 
-                        class="py-1.5 px-3.5 rounded-full bg-canvas-soft hover:bg-surface-pressed border border-canvas-soft text-xs text-ink font-semibold flex items-center justify-center whitespace-nowrap"
+                        class="btn btn-sm btn-outline rounded-full font-semibold"
                       >
                         📞 Llamar
                       </a>
                     )}
                     <ShareButton 
-                      buttonText="Compartir"
-                      url={`https://dondeestan.org/r/${r.id}`}
+                      url={`/r/${r.id}`}
                       text={`📍 Ayuda en ${r.nombre}:`}
                     />
+                    {esVoluntario && (
+                      <button 
+                        class="btn-edit-refugio btn btn-sm btn-neutral rounded-full sm:ml-auto"
+                        data-id={r.id}
+                        data-nombre={r.nombre}
+                        data-direccion={r.direccion || ""}
+                        data-necesidades={r.necesidades || ""}
+                        data-tipo={r.tipo || "refugio"}
+                        data-lat={r.latitud || ""}
+                        data-lng={r.longitud || ""}
+                        data-ocupacion={ocupacion}
+                        data-capacidad={capacidad}
+                        data-contacto={r.contacto || ""}
+                        data-encargado={r.encargado || ""}
+                        data-ninos={r.ninos || "0"}
+                        data-bebes={r.bebes_lactantes || "0"}
+                        data-mayores={r.adultos_mayores || "0"}
+                        data-prof={r.personal_profesional || "0"}
+                        data-vols={r.voluntarios || "0"}
+                        data-inventario={typeof r.inventario === 'string' ? r.inventario : JSON.stringify(r.inventario || {})}
+                        data-fotos={typeof r.fotos === 'string' ? r.fotos : JSON.stringify(r.fotos || [])}
+                      >
+                        ✏️ Actualizar
+                      </button>
+                    )}
                   </div>
-                  {esVoluntario && (
-                    <button 
-                      class="btn-edit-refugio py-1.5 px-3.5 rounded-full bg-black text-white hover:bg-zinc-800 text-xs font-semibold cursor-pointer whitespace-nowrap"
-                      data-id={r.id}
-                      data-nombre={r.nombre}
-                      data-direccion={r.direccion || ""}
-                      data-necesidades={r.necesidades || ""}
-                      data-tipo={r.tipo || "refugio"}
-                      data-lat={r.latitud || ""}
-                      data-lng={r.longitud || ""}
-                      data-ocupacion={ocupacion}
-                      data-capacidad={capacidad}
-                      data-contacto={r.contacto || ""}
-                      data-encargado={r.encargado || ""}
-                      data-ninos={r.ninos || "0"}
-                      data-bebes={r.bebes_lactantes || "0"}
-                      data-mayores={r.adultos_mayores || "0"}
-                      data-prof={r.personal_profesional || "0"}
-                      data-vols={r.voluntarios || "0"}
-                      data-inventario={typeof r.inventario === 'string' ? r.inventario : JSON.stringify(r.inventario || {})}
-                      data-fotos={typeof r.fotos === 'string' ? r.fotos : JSON.stringify(r.fotos || [])}
-                    >
-                      ✏️ Actualizar Estado
-                    </button>
-                  )}
                 </div>
               </div>
             )
@@ -522,17 +542,16 @@ try {
       </div>
     </div>
 
-
     <!-- Sección informativa en Home (Acordeón) y Colaboradores -->
-    <div class="max-w-5xl mx-auto mt-12 mb-10 px-2 grid grid-cols-1 md:grid-cols-[1fr_300px] gap-6 items-start">
+    <div class="max-w-5xl mx-auto mt-16 mb-16 px-4 grid grid-cols-1 md:grid-cols-[1fr_300px] gap-8 items-start">
       <!-- Acordeón -->
-      <div class="cv-auto join join-vertical w-full bg-canvas border border-canvas-soft rounded-xl shadow-sm">
-        <div class="collapse collapse-arrow join-item border-b border-canvas-soft">
+      <div class="join join-vertical w-full bg-base-100 shadow-sm border border-base-200">
+        <div class="collapse collapse-arrow join-item border-b border-base-200">
           <input type="radio" name="info-accordion" checked="checked" /> 
-          <div class="collapse-title font-uber-display text-base text-ink font-semibold">
+          <div class="collapse-title text-lg font-bold text-base-content">
             Sobre esta plataforma
           </div>
-          <div class="collapse-content font-uber-text text-sm text-body space-y-2">
+          <div class="collapse-content text-base-content/80 space-y-3">
             <p>
               Plataforma ciudadana, colaborativa y voluntaria a raíz del evento sísmico del 24 de junio de 2026 en Venezuela.
             </p>
@@ -542,36 +561,36 @@ try {
           </div>
         </div>
         
-        <div class="collapse collapse-arrow join-item border-b border-canvas-soft">
+        <div class="collapse collapse-arrow join-item border-b border-base-200">
           <input type="radio" name="info-accordion" /> 
-          <div class="collapse-title font-uber-display text-base text-ink font-semibold">
+          <div class="collapse-title text-lg font-bold text-base-content">
             Directorio de Emergencia
           </div>
-          <div class="collapse-content font-uber-text text-sm text-body">
+          <div class="collapse-content">
             <div class="overflow-x-auto">
-              <table class="table table-sm w-full text-left font-uber-text text-xs">
+              <table class="table table-sm w-full">
                 <thead>
-                  <tr class="text-ink">
+                  <tr>
                     <th>Servicio</th>
                     <th>Número</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-canvas-soft text-body">
+                <tbody class="text-base-content/80">
                   <tr>
-                    <td class="py-2">Emergencias Nacionales</td>
-                    <td class="py-2 font-bold"><a href="tel:911" class="text-primary hover:underline">911</a></td>
+                    <td>Emergencias Nacionales</td>
+                    <td class="font-bold"><a href="tel:911" class="link link-primary">911</a></td>
                   </tr>
                   <tr>
-                    <td class="py-2">Bomberos</td>
-                    <td class="py-2 font-bold"><a href="tel:0212-5454545" class="text-primary hover:underline">0212-5454545</a></td>
+                    <td>Bomberos</td>
+                    <td class="font-bold"><a href="tel:0212-5454545" class="link link-primary">0212-5454545</a></td>
                   </tr>
                   <tr>
-                    <td class="py-2">Protección Civil</td>
-                    <td class="py-2 font-bold"><a href="tel:0800-7248454" class="text-primary hover:underline">0800-7248454</a></td>
+                    <td>Protección Civil</td>
+                    <td class="font-bold"><a href="tel:0800-7248454" class="link link-primary">0800-7248454</a></td>
                   </tr>
                   <tr>
-                    <td class="py-2">Cruz Roja Venezolana</td>
-                    <td class="py-2 font-bold"><a href="tel:0212-5714545" class="text-primary hover:underline">0212-5714545</a></td>
+                    <td>Cruz Roja Venezolana</td>
+                    <td class="font-bold"><a href="tel:0212-5714545" class="link link-primary">0212-5714545</a></td>
                   </tr>
                 </tbody>
               </table>
@@ -581,49 +600,41 @@ try {
 
         <div class="collapse collapse-arrow join-item">
           <input type="radio" name="info-accordion" /> 
-          <div class="collapse-title font-uber-display text-base text-ink font-semibold">
+          <div class="collapse-title text-lg font-bold text-base-content">
             ¿Cómo ayudar?
           </div>
-          <div class="collapse-content font-uber-text text-sm text-body space-y-2">
-            <p>
-              1. <strong>Comparte la plataforma:</strong> Ayuda a que más personas publiquen reportes y se registren a salvo.
-            </p>
-            <p>
-              2. <strong>Únete como voluntario:</strong> Si tienes habilidades técnicas, médicas, de rescate o apoyo logístico, regístrate en la sección "👷 Voluntarios" para coordinar esfuerzos.
-            </p>
-            <p>
-              3. <strong>Valida información:</strong> Si confirmas el paradero o estado de un reporte existente, repórtalo como localizado para mantener los datos limpios.
-            </p>
+          <div class="collapse-content text-base-content/80 space-y-3">
+            <p>1. <strong>Comparte la plataforma:</strong> Ayuda a que más personas publiquen reportes y se registren a salvo.</p>
+            <p>2. <strong>Únete como voluntario:</strong> Si tienes habilidades técnicas, médicas, de rescate o apoyo logístico, regístrate en la sección "👷 Voluntarios" para coordinar esfuerzos.</p>
+            <p>3. <strong>Valida información:</strong> Si confirmas el paradero o estado de un reporte existente, repórtalo como localizado para mantener los datos limpios.</p>
           </div>
         </div>
       </div>
 
       <!-- Apoyo Voluntario -->
-      <div class="space-y-4 w-full">
-        <!-- Colaboradores / Voluntarios Especiales -->
-        <div class="flex flex-col items-center justify-center p-6 bg-canvas border border-canvas-soft rounded-xl shadow-sm">
-          <h3 class="font-uber-display text-xs text-mute font-semibold mb-6 text-center uppercase tracking-wider">Con el apoyo voluntario de</h3>
-          <div class="flex flex-col items-center gap-3">
-            <div class="relative group cursor-pointer" title="Honrando a los Scouts voluntarios">
-              <div class="absolute -inset-1 bg-gradient-to-r from-purple-600 to-blue-500 rounded-full blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
-              <img 
-                src="/SCOUTS.webp" 
-                alt="Scouts Voluntarios" 
-                class="relative w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-full drop-shadow-lg transition-transform duration-300 hover:scale-105"
-                loading="lazy"
-                decoding="async"
-              />
+      <div class="card bg-base-100 shadow-sm border border-base-200">
+        <div class="card-body items-center text-center p-8">
+          <h3 class="text-xs font-bold text-base-content/50 uppercase tracking-widest mb-6">Apoyo voluntario</h3>
+          <div class="avatar">
+            <div class="w-24 rounded-full ring-2 ring-primary/30 ring-offset-base-100 ring-offset-2 hover:scale-105 transition-transform cursor-pointer">
+              <img src="/SCOUTS.webp" alt="Scouts Voluntarios" loading="lazy" decoding="async" />
             </div>
-            <span class="text-[10px] font-uber-text text-mute uppercase tracking-wider font-semibold bg-canvas-soft px-3 py-1 rounded-full shadow-sm text-center">
-              Grupo Scout Madre Rafols
-            </span>
+          </div>
+          <div class="mt-4 badge badge-neutral badge-sm font-semibold tracking-wide py-3 px-4">
+            Scouts Madre Rafols
           </div>
         </div>
       </div>
     </div>
+  </main>
 
-    <ModalEditRefugio />
-
+  <!-- Toast de éxito al actualizar refugio -->
+  <div id="index-success-toast" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] hidden w-[calc(100%-2rem)] max-w-sm pointer-events-none">
+    <div class="bg-black/95 text-white border border-zinc-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center justify-center text-center gap-3 backdrop-blur-md">
+      <span class="text-4xl">✅</span>
+      <span class="font-uber-display text-base font-bold">Refugio actualizado con éxito</span>
+    </div>
+  </div>
   <style>
     @keyframes marquee {
       0% { transform: translateX(0%); }
@@ -635,132 +646,154 @@ try {
   </style>
 
   <style is:global>
-    /* Marcadores personalizados para el mapa de emergencia */
+    /* Google Maps style teardrop marker */
     .custom-marker {
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 9999px;
-      border: 2px solid white;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 2px 4px -2px rgba(0, 0, 0, 0.15);
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
       position: relative;
       color: white;
-      font-size: 14px;
+      font-size: 16px;
+      border-radius: 50% 50% 50% 0; /* Creates the teardrop shape */
+      transform: rotate(-45deg); /* Point the flat corner down */
+      border: 3px solid white;
+      box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .custom-marker .marker-emoji {
+      transform: rotate(45deg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .marker-refugio {
-      background-color: #2563eb; /* Azul */
+      background-color: #2563eb; /* Primary - Azul */
     }
     
     .marker-acopio {
-      background-color: #d97706; /* Naranja/Amarillo */
+      background-color: #d97706; /* Warning - Naranja */
     }
     
     .marker-hospital {
-      background-color: #dc2626; /* Rojo */
+      background-color: #dc2626; /* Error - Rojo */
     }
 
     .custom-marker-badge {
       position: absolute;
-      top: -4px;
-      right: -4px;
+      top: -2px;
+      right: -2px;
       width: 12px;
       height: 12px;
-      border-radius: 9999px;
-      border: 1.5px solid white;
+      border-radius: 50%;
+      border: 2px solid white;
+      transform: rotate(45deg); /* Counter rotate */
     }
 
-    .badge-verde {
-      background-color: #16a34a;
-    }
-
-    .badge-amarillo {
-      background-color: #fbbf24;
-    }
-
-    .badge-rojo {
-      background-color: #dc2626;
-    }
+    .badge-verde { background-color: #16a34a; }
+    .badge-amarillo { background-color: #fbbf24; }
+    .badge-rojo { background-color: #dc2626; }
 
     .custom-marker-pulse {
       position: absolute;
-      top: -4px;
-      right: -4px;
+      top: -2px;
+      right: -2px;
       width: 12px;
       height: 12px;
-      border-radius: 9999px;
+      border-radius: 50%;
       background-color: #dc2626;
       animation: marker-pulse-anim 1.5s infinite;
+      transform: rotate(45deg);
     }
 
     @keyframes marker-pulse-anim {
-      0% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
-      }
-      70% {
-        transform: scale(1);
-        box-shadow: 0 0 0 6px rgba(220, 38, 38, 0);
-      }
-      100% {
-        transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
-      }
+      0% { transform: rotate(45deg) scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+      70% { transform: rotate(45deg) scale(1); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+      100% { transform: rotate(45deg) scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
     }
 
     /* Indicador de posición del usuario */
     .user-location-marker {
-      width: 16px;
-      height: 16px;
-      border-radius: 9999px;
-      background-color: #3b82f6;
-      border: 2px solid white;
-      box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
-      position: relative;
+      width: 16px; height: 16px; border-radius: 50%; background-color: #3b82f6; border: 2px solid white; box-shadow: 0 0 8px rgba(59, 130, 246, 0.6); position: relative;
     }
-
     .user-location-pulse {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      border-radius: 9999px;
-      background-color: rgba(59, 130, 246, 0.4);
-      animation: user-pulse 2s infinite;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 50%; background-color: rgba(59, 130, 246, 0.4); animation: user-pulse 2s infinite;
+    }
+    @keyframes user-pulse {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(3.5); opacity: 0; }
     }
 
-    @keyframes user-pulse {
-      0% {
-        transform: scale(1);
-        opacity: 1;
-      }
-      100% {
-        transform: scale(3.5);
-        opacity: 0;
-      }
+    :root {
+      --canvas: var(--color-base-100, #ffffff);
+      --canvas-soft: var(--color-base-200, #f3f4f6);
+      --canvas-softer: var(--color-base-300, #e5e7eb);
+      --surface-pressed: var(--color-base-300, #e5e7eb);
+      --ink: var(--color-base-content, #1f2937);
+      --body: var(--color-base-content, #1f2937);
+      --mute: var(--color-base-content, #1f2937);
+
+      --color-canvas: var(--color-base-100, #ffffff);
+      --color-canvas-soft: var(--color-base-200, #f3f4f6);
+      --color-canvas-softer: var(--color-base-300, #e5e7eb);
+      --color-surface-pressed: var(--color-base-300, #e5e7eb);
+      --color-ink: var(--color-base-content, #1f2937);
+      --color-body: var(--color-base-content, #1f2937);
+      --color-mute: var(--color-base-content, #1f2937);
     }
 
     /* Ajustes del Popup de Leaflet */
     .leaflet-popup-content-wrapper {
-      border-radius: 16px !important;
+      border-radius: 18px !important;
       padding: 0 !important;
-      border: 1px solid var(--canvas-soft) !important;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+      border: 1px solid var(--canvas-soft, #e5e5e5) !important;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+      background: var(--canvas) !important;
+      color: var(--ink) !important;
+    }
+    .leaflet-popup-content-wrapper .btn {
+      min-height: 32px !important;
+      height: 32px !important;
+      padding: 4px 12px !important;
+      font-size: 11px !important;
+      border-radius: 10px !important;
+      font-weight: 700 !important;
+      margin: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    .leaflet-popup-content-wrapper .btn-primary {
+      background-color: var(--color-ink, #000000) !important;
+      color: var(--color-canvas, #ffffff) !important;
+    }
+    .leaflet-popup-content-wrapper .btn-primary:hover {
+      background-color: var(--color-canvas-soft, #efefef) !important;
+      color: var(--color-ink, #000000) !important;
+    }
+    .leaflet-popup-content-wrapper .btn-outline {
+      background-color: var(--color-canvas-soft, #efefef) !important;
+      color: var(--color-ink, #000000) !important;
+      border: 1px solid var(--color-canvas-softer, #e2e2e2) !important;
+    }
+    .leaflet-popup-content-wrapper .btn-outline:hover {
+      background-color: var(--color-surface-pressed, #e2e2e2) !important;
     }
     .leaflet-popup-content { margin: 0 !important; }
-    .leaflet-popup-tip { border-top-color: var(--canvas, #fff) !important; }
+    .leaflet-popup-tip { 
+      background: var(--canvas) !important;
+      border-top-color: var(--canvas) !important;
+      box-shadow: none !important;
+    }
+
+    /* Evitar que el menú de compartir de una tarjeta quede por debajo de la siguiente tarjeta */
+    .refugio-card:focus-within {
+      z-index: 50 !important;
+      position: relative !important;
+    }
   </style>
-  </main>
-  <!-- Toast de éxito al actualizar refugio -->
-  <div id="index-success-toast" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] hidden w-[calc(100%-2rem)] max-w-sm pointer-events-none">
-    <div class="bg-black/95 text-white border border-zinc-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center justify-center text-center gap-3 backdrop-blur-md">
-      <span class="text-4xl">✅</span>
-      <span class="font-uber-display text-base font-bold">Refugio actualizado con éxito</span>
-    </div>
-  </div>
 </Layout>
 
 <!-- Leaflet y MarkerCluster para mini-mapa GPS y mapa interactivo -->
@@ -813,6 +846,9 @@ try {
         maxZoom: 19,
         attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(map);
+
+      // @ts-ignore
+      const markerClusterGroup = L.markerClusterGroup();
 
       // Crear marcadores desde los datos del DOM de las tarjetas
       cards.forEach((card) => {
@@ -869,7 +905,7 @@ try {
         // Crear el DivIcon personalizado
         // @ts-ignore
         const customIcon = L.divIcon({
-          html: `<div class="custom-marker ${classTipo}">${emoji}${badgeHTML}</div>`,
+          html: `<div class="custom-marker ${classTipo}"><span class="marker-emoji">${emoji}</span>${badgeHTML}</div>`,
           className: "", // Limpiar clase por defecto de Leaflet
           iconSize: [32, 32],
           iconAnchor: [16, 32],
@@ -908,13 +944,11 @@ try {
               <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-primary text-primary-content text-center py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 no-underline">
                 🚗 Cómo llegar
               </a>
-              <div class="share-dropdown-container inline-block" data-url="https://dondeestan.org/r/${id}" data-text="📍 Ayuda en ${nombre}:">
-                <button type="button" class="btn-share-toggle btn btn-xs bg-canvas-soft text-ink hover:bg-surface-pressed border border-canvas-soft text-center py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 w-full cursor-pointer">
-                  📤 Compartir Ficha
-                </button>
-              </div>
+              <button type="button" onclick="window._compartirFicha('${id}', '${nombre.replace(/'/g, "\\'")}')" class="btn btn-xs btn-outline border-canvas-soft text-center py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 w-full cursor-pointer">
+                📤 Compartir Ficha
+              </button>
               ${esVoluntario ? `
-                <button type="button" class="btn-mapa-edit btn btn-xs btn-outline border-canvas-soft text-center py-2 rounded-lg text-[10px] font-semibold cursor-pointer" data-id="${id}">
+                <button type="button" onclick="window._editarEstado('${id}')" class="btn btn-xs btn-outline border-canvas-soft text-center py-2 rounded-lg text-[10px] font-semibold cursor-pointer">
                   ✏️ Actualizar Estado
                 </button>
               ` : ''}
@@ -924,9 +958,12 @@ try {
 
         // @ts-ignore
         const marker = L.marker([lat, lng], { icon: customIcon }).bindPopup(popupHTML);
-        marker.addTo(map);
+        markerClusterGroup.addLayer(marker);
         marcadores.set(id, marker);
       });
+
+      // @ts-ignore
+      map.addLayer(markerClusterGroup);
 
       // Si hay marcadores, ajustar el mapa enfocando en la zona más densa
       if (marcadores.size > 0) {
@@ -1013,19 +1050,38 @@ try {
       );
     });
 
-    // Delegar click del botón "Editar" del mapa para abrir el modal nativo
-    document.getElementById("mapa-refugios")?.addEventListener("click", (e) => {
-      const target = e.target as HTMLElement;
-      if (target.classList.contains("btn-mapa-edit")) {
-        const id = target.getAttribute("data-id");
-        if (id) {
-          const btnLista = document.querySelector(`.btn-edit-refugio[data-id="${id}"]`) as HTMLButtonElement;
-          if (btnLista) {
-            btnLista.click();
+    // Funciones globales para acciones del mapa Leaflet
+    (window as any)._editarEstado = (id: string) => {
+      const btnLista = document.querySelector(`.btn-edit-refugio[data-id="${id}"]`) as HTMLButtonElement;
+      if (btnLista) {
+        btnLista.click();
+      } else {
+        console.error("No se encontró el botón de edición para el recurso:", id);
+      }
+    };
+
+    (window as any)._compartirFicha = async (id: string, nombre: string) => {
+      const card = document.getElementById(`refugio-${id}`);
+      const dialog = card?.querySelector('dialog') as HTMLDialogElement;
+      if (dialog) {
+        dialog.showModal();
+      } else {
+        const url = `https://dondeestan.org/r/${id}`;
+        const text = `📍 Ayuda en ${nombre}:`;
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: document.title, text, url });
+          } catch (e) {
+            console.error("Error al compartir nativamente:", e);
           }
+        } else {
+          try {
+            await navigator.clipboard.writeText(url);
+            alert("¡Enlace copiado al portapapeles!");
+          } catch (e) {}
         }
       }
-    });
+    };
 
     // Ver en Mapa desde la lista de tarjetas
     document.querySelectorAll(".btn-ver-en-mapa").forEach((btn) => {

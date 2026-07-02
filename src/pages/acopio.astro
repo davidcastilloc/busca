@@ -11,10 +11,10 @@ let refugios = [];
 if (DB) {
   try {
     const query = `
-      SELECT id, nombre FROM (
-        SELECT id, nombre FROM refugios
+      SELECT id, nombre, tipo FROM (
+        SELECT id, nombre, 'refugio' AS tipo FROM refugios
         UNION ALL
-        SELECT id, nombre FROM centros_acopio
+        SELECT id, nombre, 'centro_acopio' AS tipo FROM centros_acopio
       ) ORDER BY nombre
     `;
     const refugiosRes = await DB.prepare(query).all();
@@ -28,32 +28,32 @@ if (DB) {
 <Layout title="Dashboard de Acopio - DondeEstan.org" description="Panel de control logístico para centros de acopio y refugios.">
   <Navbar />
   
-  <main class="min-h-screen bg-canvas pt-20 pb-12">
+  <main class="min-h-screen bg-base-200 pt-20 pb-12">
     <div class="max-w-7xl mx-auto px-4">
       <header class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 class="text-3xl font-black text-ink tracking-tight flex items-center gap-2">
+          <h1 class="text-3xl font-black text-base-content tracking-tight flex items-center gap-2">
             📦 Dashboard de Acopio
           </h1>
-          <p class="text-ink-soft mt-1">Control de recepción y despacho de ayudas.</p>
+          <p class="text-base-content/70 mt-1">Control de recepción y despacho de ayudas.</p>
         </div>
         
         <div class="w-full md:w-auto">
-          <label class="block text-sm font-semibold text-ink-soft mb-1">Selecciona tu Centro Operativo:</label>
-          <select id="refugio-selector" class="select select-bordered select-primary w-full md:w-80 bg-surface">
+          <label class="block text-sm font-semibold text-base-content/70 mb-1">Selecciona tu Centro Operativo:</label>
+          <select id="refugio-selector" class="select select-bordered select-primary w-full md:w-80 bg-base-100">
             <option value="" disabled selected>-- Elige un Refugio / Acopio --</option>
             {refugios.map((r: any) => (
-              <option value={r.id}>{r.nombre}</option>
+              <option value={`${r.tipo}:${r.id}`}>{r.nombre}</option>
             ))}
           </select>
         </div>
       </header>
 
       <!-- Pantalla Vacía -->
-      <div id="empty-state" class="flex flex-col items-center justify-center py-20 bg-surface rounded-2xl border border-canvas-soft shadow-sm">
+      <div id="empty-state" class="flex flex-col items-center justify-center py-20 bg-base-100 rounded-2xl border border-base-200 shadow-sm">
         <span class="text-6xl mb-4">📍</span>
-        <h2 class="text-xl font-bold text-ink">Selecciona tu centro</h2>
-        <p class="text-ink-soft text-center max-w-md">Elige un refugio en el menú superior para ver qué ayudas vienen en camino y qué necesitan otros centros.</p>
+        <h2 class="text-xl font-bold text-base-content">Selecciona tu centro</h2>
+        <p class="text-base-content/70 text-center max-w-md">Elige un refugio en el menú superior para ver qué ayudas vienen en camino y qué necesitan otros centros.</p>
       </div>
 
       <!-- Loader -->
@@ -66,7 +66,7 @@ if (DB) {
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           <!-- PANEL A: ENTRADAS -->
-          <div class="bg-surface rounded-2xl border border-canvas-soft shadow-sm overflow-hidden flex flex-col">
+          <div class="card bg-base-100 border border-base-200 shadow-sm overflow-hidden flex flex-col">
             <div class="bg-success/10 border-b border-success/20 p-4 flex items-center justify-between">
               <h2 class="text-xl font-bold text-success-content flex items-center gap-2">
                 📥 Entradas (Recepción)
@@ -74,7 +74,7 @@ if (DB) {
               <span id="badge-entradas" class="badge badge-success font-bold">0 en ruta</span>
             </div>
             
-            <div class="p-4 flex-1 overflow-y-auto max-h-[600px] bg-canvas/50">
+            <div class="p-4 flex-1 overflow-y-auto max-h-[600px] bg-base-200/50">
               <div id="lista-entradas" class="space-y-3">
                 <!-- items se llenan por JS -->
               </div>
@@ -82,7 +82,7 @@ if (DB) {
           </div>
 
           <!-- PANEL B: SALIDAS -->
-          <div class="bg-surface rounded-2xl border border-canvas-soft shadow-sm overflow-hidden flex flex-col">
+          <div class="card bg-base-100 border border-base-200 shadow-sm overflow-hidden flex flex-col">
             <div class="bg-error/10 border-b border-error/20 p-4 flex items-center justify-between">
               <h2 class="text-xl font-bold text-error-content flex items-center gap-2">
                 📤 Salidas (Despachos)
@@ -90,15 +90,15 @@ if (DB) {
               <span id="badge-salidas" class="badge badge-error font-bold">0 urgencias</span>
             </div>
             
-            <div class="p-4 bg-canvas/50 border-b border-canvas-soft">
-              <h3 class="text-sm font-bold text-ink-soft mb-2">Tu Inventario Actual:</h3>
+            <div class="p-4 bg-base-200/50 border-b border-base-200">
+              <h3 class="text-sm font-bold text-base-content/70 mb-2">Tu Inventario Actual:</h3>
               <div id="inventario-tags" class="flex flex-wrap gap-2">
                 <!-- tags llenados por JS -->
               </div>
             </div>
 
-            <div class="p-4 flex-1 overflow-y-auto max-h-[500px] bg-canvas/50">
-              <p class="text-sm text-ink-soft mb-4">Necesidades críticas en <b>otros</b> refugios para despachar:</p>
+            <div class="p-4 flex-1 overflow-y-auto max-h-[500px] bg-base-200/50">
+              <p class="text-sm text-base-content/70 mb-4">Necesidades críticas en <b>otros</b> refugios para despachar:</p>
               <div id="lista-salidas" class="space-y-3">
                 <!-- items se llenan por JS -->
               </div>
@@ -166,15 +166,15 @@ if (DB) {
     if (badgeEntradas) badgeEntradas.textContent = `${data.entradas.length} en ruta`;
     if (listaEntradas) {
       if (data.entradas.length === 0) {
-        listaEntradas.innerHTML = `<div class="text-center text-ink-soft py-8">No hay ayudas en camino reportadas en este momento.</div>`;
+        listaEntradas.innerHTML = `<div class="text-center text-base-content/70 py-8">No hay ayudas en camino reportadas en este momento.</div>`;
       } else {
         listaEntradas.innerHTML = data.entradas.map((e: any) => `
-          <div class="bg-surface p-4 rounded-xl border-l-4 border-l-success shadow-sm">
+          <div class="bg-base-100 p-4 rounded-xl border-l-4 border-l-success shadow-sm">
             <div class="flex justify-between items-start mb-2">
-              <span class="font-bold text-ink">🚗 Vehículo en camino</span>
-              <span class="text-xs text-ink-soft bg-canvas px-2 py-1 rounded">${timeAgo(e.created_at)}</span>
+              <span class="font-bold text-base-content">🚗 Vehículo en camino</span>
+              <span class="text-xs text-base-content/70 bg-base-200 px-2 py-1 rounded">${timeAgo(e.created_at)}</span>
             </div>
-            <p class="text-sm text-ink-soft">
+            <p class="text-sm text-base-content/70">
               ${e.necesidad_categoria ? `<strong>Atendiendo:</strong> ${e.necesidad_categoria} - ${e.necesidad_desc}` : 'Donación general / Ayuda voluntaria'}
             </p>
           </div>
@@ -185,13 +185,13 @@ if (DB) {
     // INVENTARIO PROPIO
     if (inventarioTags) {
       if (!data.inventario || data.inventario.length === 0) {
-        inventarioTags.innerHTML = `<span class="text-xs text-ink-soft">Sin datos de inventario.</span>`;
+        inventarioTags.innerHTML = `<span class="text-xs text-base-content/70">Sin datos de inventario.</span>`;
       } else {
         inventarioTags.innerHTML = data.inventario.map((i: any) => {
-          let color = "bg-canvas-soft text-ink-soft";
-          if (i.estado === "Sobrante" || i.estado === "Suficiente") color = "bg-success/20 text-success-content";
-          if (i.estado === "Alerta" || i.estado === "Crítico") color = "bg-error/20 text-error-content";
-          return `<span class="badge ${color} text-xs font-semibold border-none">${i.nombre}: ${i.estado}</span>`;
+          let color = "bg-base-200 text-base-content/70";
+          if (i.estado === "Sobrante" || i.estado === "Suficiente") color = "badge-success badge-outline";
+          if (i.estado === "Alerta" || i.estado === "Crítico") color = "badge-error badge-outline";
+          return `<span class="badge ${color} text-xs font-semibold">${i.nombre}: ${i.estado}</span>`;
         }).join('');
       }
     }
@@ -200,7 +200,7 @@ if (DB) {
     if (badgeSalidas) badgeSalidas.textContent = `${data.salidas.length} urgencias`;
     if (listaSalidas) {
       if (data.salidas.length === 0) {
-        listaSalidas.innerHTML = `<div class="text-center text-ink-soft py-8">No hay urgencias reportadas en otros centros.</div>`;
+        listaSalidas.innerHTML = `<div class="text-center text-base-content/70 py-8">No hay urgencias reportadas en otros centros.</div>`;
       } else {
         listaSalidas.innerHTML = data.salidas.map((s: any) => {
           let badgeColor = "badge-neutral";
@@ -210,16 +210,16 @@ if (DB) {
           else if (s.gravedad === "media") { badgeColor = "badge-warning"; gravEmoji = "🟠"; }
 
           return `
-            <div class="bg-surface p-4 rounded-xl border border-canvas-soft shadow-sm hover:border-primary/30 transition-colors">
+            <div class="bg-base-100 p-4 rounded-xl border border-base-200 shadow-sm hover:border-primary/30 transition-colors">
               <div class="flex justify-between items-start mb-2 gap-2">
                 <span class="badge ${badgeColor} font-bold text-xs uppercase">${gravEmoji} ${s.gravedad}</span>
                 <span class="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded truncate">📍 ${s.refugio_nombre || 'Zona Externa'}</span>
               </div>
-              <h4 class="font-bold text-ink text-sm mb-1">${s.categoria}</h4>
-              <p class="text-sm text-ink-soft mb-3 line-clamp-2">${s.descripcion}</p>
+              <h4 class="font-bold text-base-content text-sm mb-1">${s.categoria}</h4>
+              <p class="text-sm text-base-content/70 mb-3 line-clamp-2">${s.descripcion}</p>
               
               <div class="flex gap-2">
-                <a href="/?necesidad=${s.id}" target="_blank" class="btn btn-xs btn-outline border-canvas-soft flex-1">👀 Ver en Mapa</a>
+                <a href="/?necesidad=${s.id}" target="_blank" class="btn btn-xs btn-outline border-base-200 flex-1">👀 Ver en Mapa</a>
               </div>
             </div>
           `;

@@ -88,6 +88,27 @@ body {
   }
 }
 
+/* Sobrescribir tamaños de botones para evitar conflictos con el estilo base */
+.btn-sm {
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 4px 10px !important;
+  font-size: 13px !important;
+}
+@media (max-width: 640px) {
+  .btn-sm {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    letter-spacing: -0.019em;
+  }
+}
+.btn-xs {
+  min-height: 24px !important;
+  height: 24px !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+}
+
 /* Botón primario: Negro puro */
 .btn-primary, .btn-error, .btn-warning, .btn-info {
   background-color: var(--color-primary) !important;
