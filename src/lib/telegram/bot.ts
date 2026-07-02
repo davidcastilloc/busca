@@ -78,7 +78,12 @@ export async function processTelegramUpdate(
             await db.prepare("UPDATE ayudas_en_camino SET estatus = 'entregado' WHERE necesidad_id = ? AND estatus = 'en_ruta'").bind(necesidadId).run();
             // Eliminar flyer asociado a esta necesidad para que deje de circular como activa
             await db.prepare("DELETE FROM flyers WHERE necesidad_id = ?").bind(necesidadId).run();
-            await client.sendMessage(chatId, `✅ <b>¡Necesidad #${necesidadId} marcada como satisfecha!</b>`);
+
+            // Buscar voluntario
+            const voluntario = await db.prepare("SELECT nombre FROM voluntarios WHERE telegram_id = ? AND activo = 1").bind(String(telegramId)).first<{ nombre: string }>();
+            const resolverNombre = voluntario ? voluntario.nombre : (cb.from.username ? `@${cb.from.username}` : cb.from.first_name);
+
+            await client.sendMessage(chatId, `✅ <b>¡Necesidad #${necesidadId} marcada como satisfecha por ${resolverNombre}!</b>`);
             await client.editMessageReplyMarkup(chatId, messageId, { inline_keyboard: [] });
           } else {
             await client.sendMessage(chatId, `❌ No se encontró la necesidad o ya estaba marcada.`);
@@ -325,13 +330,22 @@ export async function processTelegramUpdate(
             timestamp
           ).run();
 
-          await client.sendMessage(chatId, `🚗 <b>¡Ayuda en Camino Registrada!</b>\nVas rumbo a atender la necesidad #${necesidadId}. El mapa y los centros de acopio ya muestran esta asignación para evitar duplicaciones.`);
+          // Buscar voluntario
+          const voluntario = await db.prepare("SELECT nombre, telefono FROM voluntarios WHERE telegram_id = ? AND activo = 1").bind(String(telegramId)).first<{ nombre: string; telefono: string }>();
+          const resolverNombre = voluntario ? voluntario.nombre : (cb.from.username ? `@${cb.from.username}` : cb.from.first_name);
+          const resolverContacto = voluntario ? voluntario.telefono : "Sin contacto verificado";
+
+          await client.sendMessage(chatId, `🚗 <b>¡Ayuda en camino de ${resolverNombre} (${resolverContacto})!</b>\nVas rumbo a atender la necesidad #${necesidadId}. El mapa y los centros de acopio ya muestran esta asignación para evitar duplicaciones.`);
           
-          // Dejar solo botón de Marcar Satisfecha
-          await client.editMessageReplyMarkup(chatId, messageId, {
-            inline_keyboard: [
-              [{ text: "✅ Marcar como Satisfecha", callback_data: `cub:${necesidadId}` }]
-            ]
+          // Dejar solo botón de Marcar Satisfecha e indicar en el texto quién la tomó
+          const originalText = cb.message?.text || "";
+          const newText = originalText + `\n\n🚗 <b>Asignada a:</b> ${resolverNombre} (${resolverContacto})`;
+          await client.editMessageText(chatId, messageId, newText, {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "✅ Marcar como Satisfecha", callback_data: `cub:${necesidadId}` }]
+              ]
+            }
           });
         } catch (e) {
           console.error("Error al registrar ayuda en camino desde Telegram:", e);
