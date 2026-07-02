@@ -6,7 +6,7 @@ export const prerender = false;
 
 export const POST: APIRoute = async (context) => {
   try {
-    const cfEnv = env;
+    const cfEnv = env as unknown as Env;
     const url = new URL(context.request.url);
     const secret = url.searchParams.get("secret");
 

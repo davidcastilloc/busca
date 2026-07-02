@@ -37,7 +37,28 @@ export async function procesarColaPush(
 
   for (const message of batch.messages) {
     try {
-      const { payload, suscripciones } = message.body;
+      const body = message.body as any;
+      if (body && body.type === "telegram_broadcast") {
+        const { chat_id, mensaje } = body.payload;
+        if (env.TELEGRAM_BOT_TOKEN) {
+          const { TelegramClient } = await import("./telegram/client");
+          const client = new TelegramClient(env.TELEGRAM_BOT_TOKEN);
+          await client.sendMessage(chat_id, mensaje);
+        }
+        message.ack();
+        continue;
+      }
+      if (body && body.type === "telegram_location") {
+        const { chat_id, latitude, longitude } = body.payload;
+        if (env.TELEGRAM_BOT_TOKEN) {
+          const { TelegramClient } = await import("./telegram/client");
+          const client = new TelegramClient(env.TELEGRAM_BOT_TOKEN);
+          await client.sendLocation(chat_id, latitude, longitude);
+        }
+        message.ack();
+        continue;
+      }
+      const { payload, suscripciones } = body;
 
       const notificationPayload = JSON.stringify({
         titulo: payload.titulo,

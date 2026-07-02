@@ -22,7 +22,7 @@ export default {
   },
 
   async scheduled(
-    event: ScheduledEvent,
+    controller: ScheduledController,
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {

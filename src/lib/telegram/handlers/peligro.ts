@@ -8,6 +8,11 @@ export async function startPeligro(
   chatId: string | number,
   telegramId: string | number
 ): Promise<void> {
+  if (String(chatId) !== String(telegramId)) {
+    await client.sendMessage(chatId, "⚠️ Esta operación solo se puede realizar en un chat privado con el bot.");
+    return;
+  }
+
   await setSession(db, telegramId, chatId, "pel_tipo", {});
   
   const keyboard = {
@@ -35,8 +40,14 @@ export async function handlePeligroState(
   telegramId: string | number,
   session: TelegramSession,
   text?: string,
-  location?: { latitude: number; longitude: number }
+  location?: { latitude: number; longitude: number },
+  env?: any
 ): Promise<void> {
+  if (String(chatId) !== String(telegramId)) {
+    await client.sendMessage(chatId, "⚠️ Esta operación solo se puede realizar en un chat privado con el bot.");
+    return;
+  }
+
   const currentStep = session.step;
   const data = session.data || {};
 
@@ -121,15 +132,35 @@ export async function handlePeligroState(
       const dangerId = "peligro-" + crypto.randomUUID();
       const timestamp = Math.floor(Date.now() / 1000);
 
+      // Verificar si es voluntario o admin registrado para ver si es anónimo
+      let isVolunteer = false;
+      try {
+        const adminIds = (env?.TELEGRAM_ADMIN_IDS || "").split(",").map((id: string) => id.trim());
+        if (adminIds.includes(String(telegramId))) {
+          isVolunteer = true;
+        } else {
+          const vol = await db
+            .prepare("SELECT id FROM voluntarios WHERE telegram_id = ? AND activo = 1")
+            .bind(String(telegramId))
+            .first<{ id: number }>();
+          isVolunteer = !!vol;
+        }
+      } catch {}
+
+      const telegramUserId = isVolunteer ? String(telegramId) : null;
+      const displayDesc = isVolunteer 
+        ? `${data.descripcion} (Sector: ${data.ubicacion_nombre})`
+        : `[REPORTE ANÓNIMO] ${data.descripcion} (Sector: ${data.ubicacion_nombre})`;
+
       // Guardar en zonas_peligro
       await db.prepare(`
         INSERT INTO zonas_peligro (id, telegram_user_id, tipo_peligro, descripcion, latitud, longitud, activo, created_at)
         VALUES (?, ?, ?, ?, ?, ?, 1, ?)
       `).bind(
         dangerId,
-        String(telegramId),
+        telegramUserId,
         data.tipo_peligro,
-        `${data.descripcion} (Sector: ${data.ubicacion_nombre})`,
+        displayDesc,
         data.latitud,
         data.longitud,
         timestamp
@@ -141,8 +172,8 @@ export async function handlePeligroState(
         { reply_markup: { remove_keyboard: true } }
       );
 
-      // Notificar a voluntarios suscritos cercanos (radio de 10km) inmediatamente
-      await notificarVoluntariosCercanos(client, db, dangerId, data.tipo_peligro, data.descripcion, data.ubicacion_nombre, data.latitud, data.longitud);
+      // Notificar a voluntarios suscritos cercanos (radio de 10km)
+      await notificarVoluntariosCercanos(client, db, dangerId, data.tipo_peligro, data.descripcion, data.ubicacion_nombre, data.latitud, data.longitud, env, !isVolunteer);
 
     } catch (err) {
       console.error("Error al registrar peligro en D1:", err);
@@ -163,7 +194,9 @@ async function notificarVoluntariosCercanos(
   desc: string,
   sector: string,
   lat: number,
-  lon: number
+  lon: number,
+  env?: any,
+  isAnonymous?: boolean
 ): Promise<void> {
   try {
     // 10km ~ 0.09 grados de latitud/longitud para bounding box rápido
@@ -189,19 +222,42 @@ async function notificarVoluntariosCercanos(
       saqueo: "💔 Saqueo"
     };
 
-    const alertMessage = `⚠️ <b>¡NUEVO PELIGRO REPORTADO EN TU ZONA!</b> ⚠️\n\n` +
+    const alertMessage = `⚠️ <b>¡NUEVO PELIGRO REPORTADO EN TU ZONA!${isAnonymous ? " (Anónimo)" : ""}</b> ⚠️\n\n` +
       `📌 <b>Tipo:</b> ${emojiMap[tipo] || tipo}\n` +
       `📍 <b>Sector:</b> ${sector}\n` +
       `📝 <b>Detalle:</b> ${desc}\n\n` +
       `🔗 <a href="https://dondeestan.org/mapa?tipo=peligro&id=${dangerId}">Ver en el mapa</a>\n\n` +
       `🚗 <i>Evita transitar por esta zona si estás en ruta de entrega.</i>`;
 
+    const PUSH_QUEUE = env?.PUSH_QUEUE;
+
     for (const sub of results) {
       const dist = getDistance(lat, lon, sub.latitud, sub.longitud);
       if (dist <= (sub.radio_km || 10.0)) {
         try {
-          await client.sendMessage(sub.telegram_chat_id, alertMessage);
-          await client.sendLocation(sub.telegram_chat_id, lat, lon);
+          if (PUSH_QUEUE) {
+            // Encolar mensaje de texto
+            await PUSH_QUEUE.send({
+              type: "telegram_broadcast",
+              payload: {
+                chat_id: sub.telegram_chat_id,
+                mensaje: alertMessage
+              }
+            });
+            // Encolar ubicación
+            await PUSH_QUEUE.send({
+              type: "telegram_location",
+              payload: {
+                chat_id: sub.telegram_chat_id,
+                latitude: lat,
+                longitude: lon
+              }
+            });
+          } else {
+            // Fallback síncrono si no hay PUSH_QUEUE (desarrollo local)
+            await client.sendMessage(sub.telegram_chat_id, alertMessage);
+            await client.sendLocation(sub.telegram_chat_id, lat, lon);
+          }
         } catch (e) {
           // ignore dead chats
         }

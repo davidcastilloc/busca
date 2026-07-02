@@ -11,6 +11,10 @@ export async function startFound(
   args?: string,
   estado: string = "localizado"
 ): Promise<void> {
+  if (String(chatId) !== String(telegramId)) {
+    await client.sendMessage(chatId, "⚠️ Esta operación solo se puede realizar en un chat privado con el bot.");
+    return;
+  }
   const data: any = { estado_persona: estado };
   
   if (args && args.trim().length > 0) {
@@ -40,6 +44,10 @@ export async function handleFoundState(
   env?: any,
   location?: { latitude: number; longitude: number }
 ): Promise<void> {
+  if (String(chatId) !== String(telegramId)) {
+    await client.sendMessage(chatId, "⚠️ Esta operación solo se puede realizar en un chat privado con el bot.");
+    return;
+  }
   const currentStep = session.step;
   const data = session.data || {};
 

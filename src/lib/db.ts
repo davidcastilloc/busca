@@ -1,4 +1,3 @@
-import type { D1Database } from "@cloudflare/workers-types";
 
 export interface PersonaData {
   cedula?: string | null;
@@ -158,38 +157,6 @@ export async function insertReporte(db: D1Database, data: ReporteData): Promise<
   return result?.id || null;
 }
 
-/**
- * Resuelve reportes de desaparición que coincidan con cédula o nombre
- */
-export async function resolverReportesRelacionados(db: D1Database, cedula?: string | null, nombre?: string | null) {
-  const batchStatements = [];
-
-  if (cedula) {
-    batchStatements.push(
-      db.prepare(`
-        UPDATE reportes 
-        SET estado_reporte = 'resuelto', 
-            updated_at = datetime('now') 
-        WHERE cedula_buscado = ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
-      `).bind(cedula)
-    );
-  }
-
-  if (nombre && nombre.length > 3) {
-    batchStatements.push(
-      db.prepare(`
-        UPDATE reportes 
-        SET estado_reporte = 'resuelto', 
-            updated_at = datetime('now') 
-        WHERE nombre_buscado LIKE ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
-      `).bind(`%${nombre}%`)
-    );
-  }
-
-  if (batchStatements.length > 0) {
-    await db.batch(batchStatements);
-  }
-}
 
 interface CensoPersona {
   nombre: string;

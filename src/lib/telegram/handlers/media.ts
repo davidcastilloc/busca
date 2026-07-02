@@ -4,12 +4,18 @@ export async function handleMediaMessage(
   client: TelegramClient,
   db: D1Database,
   chatId: string | number,
+  telegramId: string | number,
   photoArray: any[]
 ): Promise<void> {
   if (!photoArray || photoArray.length === 0) return;
 
+  const isPrivate = String(chatId) === String(telegramId);
+
   try {
-    await client.sendMessage(chatId, "🔍 Procesando imagen enviada para buscar códigos QR...");
+    // Solo enviar mensaje de "procesando..." si es chat privado
+    if (isPrivate) {
+      await client.sendMessage(chatId, "🔍 Procesando imagen enviada para buscar códigos QR...");
+    }
 
     // 1. Obtener la foto de mayor tamaño
     const sortedPhotos = photoArray.sort((a, b) => (b.file_size || 0) - (a.file_size || 0));
@@ -26,16 +32,27 @@ export async function handleMediaMessage(
     const formData = new FormData();
     formData.append("file", blob, "photo.jpg");
 
-    const qrResponse = await fetch("https://api.qrserver.com/v1/read-qr-code/", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!qrResponse.ok) {
-      throw new Error(`QR API HTTP error: ${qrResponse.status}`);
+    let qrResponse: Response;
+    try {
+      qrResponse = await fetch("https://api.qrserver.com/v1/read-qr-code/", {
+        method: "POST",
+        body: formData,
+        signal: AbortSignal.timeout(10000) // 10s timeout
+      });
+    } catch (fetchErr: any) {
+      throw new Error(`API de QR inaccesible: ${fetchErr.message || fetchErr}`);
     }
 
-    const qrData = (await qrResponse.json()) as any;
+    if (!qrResponse.ok) {
+      throw new Error(`Error HTTP de API de QR: ${qrResponse.status}`);
+    }
+
+    let qrData: any;
+    try {
+      qrData = await qrResponse.json();
+    } catch (jsonErr: any) {
+      throw new Error("Respuesta inválida de la API de QR");
+    }
 
     // 5. Analizar el resultado
     let detectedData: string | null = null;
@@ -47,26 +64,45 @@ export async function handleMediaMessage(
     }
 
     if (!detectedData) {
-      await client.sendMessage(
-        chatId,
-        "📷 No se detectó ningún código QR en la imagen.\n\n<i>Si quieres iniciar un reporte de desaparición, escribe /reportar.</i>"
-      );
+      if (isPrivate) {
+        await client.sendMessage(
+          chatId,
+          "📷 No se detectó ningún código QR en la imagen.\n\n<i>Si quieres iniciar un reporte de desaparición, escribe /reportar.</i>"
+        );
+      }
       return;
     }
 
-    await client.sendMessage(chatId, `🎯 Código QR decodificado:\n<code>${detectedData}</code>\n\nBuscando información...`);
+    // 6. Validar dominio oficial y obtener flyerId
+    let isOfficialDomain = false;
+    let flyerId = "";
+    try {
+      const url = new URL(detectedData);
+      if (url.hostname === "dondeestan.org" || url.hostname === "www.dondeestan.org") {
+        isOfficialDomain = true;
+        const pathParts = url.pathname.split("/").filter(Boolean);
+        if ((pathParts[0] === "flyer" || pathParts[0] === "f") && pathParts[1]) {
+          flyerId = pathParts[1];
+        }
+      }
+    } catch (e) {
+      // No es una URL válida
+    }
 
-    // 6. Validar si es enlace de flyer
-    const flyerMatch = detectedData.match(/\/flyer\/([a-zA-Z0-9_-]+)/);
-    if (!flyerMatch) {
-      await client.sendMessage(
-        chatId,
-        `⚠️ El código QR no corresponde a un cartel de dondeestan.org.\nContenido decodificado:\n<code>${detectedData}</code>`
-      );
+    if (!isOfficialDomain || !flyerId) {
+      if (isPrivate) {
+        await client.sendMessage(
+          chatId,
+          `⚠️ El código QR no corresponde a un cartel de dondeestan.org.\nContenido decodificado:\n<code>${detectedData}</code>`
+        );
+      }
       return;
     }
 
-    const flyerId = flyerMatch[1];
+    // Si estamos en un grupo, podemos mandar la info del QR
+    if (isPrivate) {
+      await client.sendMessage(chatId, `🎯 Código QR decodificado:\n<code>${detectedData}</code>\n\nBuscando información...`);
+    }
 
     // 7. Buscar flyer en D1
     const flyer = await db
@@ -75,10 +111,12 @@ export async function handleMediaMessage(
       .first<any>();
 
     if (!flyer) {
-      await client.sendMessage(
-        chatId,
-        `❌ El cartel con ID <code>${flyerId}</code> no se encuentra en nuestra base de datos. Puede haber sido retirado.`
-      );
+      if (isPrivate) {
+        await client.sendMessage(
+          chatId,
+          `❌ El cartel con ID <code>${flyerId}</code> no se encuentra en nuestra base de datos. Puede haber sido retirado.`
+        );
+      }
       return;
     }
 
@@ -110,9 +148,12 @@ export async function handleMediaMessage(
     });
   } catch (error: any) {
     console.error("handleMediaMessage error:", error);
-    await client.sendMessage(
-      chatId,
-      "❌ Ocurrió un error al procesar el código QR de la imagen."
-    );
+    // Solo reportar error al chat en privado
+    if (isPrivate) {
+      await client.sendMessage(
+        chatId,
+        `❌ Ocurrió un error al procesar el código QR: ${error.message || error}`
+      );
+    }
   }
 }

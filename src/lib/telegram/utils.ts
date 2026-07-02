@@ -1,5 +1,3 @@
-import type { D1Database } from "@cloudflare/workers-types";
-
 // Helper para calcular distancia
 export function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Radio de la Tierra en km
@@ -33,7 +31,7 @@ export async function getShelterKeyboard(db: D1Database): Promise<any> {
     if (results && results.length > 0) {
       // Agrupar en filas de 2 para mejor visualización
       for (let i = 0; i < results.length; i += 2) {
-        const row = results.slice(i, i + 2).map((r) => ({ text: r.nombre }));
+        const row = results.slice(i, i + 2).map((r: any) => ({ text: r.nombre }));
         keyboard.push(row);
       }
     }
@@ -90,14 +88,23 @@ export async function resolveLocation(
     
     // Buscar refugio/hospital/acopio más cercano para darle contexto
     try {
+      const delta = 0.02; // ~2km
+      const minLat = location.latitude - delta;
+      const maxLat = location.latitude + delta;
+      const minLon = location.longitude - delta;
+      const maxLon = location.longitude + delta;
+
       const query = `
-        SELECT id, nombre, latitud, longitud, 'refugio' as tipo FROM refugios
-        UNION ALL
-        SELECT id, nombre, latitud, longitud, 'hospital' as tipo FROM hospitales
-        UNION ALL
-        SELECT id, nombre, latitud, longitud, 'centro_acopio' as tipo FROM centros_acopio
+        SELECT id, nombre, latitud, longitud, tipo FROM (
+          SELECT id, nombre, latitud, longitud, 'refugio' as tipo FROM refugios
+          UNION ALL
+          SELECT id, nombre, latitud, longitud, 'hospital' as tipo FROM hospitales
+          UNION ALL
+          SELECT id, nombre, latitud, longitud, 'centro_acopio' as tipo FROM centros_acopio
+        )
+        WHERE latitud BETWEEN ? AND ? AND longitud BETWEEN ? AND ?
       `;
-      const { results } = await db.prepare(query).all<{ id: number; nombre: string; latitud: number; longitud: number; tipo: string }>();
+      const { results } = await db.prepare(query).bind(minLat, maxLat, minLon, maxLon).all<{ id: number; nombre: string; latitud: number; longitud: number; tipo: string }>();
       let centroCercano = null;
       let minDist = 0.15; // 150 metros
       

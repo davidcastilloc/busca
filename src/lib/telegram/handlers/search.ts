@@ -23,7 +23,7 @@ export async function handleSearch(
 
     // 1. Buscar en personas
     let queryPersonas = "SELECT * FROM personas";
-    const paramsPersonas: any[] = [];
+    const paramsPersonas: unknown[] = [];
 
     if (isNumeric) {
       queryPersonas += " WHERE cedula = ?";
@@ -39,12 +39,9 @@ export async function handleSearch(
     }
     queryPersonas += " ORDER BY updated_at DESC LIMIT 5";
 
-    const personasRes = await db.prepare(queryPersonas).bind(...paramsPersonas).all();
-    const personas = personasRes.results || [];
-
     // 2. Buscar en reportes (desaparecido/encontrado)
     let queryReportes = "SELECT * FROM reportes";
-    const paramsReportes: any[] = [];
+    const paramsReportes: unknown[] = [];
 
     if (isNumeric) {
       queryReportes += " WHERE cedula_buscado = ?";
@@ -60,8 +57,33 @@ export async function handleSearch(
     }
     queryReportes += " ORDER BY updated_at DESC LIMIT 5";
 
-    const reportesRes = await db.prepare(queryReportes).bind(...paramsReportes).all();
-    const reportes = reportesRes.results || [];
+    // Ejecutar ambas consultas en un batch atómico y eficiente
+    const [personasRes, reportesRes] = await db.batch([
+      db.prepare(queryPersonas).bind(...paramsPersonas),
+      db.prepare(queryReportes).bind(...paramsReportes)
+    ]);
+
+    interface Persona {
+      nombre: string;
+      apellido?: string;
+      cedula?: string;
+      estado: string;
+      refugio?: string;
+      ubicacion_nombre?: string;
+      notas?: string;
+    }
+
+    interface Reporte {
+      nombre_buscado?: string;
+      tipo: string;
+      cedula_buscado?: string;
+      descripcion: string;
+      ubicacion_nombre?: string;
+      estado_reporte: string;
+    }
+
+    const personas = (personasRes.results || []) as unknown as Persona[];
+    const reportes = (reportesRes.results || []) as unknown as Reporte[];
 
     if (personas.length === 0 && reportes.length === 0) {
       await client.sendMessage(
@@ -75,7 +97,7 @@ export async function handleSearch(
 
     if (personas.length > 0) {
       responseText += `👤 <b>Censo de Personas:</b>\n`;
-      personas.forEach((p: any) => {
+      personas.forEach((p) => {
         const estadoEmoji = {
           localizado: "🟢 Localizado",
           herido: "🟡 Herido",
@@ -95,7 +117,7 @@ export async function handleSearch(
 
     if (reportes.length > 0) {
       responseText += `📢 <b>Reportes de Emergencia:</b>\n`;
-      reportes.forEach((r: any) => {
+      reportes.forEach((r) => {
         const tipoEmoji = {
           desaparecido: "🚨 Desaparecido",
           encontrado: "🤝 Encontrado",

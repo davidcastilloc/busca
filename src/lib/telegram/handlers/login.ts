@@ -7,6 +7,10 @@ export async function startLogin(
   chatId: string | number,
   telegramId: string | number
 ): Promise<void> {
+  if (String(chatId) !== String(telegramId)) {
+    await client.sendMessage(chatId, "⚠️ Esta operación solo se puede realizar en un chat privado con el bot.");
+    return;
+  }
   // Inicializar flujo conversacional de login
   await setSession(db, telegramId, chatId, "log_waiting_contact", {});
 
@@ -39,6 +43,10 @@ export async function handleLoginState(
   text?: string,
   contact?: any
 ): Promise<void> {
+  if (String(chatId) !== String(telegramId)) {
+    await client.sendMessage(chatId, "⚠️ Esta operación solo se puede realizar en un chat privado con el bot.");
+    return;
+  }
   if (text === "/cancelar") {
     await clearSession(db, telegramId);
     await client.sendMessage(chatId, "❌ Identificación cancelada.", {
@@ -96,23 +104,24 @@ export async function handleLoginState(
   // Limpiar y normalizar el teléfono de Telegram (ej. +584127654321 -> 584127654321)
   const cleanedPhone = rawPhone.replace(/[^0-9]/g, "").trim();
 
-  // Obtener los últimos 10 dígitos (ej. 4127654321) para comparar independientemente del formato de país o prefijos
-  const last10Digits = cleanedPhone.substring(cleanedPhone.length - 10);
-
-  if (last10Digits.length < 10) {
-    await client.sendMessage(chatId, "❌ El número de teléfono compartido no tiene un formato válido.", {
+  // Obtener los últimos dígitos (mínimo 7, máximo 10) para comparar independientemente del formato de país o prefijos
+  const matchLength = Math.min(cleanedPhone.length, 10);
+  if (matchLength < 7) {
+    await client.sendMessage(chatId, "❌ El número de teléfono compartido no tiene un formato válido (muy corto).", {
       reply_markup: { remove_keyboard: true },
     });
     await clearSession(db, telegramId);
     return;
   }
 
+  const lastDigits = cleanedPhone.substring(cleanedPhone.length - matchLength);
+
   try {
-    // Buscar voluntario en D1 usando coincidencia exacta o sufijo LIKE
-    const queryPhonePattern = `%${last10Digits}`;
+    // Buscar voluntario en D1 usando coincidencia exacta o sufijo LIKE con limpieza
+    const queryPhonePattern = `%${lastDigits}`;
     const voluntario = await db
       .prepare(
-        "SELECT id, nombre, telefono FROM voluntarios WHERE (telefono = ? OR telefono LIKE ?) AND activo = 1"
+        "SELECT id, nombre, telefono FROM voluntarios WHERE (REPLACE(REPLACE(telefono, '+', ''), ' ', '') = ? OR REPLACE(REPLACE(telefono, '+', ''), ' ', '') LIKE ?) AND activo = 1"
       )
       .bind(cleanedPhone, queryPhonePattern)
       .first<{ id: number; nombre: string; telefono: string }>();
@@ -130,15 +139,11 @@ export async function handleLoginState(
       return;
     }
 
-    // Vincular telegram_id
-    // Desvincular si este telegram_id ya estaba asociado a otra cuenta (limpieza preventiva)
-    await db.prepare("UPDATE voluntarios SET telegram_id = NULL WHERE telegram_id = ?").bind(String(telegramId)).run();
-
-    // Guardar vinculación
-    await db
-      .prepare("UPDATE voluntarios SET telegram_id = ? WHERE id = ?")
-      .bind(String(telegramId), voluntario.id)
-      .run();
+    // Guardar vinculación transaccionalmente (desvincular viejo si aplica, y vincular nuevo)
+    await db.batch([
+      db.prepare("UPDATE voluntarios SET telegram_id = NULL WHERE telegram_id = ?").bind(String(telegramId)),
+      db.prepare("UPDATE voluntarios SET telegram_id = ? WHERE id = ?").bind(String(telegramId), voluntario.id)
+    ]);
 
     await client.sendMessage(
       chatId,
@@ -155,15 +160,13 @@ export async function handleLoginState(
         { command: "buscar", description: "Buscar persona en el censo" },
         { command: "reportar", description: "Reportar persona desaparecida" },
         { command: "login", description: "Identificarte como voluntario" },
-        { command: "inventario", description: "Administrar stock de insumos" },
         { command: "encontrado", description: "Marcar persona como localizado" },
         { command: "censo", description: "Leer lista de nombres con IA" },
         { command: "refugio", description: "Actualizar capacidad de un refugio" },
-        { command: "urgencia", description: "Alerta critica de necesidad en terreno" },
+        { command: "sos", description: "Alerta crítica de necesidad (SOS)" },
         { command: "cubierta", description: "Marcar una necesidad como cubierta" },
         { command: "peligro", description: "Reportar peligro en la via (bloqueo)" },
-        { command: "alerta", description: "Suscribirse a alertas GPS (radio 10km)" },
-        { command: "acopio", description: "Abrir Dashboard del Centro de Acopio" }
+        { command: "alerta", description: "Suscribirse a alertas GPS (radio 10km)" }
       ], { type: "chat", chat_id: chatId });
 
       await client.setChatMenuButton(chatId, {

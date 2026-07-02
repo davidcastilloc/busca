@@ -9,6 +9,11 @@ export async function startCensus(
   telegramId: string | number,
   args?: string
 ): Promise<void> {
+  if (String(chatId) !== String(telegramId)) {
+    await client.sendMessage(chatId, "⚠️ Esta operación solo se puede realizar en un chat privado con el bot.");
+    return;
+  }
+
   if (args && args.trim().length > 0) {
     await setSession(db, telegramId, chatId, "cen_photo", { ubicacion: args.trim() });
     await client.sendMessage(
@@ -34,6 +39,11 @@ export async function handleCensusState(
   photoArray?: any[],
   env?: any
 ): Promise<void> {
+  if (String(chatId) !== String(telegramId)) {
+    await client.sendMessage(chatId, "⚠️ Esta operación solo se puede realizar en un chat privado con el bot.");
+    return;
+  }
+
   const currentStep = session.step;
   const data = session.data || {};
 
@@ -89,7 +99,7 @@ export async function handleCensusState(
         const v = await db.prepare("SELECT id FROM voluntarios WHERE telegram_id = ?").bind(String(telegramId)).first<{id: number}>();
         if (v) voluntarioId = v.id;
       } catch (e) {
-        // ignore error
+        console.error("Error al obtener voluntarioId en censo:", e);
       }
 
       const { procesarCensoBatch } = await import("../../db");
@@ -98,8 +108,10 @@ export async function handleCensusState(
         personas,
         data.ubicacion,
         `Voluntario Telegram (ID: ${telegramId})`,
-        null,
-        voluntarioId
+        null, // refugioId
+        null, // hospitalId
+        null, // centroAcopioId
+        voluntarioId // voluntarioId como 8vo parámetro
       );
 
       // Disparar notificaciones Push

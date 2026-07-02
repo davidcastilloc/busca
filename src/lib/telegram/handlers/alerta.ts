@@ -7,6 +7,10 @@ export async function startAlerta(
   chatId: string | number,
   telegramId: string | number
 ): Promise<void> {
+  if (String(chatId) !== String(telegramId)) {
+    await client.sendMessage(chatId, "⚠️ Esta operación solo se puede realizar en un chat privado con el bot.");
+    return;
+  }
   await setSession(db, telegramId, chatId, "sub_waiting_location", {});
 
   const gpsKeyboard = {
@@ -36,6 +40,10 @@ export async function handleAlertaState(
   text?: string,
   location?: { latitude: number; longitude: number }
 ): Promise<void> {
+  if (String(chatId) !== String(telegramId)) {
+    await client.sendMessage(chatId, "⚠️ Esta operación solo se puede realizar en un chat privado con el bot.");
+    return;
+  }
   if (text === "/cancelar") {
     await clearSession(db, telegramId);
     await client.sendMessage(chatId, "❌ Suscripción cancelada.", {

@@ -41,7 +41,7 @@ export async function handleReportState(
   session: TelegramSession,
   text?: string,
   photoArray?: any[],
-  env?: any,
+  env?: Env,
   location?: { latitude: number; longitude: number },
   isAuthorized: boolean = false,
   contact?: any
@@ -78,6 +78,7 @@ export async function handleReportState(
     if (cleanText.includes("Localizada") || cleanText.includes("Afectada") || cleanText.includes("Herida") || cleanText.includes("Fallecida")) {
       if (!isAuthorized) {
         await client.sendMessage(chatId, "🚷 Acceso denegado. Reportar el estado de personas es una función exclusiva para voluntarios autorizados. Inicia sesión con /login.");
+        await clearSession(db, telegramId);
         return;
       }
       
@@ -94,6 +95,7 @@ export async function handleReportState(
     if (cleanText.includes("Refugio")) {
       if (!isAuthorized) {
         await client.sendMessage(chatId, "🚷 Acceso denegado. Registrar o actualizar refugios es una función exclusiva para voluntarios autorizados. Inicia sesión con /login.");
+        await clearSession(db, telegramId);
         return;
       }
       await clearSession(db, telegramId);
@@ -102,12 +104,19 @@ export async function handleReportState(
     }
 
     if (cleanText.includes("Necesidad")) {
-      if (!isAuthorized) {
-        await client.sendMessage(chatId, "🚷 Acceso denegado. Reportar necesidades críticas requiere credenciales de voluntario autorizado. Inicia sesión con /login.");
+      if (isAuthorized) {
+        await clearSession(db, telegramId);
+        await startSos(client, db, chatId, telegramId);
         return;
       }
-      await clearSession(db, telegramId);
-      await startSos(client, db, chatId, telegramId);
+      
+      data.tipo = "necesidad";
+      await setSession(db, telegramId, chatId, "rep_reporter_name", data);
+      await client.sendMessage(
+        chatId,
+        "🚨 <b>Reportar Necesidad Crítica</b>\n\nPara comenzar, indícame tu <b>Nombre y Apellido</b> (de ti, que estás reportando):\n\n<i>/cancelar para salir.</i>",
+        { reply_markup: { remove_keyboard: true } }
+      );
       return;
     }
 
@@ -155,28 +164,40 @@ export async function handleReportState(
     await setSession(db, telegramId, chatId, "rep_name", data);
     await client.sendMessage(
       chatId,
-      "¡Gracias! Ahora sí, indícame el <b>Nombre y Apellido</b> de la persona desaparecida:",
+      data.tipo === "necesidad"
+        ? "¡Gracias! Ahora sí, indícame <b>qué insumo o ayuda</b> se necesita con urgencia (Ej. Agua, Comida lista, Medicinas):"
+        : "¡Gracias! Ahora sí, indícame el <b>Nombre y Apellido</b> de la persona desaparecida:",
       { reply_markup: { remove_keyboard: true } }
     );
     return;
   }
 
-  // 3. Esperando Nombre de persona desaparecida
+  // 3. Esperando Nombre de persona desaparecida o insumo
   if (currentStep === "rep_name") {
     if (!text || text.trim().startsWith("/")) {
-      await client.sendMessage(chatId, "⚠️ Nombre no válido. Envía el Nombre y Apellido de la persona:");
+      const errorMsg = data.tipo === "necesidad" 
+        ? "⚠️ Insumo no válido. Indica qué se necesita de urgencia:"
+        : "⚠️ Nombre no válido. Envía el Nombre y Apellido de la persona:";
+      await client.sendMessage(chatId, errorMsg);
       return;
     }
     data.nombre_buscado = text.trim();
     await setSession(db, telegramId, chatId, "rep_cedula", data);
-    await client.sendMessage(
-      chatId,
-      `Nombre registrado: <b>${data.nombre_buscado}</b>\n\nAhora, introduce su número de <b>Cédula o ID</b> (si no lo sabes, escribe /saltar):`
-    );
+    if (data.tipo === "necesidad") {
+      await client.sendMessage(
+        chatId,
+        `Insumo/Ayuda: <b>${data.nombre_buscado}</b>\n\n¿Para cuántas personas aproximadamente se requiere la ayuda? (Ej: "50 personas", o escribe /saltar si no lo sabes):`
+      );
+    } else {
+      await client.sendMessage(
+        chatId,
+        `Nombre registrado: <b>${data.nombre_buscado}</b>\n\nAhora, introduce su número de <b>Cédula o ID</b> (si no lo sabes, escribe /saltar):`
+      );
+    }
     return;
   }
 
-  // 4. Esperando Cédula
+  // 4. Esperando Cédula o cantidad de personas
   if (currentStep === "rep_cedula") {
     if (!text) {
       await client.sendMessage(chatId, "⚠️ Introduce un texto o escribe /saltar:");
@@ -190,17 +211,27 @@ export async function handleReportState(
     }
 
     await setSession(db, telegramId, chatId, "rep_relation", data);
-    await client.sendMessage(
-      chatId,
-      "¿Cuál es tu <b>vínculo o parentesco</b> con esta persona? (Ej. Madre, Hermano, Amigo, Vecino):"
-    );
+    if (data.tipo === "necesidad") {
+      await client.sendMessage(
+        chatId,
+        "¿Cuál es tu <b>rol o relación</b> con el lugar o grupo afectado? (Ej. Vecino, Encargado, Rescatista):"
+      );
+    } else {
+      await client.sendMessage(
+        chatId,
+        "¿Cuál es tu <b>vínculo o parentesco</b> con esta persona? (Ej. Madre, Hermano, Amigo, Vecino):"
+      );
+    }
     return;
   }
 
-  // 5. Esperando Parentesco
+  // 5. Esperando Parentesco o Rol
   if (currentStep === "rep_relation") {
     if (!text || text.trim().length < 2) {
-      await client.sendMessage(chatId, "⚠️ Por favor indica el vínculo (ej. Madre, Hermano):");
+      const errorMsg = data.tipo === "necesidad"
+        ? "⚠️ Por favor indica tu rol (ej. Vecino, Encargado):"
+        : "⚠️ Por favor indica el vínculo (ej. Madre, Hermano):";
+      await client.sendMessage(chatId, errorMsg);
       return;
     }
     data.parentesco = text.trim();
@@ -223,7 +254,9 @@ export async function handleReportState(
 
     await client.sendMessage(
       chatId,
-      "Vínculo guardado.\n\n¿Dónde fue visto por última vez? Escribe detalladamente el <b>Estado, Ciudad y Sector</b> (Ej. 'Distrito Capital, Caracas, Los Palos Grandes') o envía tu <b>Ubicación GPS (📎)</b> si estás en el sitio exacto:",
+      data.tipo === "necesidad"
+        ? "Rol guardado.\n\n¿Dónde se necesita esta ayuda? Escribe la <b>dirección, sector o punto de referencia</b> (Ej. 'Petare, Sector La Línea') o envía tu <b>Ubicación GPS (📎)</b> si estás en el sitio exacto:"
+        : "Vínculo guardado.\n\n¿Dónde fue visto por última vez? Escribe detalladamente el <b>Estado, Ciudad y Sector</b> (Ej. 'Distrito Capital, Caracas, Los Palos Grandes') o envía tu <b>Ubicación GPS (📎)</b> si estás en el sitio exacto:",
       { reply_markup: keyboardOptions }
     );
     return;
@@ -330,8 +363,9 @@ export async function handleReportState(
     data.foto_key = fotoKey;
 
     // Compilar descripción en un solo bloque estructurado para la IA y el flyer
-    const descConcatenada = `[VINCULO: ${data.parentesco}] [LUGAR: ${data.ubicacion_nombre}] ${data.detalles_persona}`;
-    const flyerTitle = `SE BUSCA: ${data.nombre_buscado}`;
+    const prefix = data.tipo === "necesidad" ? "ROL" : "VINCULO";
+    const descConcatenada = `[${prefix}: ${data.parentesco}] [LUGAR: ${data.ubicacion_nombre}] ${data.detalles_persona}`;
+    const flyerTitle = data.tipo === "necesidad" ? `NECESIDAD URGENTE: ${data.nombre_buscado}` : `SE BUSCA: ${data.nombre_buscado}`;
 
     try {
       // 1. Generar Flyer en base de datos D1
@@ -347,21 +381,24 @@ export async function handleReportState(
         data.foto_key || "",
         JSON.stringify([data.reportante_contacto]),
         JSON.stringify([]),
-        "desaparecido"
+        data.tipo
       ).run();
 
       // Notificar al canal publico si existe
-      if (env.TELEGRAM_CHANNEL_ID) {
+      const channelId = env?.TELEGRAM_CHANNEL_ID;
+      if (channelId) {
         try {
           const flyerUrl = `https://dondeestan.org/f/${flyerId}`;
-          let msg = `🔴 <b>SE BUSCA: ${flyerTitle}</b>\n\n`;
+          const isNec = data.tipo === "necesidad";
+          const header = isNec ? `🆘 <b>NECESIDAD URGENTE: ${data.nombre_buscado}</b>` : `🔴 <b>${flyerTitle}</b>`;
+          let msg = `${header}\n\n`;
           const descLimpia = descConcatenada.replace(/\[.*?\]/g, "").trim().substring(0, 200);
           if (descLimpia) msg += `${descLimpia}${descLimpia.length >= 200 ? "..." : ""}\n\n`;
           msg += `📞 <b>Contacto:</b> ${data.reportante_contacto}\n`;
           msg += `\n🔗 <a href="${flyerUrl}">${flyerUrl}</a>\n`;
           msg += `\n<i>— dondeestan.org | Red de Información de Emergencia</i>`;
 
-          await client.sendMessage(env.TELEGRAM_CHANNEL_ID, msg, {
+          await client.sendMessage(channelId, msg, {
             link_preview_options: { is_disabled: false, url: flyerUrl }
           });
         } catch (e) {
@@ -379,7 +416,7 @@ export async function handleReportState(
       }
 
       const payload = {
-        tipo: "desaparecido" as const,
+        tipo: data.tipo as any,
         nombre_buscado: data.nombre_buscado,
         cedula_buscado: data.cedula_buscado,
         descripcion: descConcatenada,
@@ -403,38 +440,53 @@ export async function handleReportState(
 
       if (reporteId) {
         const alertMsg = `🚨 <b>Nuevo Reporte Recibido (#${reporteId})</b>\n\n` +
-          `• <b>Nombre buscado:</b> ${validatedPayload.nombre_buscado || "Sin identificar"}\n` +
-          `• <b>Cédula:</b> ${validatedPayload.cedula_buscado || "No especificada"}\n` +
+          `• <b>Nombre/Insumo buscado:</b> ${validatedPayload.nombre_buscado || "Sin identificar"}\n` +
+          `• <b>Cédula/Cantidad:</b> ${validatedPayload.cedula_buscado || "No especificada"}\n` +
           `• <b>Tipo:</b> ${validatedPayload.tipo}\n` +
           `• <b>Ubicación:</b> ${validatedPayload.ubicacion_nombre || "No especificada"}\n\n` +
           `📝 <b>Descripción:</b> <i>"${validatedPayload.descripcion}"</i>\n\n` +
           `🔗 <a href="https://dondeestan.org/admin/dashboard">Ir al Panel de Moderación</a>`;
 
-        try {
-          await notifyAdmins(env, alertMsg);
-          if (validatedPayload.latitud && validatedPayload.longitud) {
-            const msg = `🚨 <b>NUEVO REPORTE EN TU ZONA</b>\n\n` +
-                        `• Tipo: ${validatedPayload.tipo}\n` +
-                        `• Detalle: ${validatedPayload.descripcion}\n\n` +
-                        `🔗 <a href="https://dondeestan.org">Ver en el mapa</a>`;
-            await notificarCercanos(env, validatedPayload.latitud, validatedPayload.longitud, msg);
+        if (env) {
+          try {
+            await notifyAdmins(env, alertMsg);
+            if (validatedPayload.latitud && validatedPayload.longitud) {
+              const msg = `🚨 <b>NUEVA REPORTE EN TU ZONA</b>\n\n` +
+                          `• Tipo: ${validatedPayload.tipo}\n` +
+                          `• Detalle: ${validatedPayload.descripcion}\n\n` +
+                          `🔗 <a href="https://dondeestan.org">Ver en el mapa</a>`;
+              await notificarCercanos(env, validatedPayload.latitud, validatedPayload.longitud, msg);
+            }
+          } catch (e) {
+            console.error("Error al enviar notificaciones de reporte desde Telegram:", e);
           }
-        } catch (e) {
-          console.error("Error al enviar notificaciones de reporte desde Telegram:", e);
         }
       }
 
       // Respuesta final al usuario
-      await client.sendMessage(
-        chatId,
-        `✅ <b>¡Reporte creado exitosamente!</b>\n\n` +
-        `• <b>Nombre:</b> ${data.nombre_buscado}\n` +
-        `• <b>Cédula:</b> ${data.cedula_buscado || "No especificada"}\n` +
-        `• <b>Reporta:</b> ${data.reportante_nombre} (${data.parentesco})\n\n` +
-        `El reporte ha sido registrado en el sistema para el cruce de datos.\n\n` +
-        `Hemos generado automáticamente un <b>Cartel de Búsqueda</b> para ti. Ábrelo en el siguiente enlace y compártelo en WhatsApp o Redes Sociales:\n` +
-        `🔗 <b>https://dondeestan.org/f/${flyerId}</b>`
-      );
+      if (data.tipo === "necesidad") {
+        await client.sendMessage(
+          chatId,
+          `✅ <b>¡Reporte de Necesidad registrado exitosamente!</b>\n\n` +
+          `• <b>Insumo:</b> ${data.nombre_buscado}\n` +
+          `• <b>Cantidad/Afectados:</b> ${data.cedula_buscado || "No especificado"}\n` +
+          `• <b>Solicita:</b> ${data.reportante_nombre} (${data.parentesco})\n\n` +
+          `La solicitud ha sido registrada en el sistema de moderación.\n\n` +
+          `Hemos generado automáticamente un <b>Cartel de Necesidad</b>. Ábrelo en el siguiente enlace y compártelo para recolectar ayuda:\n` +
+          `🔗 <b>https://dondeestan.org/f/${flyerId}</b>`
+        );
+      } else {
+        await client.sendMessage(
+          chatId,
+          `✅ <b>¡Reporte creado exitosamente!</b>\n\n` +
+          `• <b>Nombre:</b> ${data.nombre_buscado}\n` +
+          `• <b>Cédula:</b> ${data.cedula_buscado || "No especificada"}\n` +
+          `• <b>Reporta:</b> ${data.reportante_nombre} (${data.parentesco})\n\n` +
+          `El reporte ha sido registrado en el sistema para el cruce de datos.\n\n` +
+          `Hemos generado automáticamente un <b>Cartel de Búsqueda</b> para ti. Ábrelo en el siguiente enlace y compártelo en WhatsApp o Redes Sociales:\n` +
+          `🔗 <b>https://dondeestan.org/f/${flyerId}</b>`
+        );
+      }
     } catch (queueErr) {
       console.error("Queue send error:", queueErr);
       await client.sendMessage(chatId, "❌ Ocurrió un error guardando el reporte en el sistema central.");

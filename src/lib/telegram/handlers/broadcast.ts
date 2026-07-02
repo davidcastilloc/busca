@@ -7,15 +7,21 @@ export async function startBroadcast(
   chatId: string | number,
   telegramId: string | number,
   isAdmin: boolean,
-  args?: string
+  args?: string,
+  env?: any
 ): Promise<void> {
+  if (String(chatId) !== String(telegramId)) {
+    await client.sendMessage(chatId, "⚠️ Esta operación solo se puede realizar en un chat privado con el bot.");
+    return;
+  }
+
   if (!isAdmin) {
     await client.sendMessage(chatId, "🚷 <b>Acceso Denegado.</b>\nSolo los administradores pueden enviar alertas masivas.");
     return;
   }
 
   if (args && args.trim().length > 0) {
-    await sendBroadcastMessage(client, db, chatId, args.trim());
+    await sendBroadcastMessage(client, db, chatId, args.trim(), env);
   } else {
     await setSession(db, telegramId, chatId, "brd_mensaje", {});
     await client.sendMessage(
@@ -32,8 +38,14 @@ export async function handleBroadcastState(
   telegramId: string | number,
   isAdmin: boolean,
   session: TelegramSession,
-  text?: string
+  text?: string,
+  env?: any
 ): Promise<void> {
+  if (String(chatId) !== String(telegramId)) {
+    await client.sendMessage(chatId, "⚠️ Esta operación solo se puede realizar en un chat privado con el bot.");
+    return;
+  }
+
   if (!isAdmin) {
     await clearSession(db, telegramId);
     return;
@@ -51,7 +63,7 @@ export async function handleBroadcastState(
       return;
     }
     await clearSession(db, telegramId);
-    await sendBroadcastMessage(client, db, chatId, text.trim());
+    await sendBroadcastMessage(client, db, chatId, text.trim(), env);
   }
 }
 
@@ -59,45 +71,48 @@ async function sendBroadcastMessage(
   client: TelegramClient,
   db: D1Database,
   adminChatId: string | number,
-  message: string
+  message: string,
+  env?: any
 ): Promise<void> {
   const finalMessage = `📢 <b>MENSAJE GLOBAL (CENTRO DE MANDO)</b> 📢\n\n${message}`;
 
   try {
-    // Obtener todos los IDs de chat únicos de la sesión (asumiendo que todos los que tienen sesión han interactuado con el bot)
-    // Telegram solo permite mandar mensajes a usuarios que han iniciado chat con el bot.
-    const { results } = await db.prepare("SELECT DISTINCT chat_id FROM telegram_sessions").all<{ chat_id: string }>();
+    // Consultar destinatarios en voluntarios activos con telegram_id
+    const { results } = await db.prepare(
+      "SELECT DISTINCT telegram_id FROM voluntarios WHERE telegram_id IS NOT NULL AND activo = 1"
+    ).all<{ telegram_id: string }>();
 
     if (!results || results.length === 0) {
-      await client.sendMessage(adminChatId, "⚠️ No hay usuarios registrados en la base de datos de sesiones para enviar este mensaje.");
+      await client.sendMessage(adminChatId, "⚠️ No hay voluntarios activos con Telegram registrado para enviar este mensaje.");
       return;
     }
 
-    await client.sendMessage(adminChatId, `⏳ Enviando broadcast a ${results.length} usuarios... (Esto puede tardar en segundo plano)`);
+    await client.sendMessage(adminChatId, `⏳ Encolando broadcast para ${results.length} voluntarios en PUSH_QUEUE...`);
 
-    // Hacemos el envío de forma asíncrona. 
-    // Nota: Si son miles de usuarios, habría que implementar una cola de verdad (Workers Queue o cron).
-    // Para el scope actual de voluntarios (cientos), un loop directo servirá. No lo hagamos esperar al request completo (usamos un setTimeout o lo mandamos y listo).
-    let exitosos = 0;
-    let fallidos = 0;
+    const PUSH_QUEUE = env?.PUSH_QUEUE;
+    if (!PUSH_QUEUE) {
+      throw new Error("PUSH_QUEUE no configurada en env");
+    }
 
+    // Encolar de forma asíncrona en PUSH_QUEUE
     for (const r of results) {
-      if (r.chat_id) {
-        try {
-          await client.sendMessage(r.chat_id, finalMessage);
-          exitosos++;
-        } catch (e) {
-          fallidos++;
-        }
+      if (r.telegram_id) {
+        await PUSH_QUEUE.send({
+          type: "telegram_broadcast",
+          payload: {
+            chat_id: r.telegram_id,
+            mensaje: finalMessage
+          }
+        });
       }
     }
 
     await client.sendMessage(
       adminChatId,
-      `✅ <b>Broadcast Finalizado</b>\n\nEnviados con éxito: ${exitosos}\nFallidos: ${fallidos}\nTotal intentados: ${results.length}`
+      `✅ <b>Broadcast Encolado Exitosamente</b>\n\nSe encolaron ${results.length} mensajes en PUSH_QUEUE.`
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error en broadcast:", error);
-    await client.sendMessage(adminChatId, "❌ Hubo un error al ejecutar el broadcast.");
+    await client.sendMessage(adminChatId, `❌ Hubo un error al ejecutar el broadcast: ${error.message || error}`);
   }
 }

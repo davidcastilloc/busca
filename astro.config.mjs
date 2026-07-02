@@ -20,6 +20,9 @@ export default defineConfig({
   },
   vite: {
     plugins: [tailwindcss()],
+    optimizeDeps: {
+      exclude: ['zod'],
+    },
     build: {
       minify: 'esbuild',
       target: 'esnext',

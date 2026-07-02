@@ -1,13 +1,10 @@
 import { TelegramClient } from "./client";
 import { getDistance } from "./utils";
 
-export async function processHourlyAlerts(env: {
-  DB: D1Database;
-  TELEGRAM_BOT_TOKEN: string;
-}): Promise<void> {
+export async function processHourlyAlerts(env: Env): Promise<void> {
   try {
     const db = env.DB;
-    const client = new TelegramClient(env.TELEGRAM_BOT_TOKEN);
+    const client = new TelegramClient(env.TELEGRAM_BOT_TOKEN || "");
 
     // 1. Obtener necesidades creadas/actualizadas en la última hora (65 min para tener un buffer)
     const { results: needs } = await db.prepare(`
