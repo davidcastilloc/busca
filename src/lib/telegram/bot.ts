@@ -87,6 +87,21 @@ export async function processTelegramUpdate(
           console.error("Error al marcar cubierta:", e);
           await client.sendMessage(chatId, "❌ Ocurrió un error al actualizar la base de datos.");
         }
+      } else if (data.startsWith("res_pel:")) {
+        const [, dangerId] = data.split(":");
+        try {
+          const res = await db.prepare("UPDATE zonas_peligro SET activo = 0 WHERE id = ?").bind(dangerId).run();
+          if (res.meta.changes > 0) {
+            await client.answerCallbackQuery(cb.id, { text: "✅ Zona de peligro marcada como resuelta." });
+            const userStr = cb.from.username ? `@${cb.from.username}` : `${cb.from.first_name}`;
+            await client.editMessageText(chatId, messageId, cb.message?.text + `\n\n✅ <b>Marcado como resuelto por ${userStr}</b>`, { reply_markup: { inline_keyboard: [] } });
+          } else {
+            await client.answerCallbackQuery(cb.id, { text: "❌ No se encontró el reporte de peligro o ya estaba resuelto.", show_alert: true });
+          }
+        } catch (e: any) {
+          console.error("Error al resolver peligro vía Telegram:", e);
+          await client.answerCallbackQuery(cb.id, { text: `❌ Error: ${e.message}`, show_alert: true });
+        }
       } else if (data.startsWith("aprob_ref:")) {
         const [, reporteId] = data.split(":");
         try {

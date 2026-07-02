@@ -175,6 +175,35 @@ export async function handlePeligroState(
       // Notificar a voluntarios suscritos cercanos (radio de 10km)
       await notificarVoluntariosCercanos(client, db, dangerId, data.tipo_peligro, data.descripcion, data.ubicacion_nombre, data.latitud, data.longitud, env, !isVolunteer);
 
+      // Notificar a administradores con botón para marcar como resuelto
+      try {
+        const { notifyAdmins } = await import("../notify");
+        const emojiMap: Record<string, string> = {
+          bloqueo: "🚧 Bloqueo de vía",
+          derrumbe: "⛰️ Derrumbe",
+          inundacion: "🌊 Inundación",
+          piquete: "👮 Piquete Policial/Militar",
+          altercado: "🤜 Altercado / Conflicto civil",
+          saqueo: "💔 Saqueo"
+        };
+        const header = isVolunteer ? `🚧 <b>Nuevo Peligro Reportado</b>` : `🚧 <b>Nuevo Peligro Reportado (Anónimo)</b>`;
+        const adminAlertMessage = `${header}\n\n` +
+          `• <b>Tipo:</b> ${emojiMap[data.tipo_peligro] || data.tipo_peligro}\n` +
+          `• <b>Sector:</b> ${data.ubicacion_nombre || "No especificado"}\n` +
+          `• <b>Detalle:</b> <i>"${data.descripcion}"</i>\n\n` +
+          `📍 Coordenadas: ${data.latitud}, ${data.longitud}`;
+        
+        await notifyAdmins(env, adminAlertMessage, {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "✅ Marcar como Resuelto", callback_data: `res_pel:${dangerId}` }]
+            ]
+          }
+        });
+      } catch (adminErr) {
+        console.error("Error al notificar admins sobre peligro:", adminErr);
+      }
+
     } catch (err) {
       console.error("Error al registrar peligro en D1:", err);
       await client.sendMessage(chatId, "❌ Error técnico al guardar el reporte.", {
