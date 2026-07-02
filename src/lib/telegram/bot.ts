@@ -1,5 +1,5 @@
 import { TelegramClient } from "./client";
-import { getSession } from "./session";
+import { getSession, clearSession } from "./session";
 import { handleSearch } from "./handlers/search";
 import {
   handleInventory,
@@ -413,6 +413,16 @@ export async function processTelegramUpdate(
 
     // Obtener sesión (solo en chats privados para evitar interferir en grupos)
     const session = isPrivate ? await getSession(db, telegramId) : null;
+
+    // Si envía comandos de escape, limpiar la sesión conversacional activa
+    const lowerText = text ? text.trim().toLowerCase() : "";
+    if (lowerText === "/start" || lowerText === "/help" || lowerText === "/ayuda" || lowerText === "/cancelar") {
+      if (session) {
+        await clearSession(db, telegramId);
+      }
+      await sendWelcomeMessage(client, chatId, isAuthorized, isAdmin);
+      return;
+    }
 
     // Si tiene sesión activa en un flujo conversacional
     if (session) {
