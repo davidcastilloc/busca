@@ -114,9 +114,57 @@ const isDev = import.meta.env.DEV;
     </div>
   </div>
 
-  <!-- OFFLINE BANNER -->
-  <div id="offline-banner" class="hidden fixed top-0 left-0 right-0 z-[2000] bg-amber-500 text-white text-center py-1.5 text-xs font-uber-text font-bold">
-    📡 Modo offline — datos locales cargados desde caché
+  <!-- MODALES DE AYUDA (Declarativos mediante Alpine.js) -->
+  <div x-data="modalAyuda" class="relative z-[9999]">
+    <!-- Modal: Voy en camino -->
+    <div 
+      x-show="openCamino" 
+      class="fixed inset-0 bg-black/60 flex items-center justify-center p-4"
+      style="backdrop-filter: blur(4px); display: none;"
+      @click="openCamino = false"
+    >
+      <div 
+        class="bg-canvas border border-canvas-soft rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-fade-in" 
+        @click.stop
+      >
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🚗</span>
+          <h3 class="font-uber-display text-base font-bold text-ink">¿Registrar apoyo en camino?</h3>
+        </div>
+        <p class="text-xs text-body font-uber-text leading-relaxed">
+          Confirmas que vas en camino a entregar ayuda para esta necesidad. Esto se reflejará en el mapa para coordinar mejor a los equipos.
+        </p>
+        <div class="flex gap-2">
+          <button @click="openCamino = false" class="flex-grow py-2.5 rounded-xl bg-canvas-soft border border-canvas-soft text-ink font-bold text-xs cursor-pointer hover:bg-surface-pressed">Cancelar</button>
+          <button @click="confirmarCamino()" class="flex-grow py-2.5 rounded-xl bg-primary text-white border-none font-bold text-xs cursor-pointer hover:opacity-90">Confirmar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Marcar como Atendida -->
+    <div 
+      x-show="openAtendida" 
+      class="fixed inset-0 bg-black/60 flex items-center justify-center p-4"
+      style="backdrop-filter: blur(4px); display: none;"
+      @click="openAtendida = false"
+    >
+      <div 
+        class="bg-canvas border border-canvas-soft rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl animate-fade-in" 
+        @click.stop
+      >
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">✅</span>
+          <h3 class="font-uber-display text-base font-bold text-ink">¿Marcar como atendida?</h3>
+        </div>
+        <p class="text-xs text-body font-uber-text leading-relaxed">
+          Al confirmar, esta necesidad se marcará como resuelta y se removerá del mapa activo de alertas de forma inmediata.
+        </p>
+        <div class="flex gap-2">
+          <button @click="openAtendida = false" class="flex-grow py-2.5 rounded-xl bg-canvas-soft border border-canvas-soft text-ink font-bold text-xs cursor-pointer hover:bg-surface-pressed">Cancelar</button>
+          <button @click="confirmarAtendida()" class="flex-grow py-2.5 rounded-xl bg-green-600 text-white border-none font-bold text-xs cursor-pointer hover:bg-green-700">Confirmar</button>
+        </div>
+      </div>
+    </div>
   </div>
 </Layout>
 
@@ -1692,61 +1740,46 @@ const isDev = import.meta.env.DEV;
       }
     };
 
-    (window as any)._voyEnCamino = async (
+    (window as any)._voyEnCamino = (
       necesidadId: number,
       refugioId: number | null,
       centroAcopioId: number | null = null,
       hospitalId: number | null = null
     ) => {
-      if (!confirm("¿Confirmas que vas en camino a ayudar con esta necesidad?")) return;
-      try {
-        const resp = await fetch("/api/ayudas/en-camino", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            necesidad_id: necesidadId,
-            refugio_id: refugioId,
-            centro_acopio_id: centroAcopioId,
-            hospital_id: hospitalId
-          })
-        });
-        if (resp.ok) {
-          alert("¡Gracias! Tu apoyo en camino ha sido registrado.");
-          await fetchUnifiedData();
-          showEntityDetail("necesidad", String(necesidadId));
-        } else {
-          alert("Error al registrar el apoyo.");
-        }
-      } catch (e) {
-        alert("Error de red.");
-      }
+      window.dispatchEvent(new CustomEvent('open-camino-modal', {
+        detail: { necesidadId, refugioId, centroAcopioId, hospitalId }
+      }));
     };
 
-    (window as any)._marcarAtendida = async (necesidadId: number) => {
-      if (!confirm("¿Confirmas que esta necesidad ya ha sido atendida/resuelta?")) return;
-      try {
-        const resp = await fetch(`/api/necesidades/${necesidadId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ estado: "atendida" })
-        });
-        if (resp.ok) {
-          alert("✓ Necesidad marcada como atendida con éxito.");
-          const markerKey = `necesidad-${necesidadId}`;
-          const marker = markers.get(markerKey);
-          if (marker) {
-            map.removeLayer(marker);
-            markers.delete(markerKey);
-          }
-          await fetchUnifiedData();
-          renderDefaultList();
-        } else {
-          alert("Error al actualizar la necesidad.");
-        }
-      } catch (e) {
-        alert("Error de red.");
-      }
+    (window as any)._marcarAtendida = (necesidadId: number) => {
+      window.dispatchEvent(new CustomEvent('open-atendida-modal', {
+        detail: { necesidadId }
+      }));
     };
+
+    window.addEventListener('reload-map-data', async (e: any) => {
+      const necesidadId = e.detail.necesidadId;
+      await fetchUnifiedData();
+      showEntityDetail("necesidad", String(necesidadId));
+    });
+
+    window.addEventListener('reload-map-data-atendida', async (e: any) => {
+      const necesidadId = e.detail.necesidadId;
+      const markerKey = `necesidad-${necesidadId}`;
+      const marker = markers.get(markerKey);
+      if (marker && map) {
+        map.removeLayer(marker);
+        markers.delete(markerKey);
+      }
+      await fetchUnifiedData();
+      renderDefaultList();
+      const listContainer = document.getElementById("default-list");
+      const detailView = document.getElementById("detail-view");
+      if (listContainer && detailView) {
+        listContainer.classList.remove("hidden");
+        detailView.classList.add("hidden");
+      }
+    });
   }
 
   function clearRadarHighlights() {
