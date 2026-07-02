@@ -124,22 +124,38 @@ export const POST: APIRoute = async (context) => {
       body.necesidad_id ?? null
     ).run();
 
-    // Si el usuario seleccionó registrar, encolamos automáticamente el reporte de búsqueda
+    // Si el usuario seleccionó registrar, registramos automáticamente el reporte de búsqueda
     if (registrarEnBusca) {
       const nombreLimpio = title.replace(/se busca:?/i, "").replace(/desaparecido:?/i, "").trim();
       const contactoReporte = phones && phones.length > 0 ? phones[0] : (socials && socials.length > 0 ? socials[0] : "Web Flyer");
       
-      await cfEnv.CENSO_QUEUE.send({
-        type: "reporte",
-        data: {
+      const req = new Request("http://localhost/api/reportes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           tipo: "desaparecido",
           nombre_buscado: nombreLimpio,
           descripcion: description,
           reportante_nombre: "Creador de Flyer",
           reportante_contacto: contactoReporte,
           foto_key: foto_key
-        }
+        })
       });
+      
+      const { POST } = await import("./reportes");
+      const triggerReportSync = async () => {
+        try {
+          await POST({ request: req, locals: context.locals } as any);
+        } catch (e) {
+          console.error("Error al registrar reporte automático desde Flyer:", e);
+        }
+      };
+
+      if (cfCtx?.waitUntil) {
+        cfCtx.waitUntil(triggerReportSync());
+      } else {
+        await triggerReportSync();
+      }
     }
 
     // Notificar al canal público de Telegram (fire-and-forget, no bloquea la respuesta)

@@ -13,7 +13,7 @@ export async function startPeligro(
   const keyboard = {
     keyboard: [
       [{ text: "🚧 Bloqueo de vía" }, { text: "⛰️ Derrumbe" }],
-      [{ text: "🌊 Inundación" }, { text: "⚠️ Piquete" }],
+      [{ text: "🌊 Inundación" }, { text: "👮 Piquete Policial" }],
       [{ text: "🤜 Altercado" }, { text: "💔 Saqueo" }],
       [{ text: "/cancelar" }]
     ],
@@ -184,7 +184,7 @@ async function notificarVoluntariosCercanos(
       bloqueo: "🚧 Bloqueo de vía",
       derrumbe: "⛰️ Derrumbe",
       inundacion: "🌊 Inundación",
-      piquete: "⚠️ Piquete Policial/Militar",
+      piquete: "👮 Piquete Policial/Militar",
       altercado: "🤜 Altercado / Conflicto civil",
       saqueo: "💔 Saqueo"
     };

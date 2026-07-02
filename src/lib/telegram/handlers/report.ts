@@ -370,52 +370,71 @@ export async function handleReportState(
       }
 
       // 2. Enviar a la cola para la extracción de IA (CENSO_QUEUE)
-      if (env?.CENSO_QUEUE) {
-        let voluntarioId: number | null = null;
-        try {
-          const v = await db.prepare("SELECT id FROM voluntarios WHERE telegram_id = ?").bind(String(telegramId)).first<{id: number}>();
-          if (v) voluntarioId = v.id;
-        } catch (e) {
-          // ignorar
-        }
-
-        const payload = {
-          tipo: "desaparecido",
-          nombre_buscado: data.nombre_buscado,
-          cedula_buscado: data.cedula_buscado,
-          descripcion: descConcatenada,
-          ubicacion_nombre: data.ubicacion_nombre,
-          latitud: data.latitud || null,
-          longitud: data.longitud || null,
-          refugio_id: data.refugio_id || null,
-          hospital_id: data.hospital_id || null,
-          reportante_nombre: data.reportante_nombre,
-          reportante_contacto: data.reportante_contacto,
-          foto_key: data.foto_key,
-          created_by: voluntarioId
-        };
-
-        const validatedPayload = ReporteSchema.parse(payload);
-
-        await env.CENSO_QUEUE.send({
-          type: "reporte",
-          data: validatedPayload,
-        });
-
-        // Respuesta final al usuario
-        await client.sendMessage(
-          chatId,
-          `✅ <b>¡Reporte creado exitosamente!</b>\n\n` +
-          `• <b>Nombre:</b> ${data.nombre_buscado}\n` +
-          `• <b>Cédula:</b> ${data.cedula_buscado || "No especificada"}\n` +
-          `• <b>Reporta:</b> ${data.reportante_nombre} (${data.parentesco})\n\n` +
-          `El reporte ya está siendo procesado por nuestra Inteligencia Artificial para el cruce de datos.\n\n` +
-          `Hemos generado automáticamente un <b>Cartel de Búsqueda</b> para ti. Ábrelo en el siguiente enlace y compártelo en WhatsApp o Redes Sociales:\n` +
-          `🔗 <b>https://dondeestan.org/f/${flyerId}</b>`
-        );
-      } else {
-        throw new Error("CENSO_QUEUE binding not found");
+      let voluntarioId: number | null = null;
+      try {
+        const v = await db.prepare("SELECT id FROM voluntarios WHERE telegram_id = ?").bind(String(telegramId)).first<{id: number}>();
+        if (v) voluntarioId = v.id;
+      } catch (e) {
+        // ignorar
       }
+
+      const payload = {
+        tipo: "desaparecido" as const,
+        nombre_buscado: data.nombre_buscado,
+        cedula_buscado: data.cedula_buscado,
+        descripcion: descConcatenada,
+        ubicacion_nombre: data.ubicacion_nombre,
+        latitud: data.latitud || null,
+        longitud: data.longitud || null,
+        refugio_id: data.refugio_id || null,
+        hospital_id: data.hospital_id || null,
+        reportante_nombre: data.reportante_nombre,
+        reportante_contacto: data.reportante_contacto,
+        foto_key: data.foto_key,
+        created_by: voluntarioId
+      };
+
+      const validatedPayload = ReporteSchema.parse(payload);
+
+      const { insertReporte } = await import("../../db");
+      const { notifyAdmins, notificarCercanos } = await import("../notify");
+      
+      const reporteId = await insertReporte(db, validatedPayload);
+
+      if (reporteId) {
+        const alertMsg = `🚨 <b>Nuevo Reporte Recibido (#${reporteId})</b>\n\n` +
+          `• <b>Nombre buscado:</b> ${validatedPayload.nombre_buscado || "Sin identificar"}\n` +
+          `• <b>Cédula:</b> ${validatedPayload.cedula_buscado || "No especificada"}\n` +
+          `• <b>Tipo:</b> ${validatedPayload.tipo}\n` +
+          `• <b>Ubicación:</b> ${validatedPayload.ubicacion_nombre || "No especificada"}\n\n` +
+          `📝 <b>Descripción:</b> <i>"${validatedPayload.descripcion}"</i>\n\n` +
+          `🔗 <a href="https://dondeestan.org/admin/dashboard">Ir al Panel de Moderación</a>`;
+
+        try {
+          await notifyAdmins(env, alertMsg);
+          if (validatedPayload.latitud && validatedPayload.longitud) {
+            const msg = `🚨 <b>NUEVO REPORTE EN TU ZONA</b>\n\n` +
+                        `• Tipo: ${validatedPayload.tipo}\n` +
+                        `• Detalle: ${validatedPayload.descripcion}\n\n` +
+                        `🔗 <a href="https://dondeestan.org">Ver en el mapa</a>`;
+            await notificarCercanos(env, validatedPayload.latitud, validatedPayload.longitud, msg);
+          }
+        } catch (e) {
+          console.error("Error al enviar notificaciones de reporte desde Telegram:", e);
+        }
+      }
+
+      // Respuesta final al usuario
+      await client.sendMessage(
+        chatId,
+        `✅ <b>¡Reporte creado exitosamente!</b>\n\n` +
+        `• <b>Nombre:</b> ${data.nombre_buscado}\n` +
+        `• <b>Cédula:</b> ${data.cedula_buscado || "No especificada"}\n` +
+        `• <b>Reporta:</b> ${data.reportante_nombre} (${data.parentesco})\n\n` +
+        `El reporte ha sido registrado en el sistema para el cruce de datos.\n\n` +
+        `Hemos generado automáticamente un <b>Cartel de Búsqueda</b> para ti. Ábrelo en el siguiente enlace y compártelo en WhatsApp o Redes Sociales:\n` +
+        `🔗 <b>https://dondeestan.org/f/${flyerId}</b>`
+      );
     } catch (queueErr) {
       console.error("Queue send error:", queueErr);
       await client.sendMessage(chatId, "❌ Ocurrió un error guardando el reporte en el sistema central.");

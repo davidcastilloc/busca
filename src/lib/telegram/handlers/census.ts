@@ -82,31 +82,69 @@ export async function handleCensusState(
         return;
       }
 
-      await client.sendMessage(chatId, `✅ ¡IA terminó! Se encontraron <b>${personas.length}</b> personas en la lista.\nGuardando en base de datos en segundo plano...`);
+      await client.sendMessage(chatId, `✅ ¡IA terminó! Se encontraron <b>${personas.length}</b> personas en la lista.\nGuardando en base de datos...`);
 
-      // Enviar a la cola para registro asíncrono
-      if (env?.CENSO_QUEUE) {
-        let voluntarioId: number | null = null;
-        try {
-          const v = await db.prepare("SELECT id FROM voluntarios WHERE telegram_id = ?").bind(String(telegramId)).first<{id: number}>();
-          if (v) voluntarioId = v.id;
-        } catch (e) {
-          // ignore error
-        }
-
-        await env.CENSO_QUEUE.send({
-          type: "procesar_nombres_censo",
-          data: {
-            personas,
-            refugio: data.ubicacion,
-            contacto: `Voluntario Telegram (ID: ${telegramId})`,
-            created_by: voluntarioId
-          }
-        });
-        await client.sendMessage(chatId, "🟢 Lista enviada a procesamiento masivo. ¡Buen trabajo, cavernícola!");
-      } else {
-        await client.sendMessage(chatId, "⚠️ No hay conexión con la cola. Los datos no se guardaron.");
+      let voluntarioId: number | null = null;
+      try {
+        const v = await db.prepare("SELECT id FROM voluntarios WHERE telegram_id = ?").bind(String(telegramId)).first<{id: number}>();
+        if (v) voluntarioId = v.id;
+      } catch (e) {
+        // ignore error
       }
+
+      const { procesarCensoBatch } = await import("../../db");
+      const { results } = await procesarCensoBatch(
+        db,
+        personas,
+        data.ubicacion,
+        `Voluntario Telegram (ID: ${telegramId})`,
+        null,
+        voluntarioId
+      );
+
+      // Disparar notificaciones Push
+      try {
+        const PUSH_QUEUE = env.PUSH_QUEUE;
+        if (PUSH_QUEUE) {
+          let familiarSubscriptions: any[] | null = null;
+          for (const res of results) {
+            if (res.matches.length > 0) {
+              if (familiarSubscriptions === null) {
+                const subRes = await db.prepare(
+                  "SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE rol = 'familiar'"
+                ).all<{ endpoint: string; p256dh: string; auth: string }>();
+                familiarSubscriptions = subRes.results || [];
+              }
+
+              if (familiarSubscriptions.length > 0) {
+                const BATCH_SIZE = 50;
+                for (const reporte of res.matches) {
+                  for (let i = 0; i < familiarSubscriptions.length; i += BATCH_SIZE) {
+                    const subBatch = familiarSubscriptions.slice(i, i + BATCH_SIZE);
+                    await PUSH_QUEUE.send({
+                      type: "push_batch",
+                      payload: {
+                        titulo: "¡Familiar Encontrado!",
+                        mensaje: `${reporte.nombre_buscado} ha sido registrado localizado en el refugio: ${data.ubicacion || "Refugio de emergencia"}.`,
+                        tipo: "info",
+                        url: `/?q=${encodeURIComponent(reporte.nombre_buscado)}`
+                      },
+                      suscripciones: subBatch.map((s) => ({
+                        endpoint: s.endpoint,
+                        keys: { p256dh: s.p256dh, auth: s.auth }
+                      }))
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (pushErr) {
+        console.error("Error al enviar push en background:", pushErr);
+      }
+
+      await client.sendMessage(chatId, "🟢 Lista procesada e ingresada masivamente. ¡Buen trabajo, cavernícola!");
 
     } catch (err) {
       console.error("Error en censo masivo Telegram:", err);

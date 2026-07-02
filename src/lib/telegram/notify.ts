@@ -2,7 +2,8 @@ import { TelegramClient } from "./client";
 
 export async function notifyAdmins(
   env: any,
-  message: string
+  message: string,
+  options?: any
 ): Promise<void> {
   const token = env.TELEGRAM_BOT_TOKEN;
   const adminIdsStr = env.TELEGRAM_ADMIN_IDS;
@@ -19,7 +20,7 @@ export async function notifyAdmins(
     for (const adminId of adminIds) {
       if (adminId) {
         try {
-          await client.sendMessage(adminId, message);
+          await client.sendMessage(adminId, message, options);
         } catch (err) {
           console.error(`Error enviando notificación de Telegram al admin ${adminId}:`, err);
         }

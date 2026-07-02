@@ -85,38 +85,45 @@ export async function handleSosState(
     data.centro_acopio_id = resolved.centro_acopio_id;
 
     try {
-      if (env?.CENSO_QUEUE) {
-        await env.CENSO_QUEUE.send({
-          type: "reporte",
-          data: {
-            tipo: "necesidad",
-            descripcion: `URGENCIA: ${data.insumo}`,
-            ubicacion_nombre: data.ubicacion,
-            latitud: data.latitud || null,
-            longitud: data.longitud || null,
-            refugio_id: data.refugio_id || null,
-            hospital_id: data.hospital_id || null,
-            centro_acopio_id: data.centro_acopio_id || null,
-            reportante_nombre: "Voluntario SOS",
-            reportante_contacto: `Telegram ID: ${telegramId}`
-          }
-        });
-      }
+      const result = await db.prepare(`
+        INSERT INTO necesidades (
+          categoria, gravedad, descripcion, ubicacion_nombre, 
+          latitud, longitud, refugio_id, centro_acopio_id, hospital_id, reportante_nombre, reportante_contacto, estado
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'abierta')
+        RETURNING id
+      `).bind(
+        "General",
+        "Alta (Riesgo de vida)",
+        `URGENCIA: ${data.insumo}`,
+        data.ubicacion || null,
+        data.latitud || null,
+        data.longitud || null,
+        data.refugio_id || null,
+        data.centro_acopio_id || null,
+        data.hospital_id || null,
+        "Voluntario SOS",
+        `Telegram ID: ${telegramId}`
+      ).first<{ id: number }>();
 
-      // Notificar a los Admins inmediatamente
-      if (env?.TELEGRAM_ADMIN_IDS) {
-        const adminIds = env.TELEGRAM_ADMIN_IDS.split(",").map((id: string) => id.trim());
-        const alertMsg = `🆘 <b>¡ALERTA URGENTE DE VOLUNTARIO!</b> 🆘\n\n<b>Insumo/Ayuda:</b> ${data.insumo}\n<b>Ubicación:</b> ${data.ubicacion}\n<b>Voluntario ID:</b> <code>${telegramId}</code>`;
+      const necesidadId = result?.id;
+
+      if (necesidadId) {
+        const { notifyAdmins, notificarCercanos } = await import("../notify");
+        const alertMsg = `🚨 <b>Nueva Necesidad SOS Recibida (#${necesidadId})</b>\n\n` +
+          `• <b>Ubicación:</b> ${data.ubicacion || "No especificada"}\n\n` +
+          `📝 <b>Descripción:</b> <i>"URGENCIA: ${data.insumo}"</i>\n\n` +
+          `🔗 <a href="https://dondeestan.org/mapa?tipo=necesidad&id=${necesidadId}">Ver en el mapa</a>`;
         
-        for (const aId of adminIds) {
-          try {
-            await client.sendMessage(aId, alertMsg);
-            if (data.latitud && data.longitud) {
-              await client.sendLocation(aId, data.latitud, data.longitud);
-            }
-          } catch (e) {
-            console.error(`No se pudo enviar alerta al admin ${aId}`);
+        try {
+          await notifyAdmins(env, alertMsg);
+          if (data.latitud && data.longitud) {
+            const msg = `🚨 <b>NUEVA NECESIDAD SOS EN TU ZONA</b>\n\n` +
+                        `• Detalle: URGENCIA: ${data.insumo}\n\n` +
+                        `🔗 <a href="https://dondeestan.org/mapa?tipo=necesidad&id=${necesidadId}">Ver en el mapa</a>`;
+            await notificarCercanos(env, data.latitud, data.longitud, msg);
           }
+        } catch (e) {
+          console.error("Error al enviar alertas SOS de Telegram:", e);
         }
       }
 

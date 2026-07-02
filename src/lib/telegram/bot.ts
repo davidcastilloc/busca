@@ -53,7 +53,7 @@ export async function processTelegramUpdate(
     TELEGRAM_BOT_TOKEN: string;
     TELEGRAM_ADMIN_IDS?: string;
     FOTOS_BUCKET: R2Bucket;
-    CENSO_QUEUE: Queue;
+    CENSO_QUEUE?: Queue;
   }
 ): Promise<void> {
   const client = new TelegramClient(env.TELEGRAM_BOT_TOKEN);
@@ -136,6 +136,204 @@ export async function processTelegramUpdate(
         } catch (e) {
           console.error("Error al marcar cubierta:", e);
           await client.sendMessage(chatId, "❌ Ocurrió un error al actualizar la base de datos.");
+        }
+      } else if (data.startsWith("aprob_ref:")) {
+        const [, reporteId] = data.split(":");
+        try {
+          const existente = await db.prepare("SELECT * FROM reportes WHERE id = ?").bind(reporteId).first<any>();
+          if (!existente) {
+            await client.answerCallbackQuery(cb.id, { text: "❌ Reporte no encontrado", show_alert: true });
+            return;
+          }
+
+          if (existente.estado_reporte === "resuelto") {
+            await client.answerCallbackQuery(cb.id, { text: "ℹ️ Este reporte ya fue resuelto/aprobado", show_alert: true });
+            await client.editMessageReplyMarkup(chatId, messageId, { inline_keyboard: [] });
+            return;
+          }
+
+          let capacidad = 100;
+          let ocupacion = 0;
+          if (existente.datos_especificos) {
+            try {
+              const specs = JSON.parse(existente.datos_especificos);
+              if (specs.refugio_capacidad) capacidad = parseInt(specs.refugio_capacidad, 10);
+              if (specs.refugio_ocupacion) ocupacion = parseInt(specs.refugio_ocupacion, 10);
+            } catch {}
+          }
+
+          let nuevoRefugioId: number | null = null;
+          try {
+            // 1. Intentar insertar directamente en la tabla refugios
+            const result = await db.prepare(`
+              INSERT INTO refugios (
+                nombre, direccion, latitud, longitud, capacidad_maxima, ocupacion_actual, 
+                necesidades, contacto, encargado, fecha_registro, updated_at
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+              RETURNING id
+            `).bind(
+              existente.nombre_buscado || `Refugio #${reporteId}`,
+              existente.ubicacion_nombre || null,
+              existente.latitud,
+              existente.longitud,
+              capacidad,
+              ocupacion,
+              existente.descripcion,
+              existente.reportante_contacto || null,
+              existente.reportante_nombre || null
+            ).first<{ id: number }>();
+            nuevoRefugioId = result?.id || null;
+          } catch (err: any) {
+            if (err.message && err.message.includes("UNIQUE constraint failed")) {
+              console.warn("⚠️ [Bot Telegram] Intento de aprobación duplicado detectado para:", existente.nombre_buscado);
+              await client.answerCallbackQuery(cb.id, { 
+                text: "❌ Error: Ya existe un refugio oficial con este nombre.", 
+                show_alert: true 
+              });
+              await client.editMessageText(chatId, messageId, 
+                cb.message?.text + `\n\n❌ <b>Rechazado automáticamente: Nombre de refugio ya existente.</b>`,
+                { inline_keyboard: [] }
+              );
+              return;
+            }
+            console.error("❌ [Bot Telegram] Error inesperado al insertar refugio:", err);
+            throw err;
+          }
+
+          await db.prepare(`
+            UPDATE reportes 
+            SET estado_reporte = 'resuelto',
+                verificacion = 'verificado',
+                refugio_id = ?,
+                updated_at = datetime('now')
+            WHERE id = ?
+          `).bind(nuevoRefugioId || null, reporteId).run();
+
+          await client.answerCallbackQuery(cb.id, { text: "✅ ¡Refugio Aprobado y publicado en el mapa!" });
+          
+          const userStr = cb.from.username ? `@${cb.from.username}` : `${cb.from.first_name}`;
+          const updatedMsg = `✅ <b>Refugio #${reporteId} APROBADO por ${userStr}</b>\n\n` +
+            `• <b>Nombre:</b> ${existente.nombre_buscado || "Sin nombre"}\n` +
+            `• <b>Coordenadas:</b> ${existente.latitud}, ${existente.longitud}\n` +
+            `• <b>Descripción:</b> <i>"${existente.descripcion}"</i>\n\n` +
+            `📍 Publicado oficialmente en el mapa.`;
+
+          await client.editMessageText(chatId, messageId, updatedMsg, { reply_markup: { inline_keyboard: [] } });
+        } catch (e: any) {
+          console.error("Error al aprobar refugio vía Telegram:", e);
+          await client.answerCallbackQuery(cb.id, { text: `❌ Error: ${e.message}`, show_alert: true });
+        }
+      } else if (data.startsWith("aprob_enc:")) {
+        const [, reporteId] = data.split(":");
+        try {
+          const existente = await db.prepare("SELECT * FROM reportes WHERE id = ?").bind(reporteId).first<any>();
+          if (!existente) {
+            await client.answerCallbackQuery(cb.id, { text: "❌ Reporte no encontrado", show_alert: true });
+            return;
+          }
+
+          if (existente.estado_reporte === "resuelto") {
+            await client.answerCallbackQuery(cb.id, { text: "ℹ️ Este reporte ya fue resuelto/aprobado", show_alert: true });
+            await client.editMessageReplyMarkup(chatId, messageId, { inline_keyboard: [] });
+            return;
+          }
+
+          const nombreCompleto = (existente.nombre_buscado || "").trim();
+          const partes = nombreCompleto.split(/\s+/);
+          const nombre = partes[0] || "Sin Identificar";
+          const apellido = partes.slice(1).join(" ") || null;
+
+          let refugio_id: number | null = null;
+          let centro_acopio_id: number | null = null;
+          let hospital_id: number | null = null;
+
+          if (existente.datos_especificos) {
+            try {
+              const specs = JSON.parse(existente.datos_especificos);
+              refugio_id = specs.refugio_id ?? null;
+              centro_acopio_id = specs.centro_acopio_id ?? null;
+              hospital_id = specs.hospital_id ?? null;
+            } catch {}
+          }
+
+          let nuevoPersonaId: number | null = null;
+          try {
+            const result = await db.prepare(`
+              INSERT INTO personas (
+                nombre, apellido, cedula, estado, contacto, notas, latitud, longitud, foto_key, fuente, refugio_id, hospital_id, centro_acopio_id, created_at, updated_at
+              )
+              VALUES (?, ?, ?, 'localizado', ?, ?, ?, ?, ?, 'reporte_bot', ?, ?, ?, datetime('now'), datetime('now'))
+              RETURNING id
+            `).bind(
+              nombre,
+              apellido,
+              existente.cedula_buscado || null,
+              existente.reportante_contacto || null,
+              existente.descripcion,
+              existente.latitud || null,
+              existente.longitud || null,
+              existente.foto_key || null,
+              refugio_id,
+              hospital_id,
+              centro_acopio_id
+            ).first<{ id: number }>();
+            nuevoPersonaId = result?.id || null;
+          } catch (err: any) {
+            console.error("❌ [Bot Telegram] Error al insertar persona localizada:", err);
+            throw err;
+          }
+
+          await db.prepare(`
+            UPDATE reportes 
+            SET estado_reporte = 'resuelto',
+                verificacion = 'verificado',
+                persona_id = ?,
+                updated_at = datetime('now')
+            WHERE id = ?
+          `).bind(nuevoPersonaId || null, reporteId).run();
+
+          // Resolver en cascada reportes de tipo desaparecido asociados
+          if (existente.cedula_buscado) {
+            await db.prepare(`
+              UPDATE reportes 
+              SET estado_reporte = 'resuelto', 
+                  updated_at = datetime('now') 
+              WHERE cedula_buscado = ? AND tipo = 'desaparecido' AND estado_reporte = 'abierto'
+            `).bind(existente.cedula_buscado).run();
+          }
+
+          await client.answerCallbackQuery(cb.id, { text: "✅ ¡Hallazgo de Persona Aprobado y publicado!" });
+          
+          const userStr = cb.from.username ? `@${cb.from.username}` : `${cb.from.first_name}`;
+          const updatedMsg = `✅ <b>Hallazgo de Persona #${reporteId} APROBADO por ${userStr}</b>\n\n` +
+            `• <b>Nombre:</b> ${existente.nombre_buscado || "Sin identificar"}\n` +
+            `• <b>Cédula:</b> ${existente.cedula_buscado || "No especificada"}\n\n` +
+            `📍 Marcada como Localizada en la base de datos y mapa.`;
+
+          await client.editMessageText(chatId, messageId, updatedMsg, { reply_markup: { inline_keyboard: [] } });
+        } catch (e: any) {
+          console.error("Error al aprobar hallazgo vía Telegram:", e);
+          await client.answerCallbackQuery(cb.id, { text: `❌ Error: ${e.message}`, show_alert: true });
+        }
+      } else if (data.startsWith("rech_ref:")) {
+        const [, reporteId] = data.split(":");
+        try {
+          await db.prepare(`
+            UPDATE reportes 
+            SET estado_reporte = 'archivado',
+                verificacion = 'rechazado',
+                updated_at = datetime('now')
+            WHERE id = ?
+          `).bind(reporteId).run();
+
+          await client.answerCallbackQuery(cb.id, { text: "❌ Reporte rechazado y archivado." });
+
+          const userStr = cb.from.username ? `@${cb.from.username}` : `${cb.from.first_name}`;
+          await client.editMessageText(chatId, messageId, `❌ <b>Reporte de Refugio #${reporteId} RECHAZADO por ${userStr}</b>`, { reply_markup: { inline_keyboard: [] } });
+        } catch (e: any) {
+          console.error("Error al rechazar refugio vía Telegram:", e);
+          await client.answerCallbackQuery(cb.id, { text: `❌ Error: ${e.message}`, show_alert: true });
         }
       } else if (data.startsWith("camino:")) {
         const [, necesidadId] = data.split(":");
