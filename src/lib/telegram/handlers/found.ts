@@ -141,44 +141,66 @@ export async function handleFoundState(
     data.foto_key = fotoKey;
 
     try {
-      if (env?.CENSO_QUEUE) {
-        let voluntarioId: number | null = null;
-        try {
-          const v = await db.prepare("SELECT id FROM voluntarios WHERE telegram_id = ?").bind(String(telegramId)).first<{id: number}>();
-          if (v) voluntarioId = v.id;
-        } catch (e) {
-          // ignore error
-        }
-        
-        const estadoLabel = data.estado_persona || "localizado";
-
-        const payload = {
-            tipo: "encontrado",
-            nombre_buscado: data.nombre_buscado,
-            cedula_buscado: data.cedula_buscado,
-            descripcion: `Reportado como ${estadoLabel} por voluntario.`,
-            ubicacion_nombre: data.ubicacion_nombre,
-            latitud: data.latitud || null,
-            longitud: data.longitud || null,
-            refugio_id: data.refugio_id || null,
-            hospital_id: data.hospital_id || null,
-            reportante_nombre: "Voluntario (Telegram)",
-            reportante_contacto: `User ID: ${telegramId}`,
-            foto_key: data.foto_key,
-            created_by: voluntarioId,
-          };
-          
-        const validatedPayload = ReporteSchema.parse(payload);
-
-        await env.CENSO_QUEUE.send({
-          type: "reporte",
-          data: validatedPayload,
-        });
-        await client.sendMessage(
-          chatId,
-          `✅ <b>Persona registrada como ${estadoLabel.toUpperCase()}</b>\n\nLa información se cruza automáticamente con la lista de desaparecidos.`
-        );
+      let voluntarioId: number | null = null;
+      try {
+        const v = await db.prepare("SELECT id FROM voluntarios WHERE telegram_id = ?").bind(String(telegramId)).first<{id: number}>();
+        if (v) voluntarioId = v.id;
+      } catch (e) {
+        // ignore error
       }
+      
+      const estadoLabel = data.estado_persona || "localizado";
+
+      const payload = {
+          tipo: "encontrado" as const,
+          nombre_buscado: data.nombre_buscado,
+          cedula_buscado: data.cedula_buscado,
+          descripcion: `Reportado como ${estadoLabel} por voluntario.`,
+          ubicacion_nombre: data.ubicacion_nombre,
+          latitud: data.latitud || null,
+          longitud: data.longitud || null,
+          refugio_id: data.refugio_id || null,
+          hospital_id: data.hospital_id || null,
+          reportante_nombre: "Voluntario (Telegram)",
+          reportante_contacto: `User ID: ${telegramId}`,
+          foto_key: data.foto_key,
+          created_by: voluntarioId,
+        };
+        
+      const validatedPayload = ReporteSchema.parse(payload);
+
+      const { insertReporte } = await import("../../db");
+      const { notifyAdmins, notificarCercanos } = await import("../notify");
+      
+      const reporteId = await insertReporte(db, validatedPayload);
+
+      if (reporteId) {
+        const alertMsg = `🚨 <b>Nuevo Reporte Recibido (#${reporteId})</b>\n\n` +
+          `• <b>Nombre buscado:</b> ${validatedPayload.nombre_buscado || "Sin identificar"}\n` +
+          `• <b>Cédula:</b> ${validatedPayload.cedula_buscado || "No especificada"}\n` +
+          `• <b>Tipo:</b> ${validatedPayload.tipo}\n` +
+          `• <b>Ubicación:</b> ${validatedPayload.ubicacion_nombre || "No especificada"}\n\n` +
+          `📝 <b>Descripción:</b> <i>"${validatedPayload.descripcion}"</i>\n\n` +
+          `🔗 <a href="https://dondeestan.org/admin/dashboard">Ir al Panel de Moderación</a>`;
+
+        try {
+          await notifyAdmins(env, alertMsg);
+          if (validatedPayload.latitud && validatedPayload.longitud) {
+            const msg = `🚨 <b>NUEVO REPORTE EN TU ZONA</b>\n\n` +
+                        `• Tipo: ${validatedPayload.tipo}\n` +
+                        `• Detalle: ${validatedPayload.descripcion}\n\n` +
+                        `🔗 <a href="https://dondeestan.org">Ver en el mapa</a>`;
+            await notificarCercanos(env, validatedPayload.latitud, validatedPayload.longitud, msg);
+          }
+        } catch (e) {
+          console.error("Error al enviar notificaciones de reporte desde Telegram:", e);
+        }
+      }
+
+      await client.sendMessage(
+        chatId,
+        `✅ <b>Persona registrada como ${estadoLabel.toUpperCase()}</b>\n\nLa información se cruza automáticamente con la lista de desaparecidos.`
+      );
     } catch (queueErr) {
       console.error("Queue send error:", queueErr);
       await client.sendMessage(chatId, "❌ Error al guardar.");

@@ -1,47 +1,35 @@
 import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
-import { ReporteSchema } from "../../lib/validators";
 import { obtenerVoluntarioSesion } from "../../lib/auth-helpers";
+import { crearReporteUnificado } from "../../lib/reporte-service";
 
 export const prerender = false;
 
 export const POST: APIRoute = async (context) => {
   try {
     const { DB } = env;
+    if (!DB) throw new Error("Base de datos no disponible");
+
     const body = await context.request.json();
 
-    const validated = ReporteSchema.parse(body);
-
-    // Adjuntar voluntario_id si está logueado
+    let voluntario: any = null;
     const sessionToken = context.cookies.get("session_token")?.value;
-    if (sessionToken && DB) {
-      const voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
-      if (voluntario) {
-        validated.created_by = voluntario.id;
-      }
+    if (sessionToken) {
+      voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
     }
 
-    if (import.meta.env.DEV) {
-      const { procesarCola } = await import("../../lib/queue-processor");
-      const mockBatch = {
-        messages: [{
-          body: {
-            type: "reporte",
-            data: validated
-          },
-          ack: () => {}
-        }]
-      };
-      await procesarCola(mockBatch as any, env);
-    } else {
-      await env.CENSO_QUEUE.send({
-        type: "reporte",
-        data: validated
+    const cfContext = context.locals.cfContext || context.locals.runtime?.ctx;
+    const result = await crearReporteUnificado(DB, body, voluntario ? voluntario.id : null, env, cfContext);
+
+    if (!result.success) {
+      return new Response(JSON.stringify({ error: result.message, issues: result.issues }), {
+        status: result.status,
+        headers: { "Content-Type": "application/json" }
       });
     }
 
-    return new Response(JSON.stringify({ success: true, message: "Reporte de emergencia encolado" }), {
-      status: 202,
+    return new Response(JSON.stringify({ success: true, id: result.id, message: result.message }), {
+      status: result.status,
       headers: { "Content-Type": "application/json" }
     });
   } catch (error: any) {

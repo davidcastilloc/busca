@@ -9,10 +9,11 @@ const sessionToken = Astro.cookies.get("session_token")?.value;
 const { DB } = env;
 const voluntario = await obtenerVoluntarioSesion(DB, sessionToken);
 const isVolunteer = !!voluntario;
+const isDev = import.meta.env.DEV;
 ---
 
 <Layout title="Mapa Unificado de Emergencia - dondeestan.org" description="Mapa interactivo unificado para localizar personas, refugios, centros de acopio y necesidades críticas en tiempo real.">
-  <div id="map-config" data-is-volunteer={String(isVolunteer)} class="hidden"></div>
+  <div id="map-config" data-is-volunteer={String(isVolunteer)} data-is-dev={String(isDev)} class="hidden"></div>
 
 
   <!-- Leaflet Heatmap Plugin -->
@@ -268,6 +269,17 @@ const isVolunteer = !!voluntario;
   /* Clusters dinámicos con temas de color */
   .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
     background: rgba(37,99,235,0.15) !important;
+    border-radius: 50% !important;
+  }
+  .marker-cluster div {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    border-radius: 50% !important;
+    box-sizing: border-box !important;
   }
   .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
     background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
@@ -282,6 +294,26 @@ const isVolunteer = !!voluntario;
   
   .cluster-persona { background: rgba(16,185,129,0.15) !important; }
   .cluster-persona div { background: linear-gradient(135deg, #10b981, #047857) !important; }
+
+  .custom-marker-ocupacion-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #10b981 !important;
+    color: white !important;
+    font-size: 8px !important;
+    font-weight: 800 !important;
+    min-width: 16px !important;
+    height: 16px !important;
+    padding: 0 4px !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1.5px solid white !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+    z-index: 1000 !important;
+  }
 
   .cluster-rojo { background: rgba(239,68,68,0.15) !important; }
   .cluster-rojo div { background: linear-gradient(135deg, #ef4444, #b91c1c) !important; }
@@ -304,6 +336,7 @@ const isVolunteer = !!voluntario;
 <script>
   let map: any = null;
   let isVolunteer = false;
+  let isDev = false;
   
   // Capas / Grupos de Leaflet
   let refugiosCluster: any = null;
@@ -320,7 +353,8 @@ const isVolunteer = !!voluntario;
     refugios: [] as any[],
     necesidades: [] as any[],
     personas: [] as any[],
-    peligros: [] as any[]
+    peligros: [] as any[],
+    albergados: [] as any[]
   };
 
   let userMarker: any = null;
@@ -364,6 +398,7 @@ const isVolunteer = !!voluntario;
     const mapDiv = document.getElementById("map-fullscreen");
     const configEl = document.getElementById("map-config");
     isVolunteer = configEl?.getAttribute("data-is-volunteer") === "true";
+    isDev = configEl?.getAttribute("data-is-dev") === "true";
 
     // Limpieza de intervalos al cambiar de página
     if (refreshInterval) {
@@ -417,7 +452,84 @@ const isVolunteer = !!voluntario;
       L.control.zoom({ position: "bottomright" }).addTo(map);
       L.control.attribution({ position: "bottomleft", prefix: false })
         .addTo(map)
-        .addAttribution('© <a href="https://osm.org/copyright">OpenStreetMap</a>');
+        .addAttribution('© <a href="https://dondeestan.org" target="_blank" style="color: var(--primary, #3b82f6); font-weight: bold;">dondeestan.org</a> | © <a href="https://osm.org/copyright" target="_blank">OpenStreetMap</a>');
+
+      // Herramienta de coordenadas para desarrollador / debug (solo en modo desarrollo)
+      if (isDev) {
+        const CoordinateControl = L.Control.extend({
+          options: {
+            position: 'bottomleft'
+          },
+          onAdd: function (map) {
+            const container = L.DomUtil.create('div', 'coordinate-debug-box');
+            container.style.background = 'rgba(0, 0, 0, 0.85)';
+            container.style.color = '#39FF14';
+            container.style.padding = '8px 12px';
+            container.style.borderRadius = '8px';
+            container.style.fontFamily = 'monospace';
+            container.style.fontSize = '12px';
+            container.style.border = '1px solid #39FF14';
+            container.style.boxShadow = '0 0 12px rgba(57, 255, 20, 0.4)';
+            container.style.cursor = 'default';
+            container.style.marginBottom = '20px';
+            container.style.pointerEvents = 'none'; // Ignorar clicks para no capturar coordenadas del botón
+            container.title = 'Usa la tecla C o Ctrl+Click en el mapa para copiar';
+            container.innerHTML = 'Lat: 0.000000, Lng: 0.000000';
+  
+            let currentLatLng = { lat: 0, lng: 0 };
+  
+            map.on('mousemove', function (e) {
+              currentLatLng = e.latlng;
+              container.innerHTML = `📍 Lat: ${currentLatLng.lat.toFixed(6)}<br>📍 Lng: ${currentLatLng.lng.toFixed(6)}<br><span style="font-size:10px;color:#aaa;display:block;margin-top:4px;">[Presiona C o Ctrl+Click para copiar]</span>`;
+            });
+  
+            // Copiar presionando la tecla C en el teclado
+            const keyHandler = function (e: KeyboardEvent) {
+              if (e.key === 'c' || e.key === 'C') {
+                if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+                  return;
+                }
+                const textToCopy = `${currentLatLng.lat.toFixed(6)}, ${currentLatLng.lng.toFixed(6)}`;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                  const originalHTML = container.innerHTML;
+                  container.innerHTML = '✅ ¡Copiado!';
+                  container.style.borderColor = '#ffffff';
+                  container.style.color = '#ffffff';
+                  setTimeout(() => {
+                    container.innerHTML = originalHTML;
+                    container.style.borderColor = '#39FF14';
+                    container.style.color = '#39FF14';
+                  }, 800);
+                });
+              }
+            };
+            document.addEventListener('keydown', keyHandler);
+  
+            // Copiar con Ctrl + Click en el mapa
+            map.on('click', function (e: any) {
+              if (e.originalEvent && e.originalEvent.ctrlKey) {
+                const textToCopy = `${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                  L.popup()
+                    .setLatLng(e.latlng)
+                    .setContent('<span style="font-family:monospace;font-size:11px;font-weight:bold;">✅ Coordenadas copiadas!</span>')
+                    .openOn(map);
+                });
+              }
+            });
+  
+            return container;
+          }
+        });
+        new CoordinateControl().addTo(map);
+      }
+
+      // Helper para calcular dinámicamente el tamaño de los clusters según cantidad de datos
+      const getClusterSize = (count: number) => {
+        if (count >= 100) return { className: "marker-cluster-large", size: 55 };
+        if (count >= 10) return { className: "marker-cluster-medium", size: 48 };
+        return { className: "marker-cluster-small", size: 40 };
+      };
 
       // Crear grupos de capas
       refugiosCluster = L.markerClusterGroup({
@@ -425,6 +537,8 @@ const isVolunteer = !!voluntario;
         showCoverageOnHover: false,
         iconCreateFunction: (cluster: any) => {
           const children = cluster.getAllChildMarkers();
+          const count = children.length;
+          const { className, size } = getClusterSize(count);
           let hasRojo = false, hasAmarillo = false;
           children.forEach((m: any) => {
             if (m.options._semaforo === "rojo") hasRojo = true;
@@ -432,9 +546,9 @@ const isVolunteer = !!voluntario;
           });
           const clusterClass = hasRojo ? "cluster-rojo" : hasAmarillo ? "cluster-amarillo" : "cluster-verde";
           return L.divIcon({
-            html: `<div><span>${children.length}</span></div>`,
-            className: `marker-cluster marker-cluster-small ${clusterClass}`,
-            iconSize: L.point(40, 40),
+            html: `<div><span>${count}</span></div>`,
+            className: `marker-cluster ${className} ${clusterClass}`,
+            iconSize: L.point(size, size),
           });
         }
       });
@@ -443,10 +557,12 @@ const isVolunteer = !!voluntario;
         maxClusterRadius: 50,
         showCoverageOnHover: false,
         iconCreateFunction: (cluster: any) => {
+          const count = cluster.getChildCount();
+          const { className, size } = getClusterSize(count);
           return L.divIcon({
-            html: `<div><span>${cluster.getChildCount()}</span></div>`,
-            className: `marker-cluster marker-cluster-small cluster-necesidad`,
-            iconSize: L.point(40, 40),
+            html: `<div><span>${count}</span></div>`,
+            className: `marker-cluster ${className} cluster-necesidad`,
+            iconSize: L.point(size, size),
           });
         }
       });
@@ -455,10 +571,12 @@ const isVolunteer = !!voluntario;
         maxClusterRadius: 50,
         showCoverageOnHover: false,
         iconCreateFunction: (cluster: any) => {
+          const count = cluster.getChildCount();
+          const { className, size } = getClusterSize(count);
           return L.divIcon({
-            html: `<div><span>${cluster.getChildCount()}</span></div>`,
-            className: `marker-cluster marker-cluster-small cluster-persona`,
-            iconSize: L.point(40, 40),
+            html: `<div><span>${count}</span></div>`,
+            className: `marker-cluster ${className} cluster-persona`,
+            iconSize: L.point(size, size),
           });
         }
       });
@@ -467,10 +585,12 @@ const isVolunteer = !!voluntario;
         maxClusterRadius: 50,
         showCoverageOnHover: false,
         iconCreateFunction: (cluster: any) => {
+          const count = cluster.getChildCount();
+          const { className, size } = getClusterSize(count);
           return L.divIcon({
-            html: `<div><span>${cluster.getChildCount()}</span></div>`,
-            className: `marker-cluster marker-cluster-small cluster-rojo`,
-            iconSize: L.point(40, 40),
+            html: `<div><span>${count}</span></div>`,
+            className: `marker-cluster ${className} cluster-rojo`,
+            iconSize: L.point(size, size),
           });
         }
       });
@@ -496,17 +616,20 @@ const isVolunteer = !!voluntario;
 
   async function fetchUnifiedData() {
     try {
-      // 1. Consultar si hay cambios en la base de datos
-      const updateResp = await fetch("/api/maps/last-update?t=" + Date.now());
+      // 1. Consultar si hay cambios en la base de datos (pasando since si no es carga inicial)
+      const sinceParam = (!isInitialLoad && lastUpdateTimestamp) ? `&since=${encodeURIComponent(lastUpdateTimestamp)}` : "";
+      const updateResp = await fetch(`/api/maps/last-update?t=${Date.now()}${sinceParam}`);
+      
+      if (updateResp.status === 204) {
+        // No hay cambios en la base de datos.
+        isInitialLoad = false;
+        return;
+      }
+
       if (updateResp.ok) {
         const updatePayload = await updateResp.json();
         if (updatePayload.success) {
-          const currentUpdate = updatePayload.last_update;
-          // Si el timestamp es idéntico al que ya tenemos, omitir descarga y renderizado
-          if (lastUpdateTimestamp && currentUpdate === lastUpdateTimestamp) {
-            return;
-          }
-          lastUpdateTimestamp = currentUpdate;
+          lastUpdateTimestamp = updatePayload.last_update;
         }
       }
 
@@ -520,7 +643,8 @@ const isVolunteer = !!voluntario;
         refugios: payload.refugios || [],
         necesidades: payload.necesidades || [],
         personas: payload.personas || [],
-        peligros: payload.peligros || []
+        peligros: payload.peligros || [],
+        albergados: payload.albergados || []
       };
 
       // Guardar en caché offline
@@ -561,8 +685,12 @@ const isVolunteer = !!voluntario;
         ? `<div class="custom-marker-pulse"></div>`
         : `<div class="custom-marker-badge badge-${r.semaforo}"></div>`;
 
+      const ocupacionBadge = (r.tipo === "refugio" && r.ocupacion > 0)
+        ? `<div class="custom-marker-ocupacion-badge">${r.ocupacion}</div>`
+        : "";
+
       const icon = L.divIcon({
-        html: `<div class="custom-marker ${markerClass}" data-id="${r.id}">${emoji}${badgeHtml}</div>`,
+        html: `<div class="custom-marker ${markerClass}" data-id="${r.id}">${emoji}${badgeHtml}${ocupacionBadge}</div>`,
         className: "",
         iconSize: [38, 38],
         iconAnchor: [19, 38],
@@ -582,13 +710,12 @@ const isVolunteer = !!voluntario;
       markers.set(`refugio-${r.id}`, marker);
       refugiosCluster.addLayer(marker);
 
-      // Círculo de cobertura servida (5km)
+      // Círculo de cobertura servida (2km) sin bordes toscos para evitar ruido visual
       L.circle([r.lat, r.lng], {
-        radius: 5000,
-        color: r.tipo === "hospital" ? "#ef4444" : "#3b82f6",
-        fillColor: r.tipo === "hospital" ? "#fca5a5" : "#93c5fd",
-        fillOpacity: 0.15,
-        weight: 1.5,
+        radius: 2000,
+        stroke: false,
+        fillColor: r.tipo === "hospital" ? "#ef4444" : "#3b82f6",
+        fillOpacity: 0.08,
         interactive: false
       }).addTo(coverageGroup);
     });
@@ -649,7 +776,17 @@ const isVolunteer = !!voluntario;
     // 4. Peligros
     dataStore.peligros.forEach((p: any) => {
       if (!p.lat || !p.lng || isNaN(p.lat) || isNaN(p.lng)) return;
-      const emoji = p.tipo === "bloqueo" ? "🚧" : p.tipo === "derrumbe" ? "⛰️" : "🌊";
+      
+      const emojiMap: Record<string, string> = {
+        bloqueo: "🚧",
+        derrumbe: "⛰️",
+        inundacion: "🌊",
+        piquete: "👮",
+        altercado: "🤜",
+        saqueo: "💔"
+      };
+      const emoji = emojiMap[p.tipo] || "⚠️";
+
       const icon = L.divIcon({
         html: `<div class="custom-marker marker-peligro" data-id="${p.id}">${emoji}</div>`,
         className: "",
@@ -867,12 +1004,24 @@ const isVolunteer = !!voluntario;
     const tipoMap: Record<string, string> = {
       bloqueo: "Bloqueo de vía",
       derrumbe: "Derrumbe",
-      inundacion: "Inundación"
+      inundacion: "Inundación",
+      piquete: "Piquete Policial/Militar",
+      altercado: "Altercado",
+      saqueo: "Saqueo"
     };
+    const emojiMap: Record<string, string> = {
+      bloqueo: "🚧",
+      derrumbe: "⛰️",
+      inundacion: "🌊",
+      piquete: "👮",
+      altercado: "🤜",
+      saqueo: "💔"
+    };
+    const emoji = emojiMap[p.tipo] || "⚠️";
     return `
       <div class="p-3 font-uber-text min-w-[240px]">
         <div class="flex items-center gap-2 mb-2">
-          <span class="text-lg">⚠️</span>
+          <span class="text-lg">${emoji}</span>
           <h4 class="font-bold text-sm text-ink m-0 leading-tight">${tipoMap[p.tipo] || p.tipo}</h4>
         </div>
         <p class="text-xs text-body mb-3">${p.descripcion}</p>
@@ -1088,6 +1237,24 @@ const isVolunteer = !!voluntario;
             </div>
           ` : ""}
 
+          <!-- Personas en esta instalación -->
+          <div class="bg-canvas-soft p-3 rounded-xl border border-canvas-soft">
+            <h4 class="font-bold text-xs text-ink mb-2">👥 Personas Registradas Aquí</h4>
+            <div class="max-h-36 overflow-y-auto no-scrollbar pt-1 space-y-1">
+              ${(() => {
+                const keyId = r.tipo === "hospital" ? "hospital_id" : r.tipo === "centro_acopio" ? "centro_acopio_id" : "refugio_id";
+                const albergados = (dataStore.albergados || []).filter((a: any) => String(a[keyId]) === String(r.id));
+                if (albergados.length === 0) return `<p class="text-xs text-mute italic">Ninguna persona registrada en esta instalación.</p>`;
+                return albergados.map((a: any) => `
+                  <div class="flex justify-between items-center text-xs py-1 border-b border-canvas last:border-b-0">
+                    <span class="font-semibold text-body">${a.nombre}</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${a.estado === 'desaparecido' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">${a.estado}</span>
+                  </div>
+                `).join("");
+              })()}
+            </div>
+          </div>
+
           <div class="space-y-2 bg-canvas-soft p-3 rounded-xl border border-canvas-soft">
             <h4 class="font-bold text-xs text-ink mb-1">Encargado del ${r.tipo === 'hospital' ? 'Hospital' : r.tipo === 'centro_acopio' ? 'Centro de Acopio' : 'Refugio'}</h4>
             <p class="text-xs text-body font-semibold">${r.encargado || "No registrado"}</p>
@@ -1181,7 +1348,15 @@ const isVolunteer = !!voluntario;
       const p = dataStore.peligros.find(x => String(x.id) === String(id));
       if (!p) return;
 
-      sheetTitle.textContent = `Peligro: ${p.tipo}`;
+      const tipoMap: Record<string, string> = {
+        bloqueo: "Bloqueo de vía",
+        derrumbe: "Derrumbe",
+        inundacion: "Inundación",
+        piquete: "Piquete Policial/Militar",
+        altercado: "Altercado",
+        saqueo: "Saqueo"
+      };
+      sheetTitle.textContent = `Peligro: ${tipoMap[p.tipo] || p.tipo}`;
 
       detailView.innerHTML = `
         <div class="space-y-4 font-uber-text">

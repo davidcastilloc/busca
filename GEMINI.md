@@ -37,6 +37,9 @@ Este proyecto es una plataforma para el registro y búsqueda de personas desapar
 4. **Operaciones de Base de Datos Eficientes**
    - Minimizar los roundtrips de red a D1. Para procesamiento masivo de datos, utilizar **`db.batch()`**.
    - **Updates y Respuestas**: NUNCA hacer un `SELECT` después de un `UPDATE` solo para obtener el registro actualizado. Usa siempre `RETURNING *` en la consulta `UPDATE` de SQLite/D1 para obtener la fila modificada en una sola operación milisegundos O(1) y retornarla directamente al cliente.
+   - **Control de Excepciones y Restricciones UNIQUE**:
+      - NUNCA tragues excepciones en un bloque `catch` silencioso ocultando colisiones de clave única u otros errores de la base de datos.
+      - Para validar unicidad (ej. nombres duplicados en tablas con restricciones `UNIQUE`), no hagas un `SELECT` previo de validación. Deja que D1 intente insertar directamente y captura el error de constraint para reportar el código HTTP adecuado (ej. 409 o 400). Pon a D1 a trabajar para nosotros en lugar de duplicar consultas.
 
 5. **Filosofía "Lazy Engineer" & Ponytail Style**
    - **Escribir menos**: Solo código estrictamente necesario (YAGNI).

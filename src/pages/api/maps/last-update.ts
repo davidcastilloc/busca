@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 
 export const prerender = false;
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async ({ request }) => {
   try {
     const { DB } = env;
     if (!DB) throw new Error("Base de datos no disponible");
@@ -29,6 +29,12 @@ export const GET: APIRoute = async () => {
           maxDate = val;
         }
       }
+    }
+
+    const url = new URL(request.url);
+    const since = url.searchParams.get("since");
+    if (since && maxDate === since) {
+      return new Response(null, { status: 204 });
     }
 
     return new Response(

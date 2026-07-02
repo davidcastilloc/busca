@@ -23,27 +23,11 @@ export const POST: APIRoute = async (context) => {
     const validated = PersonaSchema.parse(body);
     validated.created_by = voluntario.id;
 
-    if (import.meta.env.DEV) {
-      const { procesarCola } = await import("../../lib/queue-processor");
-      const mockBatch = {
-        messages: [{
-          body: {
-            type: "persona",
-            data: validated
-          },
-          ack: () => {}
-        }]
-      };
-      await procesarCola(mockBatch as any, env);
-    } else {
-      await env.CENSO_QUEUE.send({
-        type: "persona",
-        data: validated
-      });
-    }
+    const { upsertPersona } = await import("../../lib/db");
+    await upsertPersona(DB, validated);
 
-    return new Response(JSON.stringify({ success: true, message: "Registro encolado" }), {
-      status: 202,
+    return new Response(JSON.stringify({ success: true, message: "Persona registrada exitosamente" }), {
+      status: 201,
       headers: { "Content-Type": "application/json" }
     });
   } catch (error: any) {

@@ -157,21 +157,17 @@ export const GET: APIRoute = async () => {
       en_camino: n.en_camino || 0
     }));
 
-    // 3. Obtener personas con coords o asociadas a refugios
+    // 3. Obtener personas con coordenadas independientes (fuera de refugios, hospitales o centros)
     const personasRes = await DB.prepare(`
       SELECT p.id, p.nombre, p.apellido, 
-             COALESCE(p.latitud, ref.latitud, hosp.latitud, acop.latitud) as latitud, 
-             COALESCE(p.longitud, ref.longitud, hosp.longitud, acop.longitud) as longitud, 
+             p.latitud, p.longitud, 
              p.estado, p.refugio, p.contacto, p.notas
       FROM personas p
-      LEFT JOIN refugios ref ON p.refugio_id = ref.id OR p.refugio = ref.nombre
-      LEFT JOIN hospitales hosp ON p.hospital_id = hosp.id
-      LEFT JOIN centros_acopio acop ON p.centro_acopio_id = acop.id
-      WHERE (p.latitud IS NOT NULL AND p.longitud IS NOT NULL)
-         OR (p.refugio_id IS NOT NULL AND ref.latitud IS NOT NULL AND ref.longitud IS NOT NULL)
-         OR (p.hospital_id IS NOT NULL AND hosp.latitud IS NOT NULL AND hosp.longitud IS NOT NULL)
-         OR (p.centro_acopio_id IS NOT NULL AND acop.latitud IS NOT NULL AND acop.longitud IS NOT NULL)
-         OR (p.refugio IS NOT NULL AND ref.latitud IS NOT NULL AND ref.longitud IS NOT NULL)
+      WHERE p.latitud IS NOT NULL AND p.longitud IS NOT NULL
+        AND p.refugio_id IS NULL
+        AND p.refugio IS NULL
+        AND p.hospital_id IS NULL
+        AND p.centro_acopio_id IS NULL
     `).all<PersonaRaw>();
 
     const personas = (personasRes.results || []).map((p) => ({
@@ -200,13 +196,32 @@ export const GET: APIRoute = async () => {
       lng: p.longitud
     }));
 
+    // 5. Obtener personas albergadas en instalaciones (para listar en popup del refugio/hospital/centro)
+    const albergadosRes = await DB.prepare(`
+      SELECT id, nombre, apellido, estado, refugio_id, hospital_id, centro_acopio_id
+      FROM personas
+      WHERE refugio_id IS NOT NULL 
+         OR hospital_id IS NOT NULL 
+         OR centro_acopio_id IS NOT NULL
+    `).all<{ id: number; nombre: string; apellido: string | null; estado: string; refugio_id: number | null; hospital_id: number | null; centro_acopio_id: number | null }>();
+
+    const albergados = (albergadosRes.results || []).map((a) => ({
+      id: a.id,
+      nombre: `${a.nombre} ${a.apellido || ""}`.trim(),
+      estado: a.estado || "desconocido",
+      refugio_id: a.refugio_id,
+      hospital_id: a.hospital_id,
+      centro_acopio_id: a.centro_acopio_id
+    }));
+
     return new Response(
       JSON.stringify({
         success: true,
         refugios,
         necesidades,
         personas,
-        peligros
+        peligros,
+        albergados
       }),
       {
         status: 200,

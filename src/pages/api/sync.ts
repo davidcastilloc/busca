@@ -25,6 +25,9 @@ export const POST: APIRoute = async (context) => {
     let count = 0;
     const errors: string[] = [];
 
+    const { upsertPersona } = await import("../../lib/db");
+    const { crearReporteUnificado } = await import("../../lib/reporte-service");
+
     for (const item of body) {
       try {
         const { type, data } = item;
@@ -34,29 +37,32 @@ export const POST: APIRoute = async (context) => {
             continue;
           }
           const validated = PersonaSchema.parse(data);
-          await env.CENSO_QUEUE.send({ type, data: validated });
+          validated.created_by = voluntario.id;
+          await upsertPersona(DB, validated);
           count++;
-        } else if (type === "reporte") {
-          const validated = ReporteSchema.parse(data);
-          await env.CENSO_QUEUE.send({ type, data: validated });
-          count++;
-        } else if (type === "necesidad") {
-          const { NecesidadSchema } = await import("../../lib/validators");
-          const validated = NecesidadSchema.parse(data);
-          // Insertamos directo a D1 o la cola? Mejor mandarlo a API de necesidades en vez de la cola porque la cola es para AI y reportes complejos
-          const req = new Request("http://localhost/api/necesidades", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(validated)
-          });
-          const { POST } = await import("./necesidades");
-          await POST({ request: req } as any);
-          count++;
+        } else if (type === "reporte" || type === "necesidad") {
+          const payload = { 
+            ...data, 
+            tipo: type === "necesidad" ? "necesidad" : (data.tipo || "refugio") 
+          };
+          const cfContext = context.locals.cfContext || context.locals.runtime?.ctx;
+          const result = await crearReporteUnificado(
+            DB, 
+            payload, 
+            voluntario ? voluntario.id : null, 
+            env, 
+            cfContext
+          );
+          if (result.success) {
+            count++;
+          } else {
+            errors.push(`Error sincronizando ${type}: ${result.message}`);
+          }
         } else {
           errors.push(`Tipo de registro no soportado: ${type}`);
         }
       } catch (err: any) {
-        errors.push(`Error validando registro: ${err.message}`);
+        errors.push(`Error validando/guardando registro: ${err.message}`);
       }
     }
 

@@ -61,22 +61,11 @@
 	"queues": {
 		"producers": [
 			{
-				"queue": "censo-queue",
-				"binding": "CENSO_QUEUE"
-			},
-			{
 				"queue": "push-queue",
 				"binding": "PUSH_QUEUE"
 			}
 		],
 		"consumers": [
-			{
-				"queue": "censo-queue",
-				"max_batch_size": 25,
-				"max_batch_timeout": 15,
-				"max_retries": 3,
-				"dead_letter_queue": "censo-dlq"
-			},
 			{
 				"queue": "push-queue",
 				"max_batch_size": 10,
