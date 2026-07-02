@@ -322,7 +322,7 @@ export async function processTelegramUpdate(
           await db.prepare(`
             UPDATE reportes 
             SET estado_reporte = 'archivado',
-                verificacion = 'rechazado',
+                verificacion = 'ninguna',
                 updated_at = datetime('now')
             WHERE id = ?
           `).bind(reporteId).run();
