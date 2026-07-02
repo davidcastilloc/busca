@@ -11,7 +11,7 @@ const { class: className = "", url, text, buttonText } = Astro.props;
 // ID único para el modal
 const modalId = `share_modal_${Math.random().toString(36).substring(2, 9)}`;
 ---
-<div class="contents" data-share-url={url} data-share-text={text}>
+<div class="contents" data-share-container data-share-url={url} data-share-text={text}>
   <button 
     type="button" 
     class={`btn-share-trigger btn ${className || (buttonText ? "btn-sm btn-outline rounded-full font-semibold" : "btn-sm btn-outline btn-circle")} flex items-center justify-center gap-1.5 cursor-pointer`} 
@@ -88,7 +88,7 @@ const modalId = `share_modal_${Math.random().toString(36).substring(2, 9)}`;
       const modal = document.getElementById(targetId) as HTMLDialogElement;
       if (!modal) return;
 
-      const container = btn.closest('[data-share-url]');
+      const container = btn.closest('[data-share-container]');
       if (!container) return;
 
       const customText = container.getAttribute('data-share-text');
