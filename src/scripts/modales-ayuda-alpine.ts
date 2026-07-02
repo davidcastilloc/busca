@@ -5,6 +5,15 @@ document.addEventListener('alpine:init', () => {
     openCamino: false,
     openAtendida: false,
     
+    // Estado del Toast Premium
+    toast: {
+      show: false,
+      type: 'success',
+      icon: '🚗',
+      title: '¡En camino!',
+      message: 'Tu apoyo para esta necesidad ha sido registrado.'
+    },
+    
     necesidadId: null as number | null,
     refugioId: null as number | null,
     centroAcopioId: null as number | null,
@@ -29,6 +38,19 @@ document.addEventListener('alpine:init', () => {
       });
     },
 
+    showToast(type: 'success' | 'error', icon: string, title: string, message: string) {
+      this.toast.type = type;
+      this.toast.icon = icon;
+      this.toast.title = title;
+      this.toast.message = message;
+      this.toast.show = true;
+      
+      // Ocultar automáticamente en 4 segundos
+      setTimeout(() => {
+        this.toast.show = false;
+      }, 4000);
+    },
+
     async confirmarCamino() {
       if (!this.necesidadId) return;
       try {
@@ -43,14 +65,14 @@ document.addEventListener('alpine:init', () => {
           })
         });
         if (resp.ok) {
-          alert("¡Gracias! Tu apoyo en camino ha sido registrado.");
+          this.showToast('success', '🚗', '¡En camino!', 'Tu apoyo para esta necesidad ha sido registrado.');
           this.openCamino = false;
           window.dispatchEvent(new CustomEvent('reload-map-data', { detail: { necesidadId: this.necesidadId } }));
         } else {
-          alert("Error al registrar el apoyo.");
+          this.showToast('error', '❌', 'Error', 'No se pudo registrar tu apoyo en camino.');
         }
       } catch (e) {
-        alert("Error de red.");
+        this.showToast('error', '📡', 'Error de red', 'No se pudo conectar con el servidor.');
       }
     },
 
@@ -63,14 +85,14 @@ document.addEventListener('alpine:init', () => {
           body: JSON.stringify({ estado: "atendida" })
         });
         if (resp.ok) {
-          alert("✓ Necesidad marcada como atendida con éxito.");
+          this.showToast('success', '✅', '¡Necesidad atendida!', 'La necesidad ha sido resuelta y archivada.');
           this.openAtendida = false;
           window.dispatchEvent(new CustomEvent('reload-map-data-atendida', { detail: { necesidadId: this.necesidadId } }));
         } else {
-          alert("Error al actualizar la necesidad.");
+          this.showToast('error', '❌', 'Error', 'No se pudo actualizar el estado de la necesidad.');
         }
       } catch (e) {
-        alert("Error de red.");
+        this.showToast('error', '📡', 'Error de red', 'No se pudo conectar con el servidor.');
       }
     }
   }));
