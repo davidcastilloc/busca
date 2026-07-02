@@ -1375,7 +1375,7 @@ const isDev = import.meta.env.DEV;
           ${n.estado === 'abierta' ? `
             <div class="bg-blue-50 border border-blue-100 p-3 rounded-xl flex flex-col gap-2">
               <div class="flex justify-between items-center text-xs">
-                <span class="text-blue-800 font-medium">👥 ${n.en_camino} en camino</span>
+                <span id="det-necesidad-en-camino" class="text-blue-800 font-medium">👥 ${n.en_camino} en camino</span>
                 <button onclick="window._voyEnCamino(${n.id}, ${n.refugio_id || 'null'}, ${n.centro_acopio_id || 'null'}, ${n.hospital_id || 'null'})" class="btn btn-xs bg-primary text-white border-none hover:bg-black-elevated font-uber-text font-bold cursor-pointer">🚗 Voy en camino</button>
               </div>
               ${isVolunteer ? `
@@ -1759,8 +1759,34 @@ const isDev = import.meta.env.DEV;
 
     window.addEventListener('reload-map-data', async (e: any) => {
       const necesidadId = e.detail.necesidadId;
-      await fetchUnifiedData();
-      showEntityDetail("necesidad", String(necesidadId));
+      
+      // 1. Actualización de interfaz optimista inmediata (sin recargar ni esperar fetch)
+      const n = dataStore.necesidades.find((x: any) => String(x.id) === String(necesidadId));
+      if (n) {
+        n.en_camino = (n.en_camino || 0) + 1;
+        
+        // Actualizar el texto del panel lateral directamente si está abierto
+        const spanEl = document.getElementById("det-necesidad-en-camino");
+        if (spanEl) {
+          spanEl.textContent = `👥 ${n.en_camino} en camino`;
+        }
+        
+        // Actualizar el popup del marcador en el mapa
+        const markerKey = `necesidad-${necesidadId}`;
+        const marker = markers.get(markerKey);
+        if (marker) {
+          marker.setPopupContent(buildNecesidadPopupHtml(n));
+        }
+      }
+
+      // 2. Sincronizar en segundo plano con el servidor
+      try {
+        await fetchUnifiedData();
+        // Volver a renderizar detalles con datos confirmados del servidor
+        showEntityDetail("necesidad", String(necesidadId));
+      } catch (err) {
+        console.error("Error al sincronizar datos tras registrar camino:", err);
+      }
     });
 
     window.addEventListener('reload-map-data-atendida', async (e: any) => {
