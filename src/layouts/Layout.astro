@@ -29,14 +29,14 @@ const {
     <ClientRouter />
 
     <!-- Telegram WebApp SDK -->
-    <script is:inline src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script is:inline defer src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <!-- Leaflet y MarkerCluster (Carga única global para evitar colisiones) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
-    <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-    <script is:inline src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js" crossorigin=""></script>
+    <script is:inline defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script is:inline defer src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js" crossorigin=""></script>
 
     <!-- SEO Meta Tags -->
     <title>{title}</title>
@@ -76,6 +76,7 @@ const {
       import "../scripts/form-reporte-alpine";
       import "../scripts/refugio-card-alpine";
       import "../scripts/modales-ayuda-alpine";
+      import "../scripts/buscador-alpine";
 
       document.addEventListener('astro:before-preparation', () => {
         const loader = document.getElementById('global-loader');

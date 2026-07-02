@@ -1,7 +1,7 @@
 ---
 ---
 
-<div class="w-full max-w-3xl mx-auto px-2 py-2 sm:py-4">
+<div class="w-full max-w-3xl mx-auto px-2 py-2 sm:py-4" x-data="buscadorComponent">
 
   <!-- Stats en vivo -->
   <div id="stats-bar" class="flex justify-center gap-4 sm:gap-8 mb-4">
@@ -9,7 +9,7 @@
       <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-mute mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
       </svg>
-      <div id="stat-total" class="font-uber-display text-2xl sm:text-3xl text-ink tabular-nums leading-none mt-1">—</div>
+      <div class="font-uber-display text-2xl sm:text-3xl text-ink tabular-nums leading-none mt-1" x-text="statsTotal">—</div>
       <div class="text-[10px] text-mute font-uber-text font-medium uppercase tracking-wider mt-1">Registrados</div>
     </div>
     <div class="w-px bg-canvas-soft"></div>
@@ -17,7 +17,7 @@
       <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-600 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
       </svg>
-      <div id="stat-activos" class="font-uber-display text-2xl sm:text-3xl text-red-600 tabular-nums leading-none mt-1">—</div>
+      <div class="font-uber-display text-2xl sm:text-3xl text-red-600 tabular-nums leading-none mt-1" x-text="statsActivos">—</div>
       <div class="text-[10px] text-mute font-uber-text font-medium uppercase tracking-wider mt-1">Sin contacto</div>
     </div>
     <div class="w-px bg-canvas-soft"></div>
@@ -25,14 +25,14 @@
       <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-green-600 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
-      <div id="stat-localizados" class="font-uber-display text-2xl sm:text-3xl text-green-600 tabular-nums leading-none mt-1">—</div>
+      <div class="font-uber-display text-2xl sm:text-3xl text-green-600 tabular-nums leading-none mt-1" x-text="statsLocalizados">—</div>
       <div class="text-[10px] text-mute font-uber-text font-medium uppercase tracking-wider mt-1">Localizados</div>
     </div>
   </div>
 
   <!-- Buscador principal -->
   <div id="panel-exact" class="bg-canvas border border-canvas-soft p-4 sm:p-6 rounded-xl shadow-sm">
-    <form id="form-search-exact" class="space-y-3">
+    <form @submit.prevent="realizarBusqueda()" class="space-y-3">
       <div class="flex flex-row items-center gap-2 relative">
         <div class="relative flex-grow min-w-0">
           <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-mute pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -40,80 +40,101 @@
           </svg>
           <input 
             type="text" 
-            id="query-exact"
+            x-model="query"
             autocomplete="off"
-            autofocus
             class="w-full h-11 font-uber-text text-sm bg-canvas-soft border border-transparent text-ink placeholder:text-mute focus:border-ink focus:bg-canvas focus:shadow-sm transition-all duration-200 pl-9 pr-3 outline-none rounded-full" 
             placeholder="Nombre, Cédula o Describe..." 
           />
         </div>
-        <button id="btn-buscar" type="submit" class="bg-primary text-white hover:bg-black-elevated w-11 h-11 rounded-full transition-transform active:scale-[0.98] flex items-center justify-center shrink-0 cursor-pointer p-0" aria-label="Buscar">
-          <svg id="btn-buscar-icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <button type="submit" :disabled="isSearching" class="bg-primary text-white hover:bg-black-elevated w-11 h-11 rounded-full transition-transform active:scale-[0.98] flex items-center justify-center shrink-0 cursor-pointer p-0" aria-label="Buscar">
+          <svg x-show="!isSearching" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <span id="btn-buscar-spinner" class="loading loading-spinner loading-xs hidden"></span>
+          <span x-show="isSearching" class="loading loading-spinner loading-xs"></span>
         </button>
       </div>
 
       <!-- Botón buscar por foto -->
       <div class="flex items-center gap-2">
-        <button type="button" id="btn-foto-search" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer">
+        <button type="button" @click="$refs.fotoSearchInput.click()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-body" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           <span>Buscar con foto</span>
         </button>
-        <input type="file" id="foto-search-input" accept="image/*" capture="environment" class="hidden" />
-        <span id="foto-search-status" class="text-[10px] text-mute font-uber-text italic hidden"></span>
+        <input type="file" x-ref="fotoSearchInput" @change="buscarConFoto" accept="image/*" capture="environment" class="hidden" />
+        <span x-show="isSearching && !query" class="text-[10px] text-mute font-uber-text italic">Procesando imagen con IA...</span>
       </div>
     </form>
   </div>
 
   <!-- Estado vacío: historial -->
-  <div id="empty-state" class="mt-6 space-y-4">
+  <div class="mt-6 space-y-4" x-show="historial.length > 0 && !query && searchResults.length === 0">
     <!-- Búsquedas recientes -->
-    <div id="historial-container" class="hidden">
+    <div>
       <p class="text-[10px] text-mute font-uber-text font-medium uppercase tracking-wider mb-2 flex items-center gap-1">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-mute" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         Búsquedas recientes
       </p>
-      <div id="historial-chips" class="flex flex-wrap gap-2">
-        <!-- Chips inyectados por JS -->
+      <div class="flex flex-wrap gap-2">
+        <template x-for="q in historial" :key="q">
+          <button 
+            type="button" 
+            @click="clickHistorial(q)"
+            class="historial-chip px-3 py-1.5 rounded-full bg-canvas-soft text-ink text-xs font-uber-text font-medium border border-canvas-soft hover:bg-surface-pressed transition-colors cursor-pointer" 
+            x-text="q"
+          ></button>
+        </template>
       </div>
     </div>
   </div>
 
   <!-- Filtros de estado (aparecen post-búsqueda) -->
-  <div id="filter-state-bar" class="hidden flex flex-wrap gap-2 justify-start mt-6 mb-2 border-b border-canvas-soft pb-3">
-    <button id="btn-filter-all" class="px-4 py-1.5 rounded-full bg-primary text-white font-uber-text text-xs font-semibold transition-colors cursor-pointer">
+  <div x-show="searchResults.length > 0" class="flex flex-wrap gap-2 justify-start mt-6 mb-2 border-b border-canvas-soft pb-3">
+    <button 
+      @click="subTab = 'todos'"
+      :class="subTab === 'todos' ? 'bg-primary text-white' : 'bg-canvas-soft text-ink hover:bg-surface-pressed'" 
+      class="px-4 py-1.5 rounded-full font-uber-text text-xs font-semibold transition-colors cursor-pointer"
+    >
       Todos
     </button>
-    <button id="btn-filter-nocontact" class="px-4 py-1.5 rounded-full bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text text-xs font-semibold transition-colors cursor-pointer">
+    <button 
+      @click="subTab = 'sin_contacto'"
+      :class="subTab === 'sin_contacto' ? 'bg-primary text-white' : 'bg-canvas-soft text-ink hover:bg-surface-pressed'" 
+      class="px-4 py-1.5 rounded-full font-uber-text text-xs font-semibold transition-colors cursor-pointer"
+    >
       Sin contacto
     </button>
-    <button id="btn-filter-located" class="px-4 py-1.5 rounded-full bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text text-xs font-semibold transition-colors cursor-pointer">
+    <button 
+      @click="subTab = 'localizados'"
+      :class="subTab === 'localizados' ? 'bg-primary text-white' : 'bg-canvas-soft text-ink hover:bg-surface-pressed'" 
+      class="px-4 py-1.5 rounded-full font-uber-text text-xs font-semibold transition-colors cursor-pointer"
+    >
       Localizados
     </button>
     <span class="w-px bg-canvas-soft mx-1 self-stretch"></span>
-    <button id="btn-toggle-advanced-filters" class="px-3 py-1.5 rounded-full bg-canvas-soft text-mute hover:bg-surface-pressed font-uber-text text-xs font-medium transition-colors cursor-pointer flex items-center gap-1">
+    <button 
+      @click="showAdvanced = !showAdvanced"
+      class="px-3 py-1.5 rounded-full bg-canvas-soft text-mute hover:bg-surface-pressed font-uber-text text-xs font-medium transition-colors cursor-pointer flex items-center gap-1"
+    >
       <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-mute" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
       </svg>
-      <span>Más filtros</span>
+      <span x-text="showAdvanced ? 'Menos filtros' : 'Más filtros'">Más filtros</span>
     </button>
   </div>
 
   <!-- Filtros avanzados expandibles -->
-  <div id="advanced-filters" class="hidden flex flex-wrap gap-2 mb-4">
-    <select id="filter-sexo" class="select select-xs bg-canvas-soft border-canvas-soft text-ink font-uber-text rounded-full px-3">
+  <div x-show="showAdvanced" class="flex flex-wrap gap-2 mb-4">
+    <select x-model="filterSexo" class="select select-xs bg-canvas-soft border-canvas-soft text-ink font-uber-text rounded-full px-3">
       <option value="">Sexo</option>
       <option value="M">Masculino</option>
       <option value="F">Femenino</option>
     </select>
-    <select id="filter-edad" class="select select-xs bg-canvas-soft border-canvas-soft text-ink font-uber-text rounded-full px-3">
+    <select x-model="filterEdad" class="select select-xs bg-canvas-soft border-canvas-soft text-ink font-uber-text rounded-full px-3">
       <option value="">Edad</option>
       <option value="0-12">0-12 años</option>
       <option value="13-17">13-17 años</option>
@@ -125,15 +146,93 @@
   </div>
 
   <!-- Resultados de búsqueda -->
-  <div id="results-loader" class="hidden flex justify-center py-10">
+  <div x-show="isSearching && searchResults.length === 0" class="flex justify-center py-10">
     <span class="loading loading-spinner loading-lg text-primary"></span>
   </div>
 
-  <div id="results-header" class="hidden font-uber-text uber-body-md-strong text-body mt-8 mb-4"></div>
-  <div id="results-container" class="space-y-4"></div>
+  <div 
+    x-show="resultadosFiltrados.length > 0 && !isSearching" 
+    class="font-uber-text uber-body-md-strong text-body mt-8 mb-4"
+    x-text="resultadosFiltrados.length + ' resultados encontrados:'"
+  ></div>
+
+  <div class="space-y-4">
+    <template x-for="item in resultadosFiltrados" :key="item._source + '-' + item.id">
+      <div 
+        @click="abrirDetalle(item.id, item._source)"
+        class="cv-auto bg-canvas border border-canvas-soft rounded-xl shadow-sm flex flex-col sm:flex-row overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98]"
+      >
+        <!-- Imagen -->
+        <template x-if="item.foto_key">
+          <figure class="w-full aspect-[4/3] sm:aspect-auto sm:w-36 sm:self-stretch shrink-0 bg-canvas-soft flex items-center justify-center overflow-hidden">
+            <img :src="'/api/upload?key=' + encodeURIComponent(item.foto_key)" alt="Foto" class="w-full h-full object-contain" loading="lazy" decoding="async" />
+          </figure>
+        </template>
+        <template x-if="!item.foto_key">
+          <div 
+            class="w-full aspect-[4/3] sm:aspect-auto sm:w-36 sm:self-stretch shrink-0 bg-canvas-soft flex items-center justify-center text-4xl text-mute"
+            x-text="item._source === 'persona' ? '👤' : '📢'"
+          ></div>
+        </template>
+
+        <!-- Contenido -->
+        <div class="p-4 flex flex-col justify-between flex-grow min-w-0">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <h2 
+                class="font-uber-display text-lg text-ink truncate"
+                x-text="item._source === 'persona' ? item.nombre + ' ' + (item.apellido || '') : (item.nombre_buscado || 'Sin identificar')"
+              ></h2>
+              <div 
+                class="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-uber-text font-medium shrink-0 border"
+                :class="item._source === 'persona' ? getEstadoConfig(item.estado, item.verificacion).badge : getTipoConfig(item.tipo, item.verificacion).badge"
+              >
+                <span 
+                  class="w-1.5 h-1.5 rounded-full"
+                  :class="item._source === 'persona' ? getEstadoConfig(item.estado, item.verificacion).dot : getTipoConfig(item.tipo, item.verificacion).dot"
+                ></span>
+                <span x-text="item._source === 'persona' ? getEstadoConfig(item.estado, item.verificacion).text : getTipoConfig(item.tipo, item.verificacion).text"></span>
+              </div>
+            </div>
+
+            <!-- Score Match IA -->
+            <div 
+              x-show="item.score" 
+              class="text-xs font-uber-text font-medium bg-primary text-white px-2 py-0.5 rounded-full inline-block mb-1"
+              x-text="'🎯 ' + Math.round(item.score * 100) + '% match'"
+            ></div>
+
+            <!-- Datos Persona -->
+            <template x-if="item._source === 'persona'">
+              <div class="text-sm text-body font-uber-text space-y-0.5">
+                <div x-show="item.refugio" x-text="'📍 ' + item.refugio"></div>
+                <div x-show="item.ubicacion_nombre" x-text="'📍 ' + item.ubicacion_nombre"></div>
+                <div x-show="item.edad" x-text="item.edad + ' años' + (item.sexo && item.sexo !== 'X' ? ' · ' + (item.sexo === 'M' ? 'Masculino' : 'Femenino') : '')"></div>
+                
+                <button 
+                  x-show="item.estado === 'desconocido'" 
+                  @click.stop="modalDetailData = item; modalDetailTipo = 'persona'; abrirReporteRapido()"
+                  class="btn-localizar-persona btn btn-sm bg-canvas-soft hover:bg-surface-pressed border border-ink/15 text-ink font-uber-text text-xs font-semibold mt-2 self-start rounded-full transition-transform active:scale-[0.98] cursor-pointer flex items-center gap-1.5 px-3 py-1"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                  Marcar localizado
+                </button>
+              </div>
+            </template>
+
+            <!-- Datos Reporte -->
+            <template x-if="item._source !== 'persona'">
+              <p class="text-sm text-body font-uber-text line-clamp-2" x-text="item.descripcion || ''"></p>
+            </template>
+          </div>
+          <div class="text-[11px] text-mute mt-2 font-uber-text" x-text="formatFechaLocal(item.updated_at)"></div>
+        </div>
+      </div>
+    </template>
+  </div>
   
   <!-- Sin resultados CTA -->
-  <div id="no-results-cta" class="hidden text-center py-8 space-y-3">
+  <div x-show="resultadosFiltrados.length === 0 && searchResults.length > 0 && !isSearching" class="text-center py-8 space-y-3">
     <div class="text-4xl">🔍</div>
     <p class="font-uber-text uber-body-md-strong text-ink">No se encontraron coincidencias</p>
     <p class="text-sm text-body font-uber-text">Intenta con menos palabras o datos diferentes</p>
@@ -143,200 +242,437 @@
   </div>
 
   <!-- Sentinel para scroll infinito -->
-  <div id="scroll-sentinel" class="hidden justify-center py-6">
+  <div id="scroll-sentinel" x-show="hasMore" class="flex justify-center py-6">
     <span class="loading loading-spinner text-primary"></span>
   </div>
-</div>
 
-<!-- ═══════════════════════════════════════════════════════
-     MODAL FULLSCREEN DE DETALLE
-     ═══════════════════════════════════════════════════════ -->
-<div id="modal-detalle" class="fixed inset-0 z-[100] bg-black/60 hidden" style="backdrop-filter:blur(4px)">
-  <div class="absolute inset-0 sm:inset-4 md:inset-8 bg-canvas rounded-none sm:rounded-2xl overflow-y-auto overscroll-contain flex flex-col">
-    <!-- Header fijo -->
-    <div class="sticky top-0 z-10 bg-canvas/95 border-b border-canvas-soft px-4 py-3 flex items-center justify-between" style="backdrop-filter:blur(8px)">
-      <span id="modal-tipo-badge" class="text-xs font-uber-text font-medium px-3 py-1 rounded-full"></span>
-      <button id="modal-close" class="w-10 h-10 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors text-lg cursor-pointer active:bg-surface-pressed">✕</button>
-    </div>
+  <!-- ═══════════════════════════════════════════════════════
+       MODAL FULLSCREEN DE DETALLE
+       ═══════════════════════════════════════════════════════ -->
+  <div 
+    x-show="modalDetalleOpen" 
+    x-transition.opacity
+    class="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center" 
+    style="backdrop-filter:blur(4px); display: none;"
+    @click.self="cerrarModalDetalle()"
+  >
+    <div class="absolute inset-0 sm:inset-4 md:inset-8 bg-canvas rounded-none sm:rounded-2xl overflow-y-auto overscroll-contain flex flex-col max-w-4xl mx-auto shadow-2xl">
+      <template x-if="modalDetailData">
+        <div class="flex flex-col w-full h-full min-h-0">
+          <!-- Header fijo -->
+          <div class="sticky top-0 z-10 bg-canvas/95 border-b border-canvas-soft px-4 py-3 flex items-center justify-between" style="backdrop-filter:blur(8px)">
+            <span 
+              class="text-xs font-uber-text font-medium px-3 py-1 rounded-full border"
+              :class="modalDetailTipo === 'persona' ? getEstadoConfig(modalDetailData.estado, modalDetailData.verificacion).badge : getTipoConfig(modalDetailData.tipo, modalDetailData.verificacion).badge"
+            >
+              <span 
+                class="inline-block w-1.5 h-1.5 rounded-full mr-1"
+                :class="modalDetailTipo === 'persona' ? getEstadoConfig(modalDetailData.estado, modalDetailData.verificacion).dot : getTipoConfig(modalDetailData.tipo, modalDetailData.verificacion).dot"
+              ></span>
+              <span x-text="modalDetailTipo === 'persona' ? getEstadoConfig(modalDetailData.estado, modalDetailData.verificacion).text : getTipoConfig(modalDetailData.tipo, modalDetailData.verificacion).text"></span>
+            </span>
+            <button @click="cerrarModalDetalle()" class="w-10 h-10 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors text-lg cursor-pointer active:bg-surface-pressed">✕</button>
+          </div>
 
-    <!-- Contenido scrolleable -->
-    <div id="modal-body" class="flex-grow p-4 sm:p-6 pb-32">
-      <!-- Se llena dinámicamente -->
-    </div>
+          <!-- Contenido scrolleable -->
+          <div class="flex-grow p-4 sm:p-6 pb-32 overflow-y-auto min-h-0">
+            <div class="space-y-5 max-w-lg mx-auto">
+              <!-- Foto -->
+              <template x-if="modalDetailData.foto_key">
+                <img :src="'/api/upload?key=' + encodeURIComponent(modalDetailData.foto_key)" alt="Foto" class="w-full max-h-[50vh] object-contain rounded-xl bg-canvas-soft" fetchpriority="high" decoding="async" />
+              </template>
+              <template x-if="!modalDetailData.foto_key">
+                <div class="w-full h-48 bg-canvas-soft rounded-xl flex items-center justify-center text-6xl text-mute" x-text="modalDetailTipo === 'persona' ? '👤' : '📢'"></div>
+              </template>
 
-    <!-- Barra de acciones fija abajo -->
-    <div id="modal-actions" class="sticky bottom-0 bg-canvas border-t border-canvas-soft p-4 flex flex-wrap gap-2">
-      <!-- Se llena dinámicamente -->
+              <!-- Titulo -->
+              <div>
+                <h1 
+                  class="font-uber-display text-2xl text-ink mb-1"
+                  x-text="modalDetailTipo === 'persona' ? modalDetailData.nombre + ' ' + (modalDetailData.apellido || '') : (modalDetailData.nombre_buscado || 'Persona no identificada')"
+                ></h1>
+                <div 
+                  x-show="modalDetailData.score" 
+                  class="text-xs font-uber-text font-medium bg-primary text-white px-2.5 py-1 rounded-full inline-block"
+                  x-text="'🎯 Coincidencia: ' + Math.round(modalDetailData.score * 100) + '%'"
+                ></div>
+              </div>
+
+              <!-- Campos de Datos -->
+              <div class="grid grid-cols-1 gap-0 divide-y divide-canvas-soft bg-canvas-soft rounded-xl overflow-hidden">
+                <!-- Persona -->
+                <template x-if="modalDetailTipo === 'persona'">
+                  <div>
+                    <div class="px-4 py-3 flex justify-between items-center" x-show="modalDetailData.cedula">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Documento</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="modalDetailData.cedula"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center" x-show="modalDetailData.edad">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Edad</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="modalDetailData.edad + ' años'"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center" x-show="modalDetailData.sexo">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Sexo</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="modalDetailData.sexo === 'M' ? 'Masculino' : modalDetailData.sexo === 'F' ? 'Femenino' : 'No especifica'"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center" x-show="modalDetailData.refugio">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Refugio</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="modalDetailData.refugio"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center" x-show="modalDetailData.ubicacion_nombre">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Zona / Sector</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="modalDetailData.ubicacion_nombre"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center" x-show="modalDetailData.contacto">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Contacto</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="modalDetailData.contacto"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center" x-show="modalDetailData.fuente">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Fuente</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="modalDetailData.fuente"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Registrado</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="formatFechaLocal(modalDetailData.created_at)"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Actualizado</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="formatFechaLocal(modalDetailData.updated_at)"></span>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Reporte -->
+                <template x-if="modalDetailTipo === 'reporte'">
+                  <div>
+                    <div class="px-4 py-3 flex justify-between items-center">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Tipo</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="getTipoConfig(modalDetailData.tipo).text"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center" x-show="modalDetailData.cedula_buscado">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Documento</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="modalDetailData.cedula_buscado"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center" x-show="modalDetailData.ubicacion_nombre">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Ubicación</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="modalDetailData.ubicacion_nombre"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center" x-show="modalDetailData.reportante_nombre">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Reportado por</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="modalDetailData.reportante_nombre"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center" x-show="modalDetailData.reportante_contacto">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Contacto</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="modalDetailData.reportante_contacto"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Estado</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="(modalDetailData.estado_reporte || 'abierto').toUpperCase()"></span>
+                    </div>
+                    <div class="px-4 py-3 flex justify-between items-center">
+                      <span class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">Fecha</span>
+                      <span class="text-sm text-ink font-uber-text font-medium text-right" x-text="formatFechaLocal(modalDetailData.created_at)"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <!-- Notas / Descripción -->
+              <div 
+                x-show="modalDetailTipo === 'persona' && (modalDetailData.notas || modalDetailData.notes)" 
+                class="bg-canvas-soft p-4 rounded-xl border-l-3 border-primary"
+              >
+                <div class="text-xs text-mute font-uber-text font-medium mb-1 uppercase tracking-wider">Notas</div>
+                <p class="text-sm text-ink font-uber-text italic" x-text="'&quot;' + (modalDetailData.notas || modalDetailData.notes || '') + '&quot;'"></p>
+              </div>
+              
+              <div 
+                x-show="modalDetailTipo === 'reporte' && modalDetailData.descripcion" 
+                class="bg-canvas-soft p-4 rounded-xl border-l-3 border-primary"
+              >
+                <div class="text-xs text-mute font-uber-text font-medium mb-1 uppercase tracking-wider">Descripción</div>
+                <p class="text-sm text-ink font-uber-text italic" x-text="'&quot;' + modalDetailData.descripcion + '&quot;'"></p>
+              </div>
+
+              <!-- GPS Preview -->
+              <div class="space-y-2" x-show="modalDetailData.latitud && modalDetailData.longitud">
+                <div class="text-xs text-mute font-uber-text font-medium uppercase tracking-wider">📍 Ubicación GPS</div>
+                <div class="rounded-xl overflow-hidden border border-canvas-soft">
+                  <template x-if="modalDetailData.latitud && modalDetailData.longitud && !isNaN(parseFloat(modalDetailData.latitud)) && !isNaN(parseFloat(modalDetailData.longitud))">
+                    <!-- Cargamos tile OSM con las variables latitud/longitud -->
+                    <img 
+                      :src="'https://tile.openstreetmap.org/15/' + Math.floor((parseFloat(modalDetailData.longitud) + 180) / 360 * 32768) + '/' + Math.floor((1 - Math.log(Math.tan(parseFloat(modalDetailData.latitud) * Math.PI / 180) + 1 / Math.cos(parseFloat(modalDetailData.latitud) * Math.PI / 180)) / Math.PI) / 2 * 32768) + '.png'" 
+                      alt="Mapa" class="w-full h-48 object-cover" loading="lazy" 
+                    />
+                  </template>
+                </div>
+                <div class="flex gap-2">
+                  <a 
+                    :href="'https://www.google.com/maps?q=' + modalDetailData.latitud + ',' + modalDetailData.longitud" 
+                    target="_blank" rel="noopener" 
+                    class="btn bg-canvas-soft text-ink flex-1 text-sm font-uber-text"
+                  >
+                    🗺️ Abrir en Google Maps
+                  </a>
+                </div>
+                <div 
+                  class="text-xs text-mute font-uber-text text-center" 
+                  x-text="parseFloat(modalDetailData.latitud).toFixed(6) + ', ' + parseFloat(modalDetailData.longitud).toFixed(6)"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Barra de acciones fija abajo -->
+          <div class="sticky bottom-0 bg-canvas border-t border-canvas-soft p-4 flex flex-wrap gap-2">
+            <!-- Botón Llamar -->
+            <a 
+              x-show="modalDetailData.contacto || modalDetailData.reportante_contacto"
+              :href="'tel:' + (modalDetailData.contacto || modalDetailData.reportante_contacto || '').replace(/[^0-9+]/g, '')" 
+              class="btn bg-canvas-soft text-ink flex-1 min-w-[120px] font-uber-text uber-body-md-strong text-center justify-center items-center flex rounded-full hover:bg-surface-pressed transition-colors cursor-pointer"
+            >Llamar</a>
+            <button 
+              x-show="!(modalDetailData.contacto || modalDetailData.reportante_contacto)"
+              class="btn bg-canvas-soft text-mute flex-1 min-w-[120px] font-uber-text uber-body-md-strong opacity-50 cursor-not-allowed flex items-center justify-center rounded-full" 
+              disabled
+            >Llamar</button>
+
+            <!-- Botón Descargar -->
+            <button 
+              id="btn-descargar-cartel" 
+              @click="descargarCartel()"
+              class="btn bg-canvas-soft text-ink flex-1 min-w-[120px] font-uber-text uber-body-md-strong rounded-full hover:bg-surface-pressed transition-colors cursor-pointer"
+            >Descargar</button>
+
+            <!-- Botón Compartir -->
+            <button 
+              @click="compartirCaso()"
+              class="btn bg-canvas-soft text-ink flex-1 min-w-[120px] font-uber-text uber-body-md-strong rounded-full hover:bg-surface-pressed transition-colors cursor-pointer"
+            >Compartir</button>
+
+            <!-- Botones de Acción de Estado -->
+            <button 
+              x-show="modalDetailTipo === 'reporte' && modalDetailData.estado_reporte !== 'resuelto'" 
+              @click="cerrarModalDetalle(); abrirReporteRapido()"
+              class="btn bg-primary text-white flex-1 min-w-[120px] font-uber-text uber-body-md-strong rounded-full hover:bg-black-elevated transition-colors cursor-pointer"
+            >Marcar encontrado</button>
+
+            <button 
+              x-show="modalDetailTipo === 'persona' && modalDetailData.estado === 'desconocido'" 
+              @click="cerrarModalDetalle(); abrirReporteRapido()"
+              class="btn bg-primary text-white flex-1 min-w-[120px] font-uber-text uber-body-md-strong rounded-full hover:bg-black-elevated transition-colors cursor-pointer"
+            >Marcar localizado</button>
+          </div>
+        </div>
+      </template>
     </div>
   </div>
-</div>
 
-<!-- ═══════════════════════════════════════════════════════
-     DIV OCULTO PARA GENERAR CARTEL "SE BUSCA"
-     ═══════════════════════════════════════════════════════ -->
-<div id="cartel-container" style="position:absolute;left:-9999px;top:-9999px;">
-  <div id="cartel-se-busca" style="width:600px;font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#000;">
-    <!-- Franja superior negra -->
-    <div style="background:#000;color:#fff;padding:16px 24px;text-align:center;">
-      <div style="font-size:12px;letter-spacing:4px;font-weight:500;margin-bottom:4px;">dondeestan.org</div>
-      <div style="font-size:36px;font-weight:700;letter-spacing:2px;">DONDE ESTAN</div>
-    </div>
-    
-    <!-- Foto -->
-    <div id="cartel-foto-wrap" style="width:100%;height:400px;background:#efefef;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;">
-      <img id="cartel-foto" style="position:absolute;" src="" alt="" crossorigin="anonymous" />
-    </div>
-    
-    <!-- Datos -->
-    <div style="padding:20px 24px;">
-      <div id="cartel-nombre" style="font-size:28px;font-weight:700;line-height:1.2;margin-bottom:8px;"></div>
-      <div id="cartel-datos" style="font-size:14px;color:#5e5e5e;margin-bottom:12px;"></div>
-      <div id="cartel-descripcion" style="font-size:15px;line-height:1.5;margin-bottom:16px;border-left:3px solid #000;padding-left:12px;font-style:italic;"></div>
-      <div id="cartel-ubicacion" style="font-size:14px;color:#5e5e5e;"></div>
-    </div>
-    
-    <!-- Franja inferior negra -->
-    <div style="background:#000;color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <div id="cartel-contacto" style="font-size:16px;font-weight:700;"></div>
+  <!-- ═══════════════════════════════════════════════════════
+       DIV OCULTO PARA GENERAR CARTEL "SE BUSCA"
+       ═══════════════════════════════════════════════════════ -->
+  <div id="cartel-container" style="position:absolute;left:-9999px;top:-9999px;">
+    <div id="cartel-se-busca" style="width:600px;font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#000;">
+      <!-- Franja superior negra -->
+      <div style="background:#000;color:#fff;padding:16px 24px;text-align:center;">
+        <div style="font-size:12px;letter-spacing:4px;font-weight:500;margin-bottom:4px;">dondeestan.org</div>
+        <div style="font-size:36px;font-weight:700;letter-spacing:2px;">DONDE ESTAN</div>
       </div>
-      <div style="font-size:11px;opacity:0.7;text-align:right;">
-        <div>dondeestan.org</div>
-        <div>dondeestan.org</div>
+      
+      <!-- Foto -->
+      <div id="cartel-foto-wrap" style="width:100%;height:400px;background:#efefef;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;">
+        <img id="cartel-foto" style="position:absolute;" src="" alt="" crossorigin="anonymous" />
+      </div>
+      
+      <!-- Datos -->
+      <div style="padding:20px 24px;">
+        <div id="cartel-nombre" style="font-size:28px;font-weight:700;line-height:1.2;margin-bottom:8px;"></div>
+        <div id="cartel-datos" style="font-size:14px;color:#5e5e5e;margin-bottom:12px;"></div>
+        <div id="cartel-descripcion" style="font-size:15px;line-height:1.5;margin-bottom:16px;border-left:3px solid #000;padding-left:12px;font-style:italic;"></div>
+        <div id="cartel-ubicacion" style="font-size:14px;color:#5e5e5e;"></div>
+      </div>
+      
+      <!-- Franja inferior negra -->
+      <div style="background:#000;color:#fff;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div id="cartel-contacto" style="font-size:16px;font-weight:700;"></div>
+        </div>
+        <div style="font-size:11px;opacity:0.7;text-align:right;">
+          <div>dondeestan.org</div>
+          <div>dondeestan.org</div>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- Mini formulario de reporte rápido (hidden) -->
-<div id="modal-reporte-rapido" class="hidden fixed inset-0 z-[110] bg-black/60 flex items-end sm:items-center justify-center animate-fade-in" style="backdrop-filter:blur(4px)">
-  <div class="bg-canvas w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto border border-canvas-soft shadow-xl">
-    <h3 class="font-uber-display uber-display-sm text-ink">📢 Reportar Avistamiento</h3>
-    <p class="text-xs text-body font-uber-text">Registrar que viste a esta persona. La información se vinculará a su reporte de búsqueda.</p>
-    
-    <div class="space-y-3">
-      <div>
-        <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reporte-rapido-nombre">Tu Nombre</label>
-        <input 
-          type="text" 
-          id="reporte-rapido-nombre" 
-          class="input w-full font-uber-text uber-body-md" 
-          placeholder="Opcional (Nombre de quien reporta)"
-        />
-      </div>
-      <div>
-        <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reporte-rapido-contacto">Tu Teléfono / Contacto *</label>
-        <input 
-          type="text" 
-          id="reporte-rapido-contacto" 
-          required 
-          class="input w-full font-uber-text uber-body-md" 
-          placeholder="Obligatorio (ej: 0412-1234567, email)"
-        />
-      </div>
-      <div>
-        <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reporte-rapido-refugio">Ubicación / Refugio *</label>
-        <select 
-          id="reporte-rapido-refugio" 
-          required 
-          class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent text-ink rounded-xl"
-        >
-          <option value="">Cargando refugios registrados...</option>
-        </select>
-        <div id="reporte-rapido-refugio-otro-wrap" class="hidden mt-2">
+  <!-- Mini formulario de reporte rápido (hidden) -->
+  <div 
+    x-show="modalReporteOpen" 
+    x-transition.opacity
+    class="fixed inset-0 z-[110] bg-black/60 flex items-end sm:items-center justify-center" 
+    style="backdrop-filter:blur(4px); display: none;"
+    @click.self="cerrarModalReporte()"
+  >
+    <div class="bg-canvas w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto border border-canvas-soft shadow-xl">
+      <h3 class="font-uber-display uber-display-sm text-ink">📢 Reportar Avistamiento</h3>
+      <p class="text-xs text-body font-uber-text">Registrar que viste a esta persona. La información se vinculará a su reporte de búsqueda.</p>
+      
+      <div class="space-y-3">
+        <div>
+          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reporte-rapido-nombre">Tu Nombre</label>
           <input 
             type="text" 
-            id="reporte-rapido-refugio-otro" 
+            x-model="reporteNombre" 
             class="input w-full font-uber-text uber-body-md" 
-            placeholder="Escribe el nombre del refugio o ubicación exacta"
+            placeholder="Opcional (Nombre de quien reporta)"
           />
         </div>
-      </div>
-      <div>
-        <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reporte-rapido-desc">¿Dónde y cuándo la viste? Detalles *</label>
-        <textarea 
-          id="reporte-rapido-desc" 
-          rows="3" 
-          class="textarea w-full font-uber-text uber-body-md" 
-          placeholder="Ej: La vi hoy a las 10am en el refugio del Polideportivo, vestía camisa azul... (mínimo 10 caracteres)"
-        ></textarea>
-      </div>
-
-      <div>
-        <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text">Foto Evidencia * (Obligatoria)</label>
-        <div class="flex items-center gap-3 bg-canvas-soft border border-canvas-soft p-3 rounded-xl">
+        <div>
+          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reporte-rapido-contacto">Tu Teléfono / Contacto *</label>
           <input 
-            type="file" 
-            id="reporte-rapido-foto-file" 
-            accept="image/*" 
-            class="block w-full text-xs text-mute font-uber-text file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-black-elevated file:cursor-pointer" 
+            type="text" 
+            x-model="reporteContacto" 
+            required 
+            class="input w-full font-uber-text uber-body-md" 
+            placeholder="Obligatorio (ej: 0412-1234567, email)"
           />
-          <input type="hidden" id="reporte-rapido-foto-key" />
         </div>
-        <div id="reporte-rapido-foto-status" class="text-[10px] text-mute font-uber-text mt-1 italic hidden"></div>
-      </div>
-
-      <!-- GPS Status Panel -->
-      <div class="p-3 bg-canvas-soft rounded-xl flex flex-col gap-1 border border-canvas-soft">
-        <div class="flex justify-between items-center">
-          <span class="text-xs font-semibold text-ink font-uber-text">📍 Ubicación del Avistamiento</span>
-          <button id="btn-reporte-rapido-gps" type="button" class="btn btn-xs bg-primary text-white font-uber-text px-2 py-0.5 rounded-full text-[11px] cursor-pointer hover:bg-black-elevated">
-            Recargar GPS
-          </button>
+        <div>
+          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reporte-rapido-refugio">Ubicación / Refugio *</label>
+          <select 
+            x-model="refugioSelectVal" 
+            required 
+            class="select w-full font-uber-text uber-body-md bg-canvas-soft border-transparent text-ink rounded-xl"
+          >
+            <option value="">-- Seleccionar Ubicación --</option>
+            <template x-for="ref in refugios" :key="ref.tipo + '-' + ref.id">
+              <option 
+                :value="ref.tipo + ':' + ref.id + '|' + ref.nombre" 
+                x-text="(ref.tipo === 'hospital' ? '🏥 [Salud] ' : ref.tipo === 'centro_acopio' ? '📦 [Acopio] ' : '🏠 [Refugio] ') + ref.nombre"
+              ></option>
+            </template>
+            <option value="otro">Otro albergue o dirección...</option>
+          </select>
+          <div x-show="refugioSelectVal === 'otro'" class="mt-2">
+            <input 
+              type="text" 
+              x-model="refugioOtroVal" 
+              class="input w-full font-uber-text uber-body-md" 
+              placeholder="Escribe el nombre del refugio o ubicación exacta"
+              :required="refugioSelectVal === 'otro'"
+            />
+          </div>
         </div>
-        <div id="reporte-rapido-gps-status" class="text-xs text-mute font-uber-text italic">Iniciando búsqueda...</div>
-        <input type="hidden" id="reporte-rapido-latitud" />
-        <input type="hidden" id="reporte-rapido-longitud" />
-        <div id="reporte-rapido-gps-map" class="w-full h-36 rounded-lg overflow-hidden border border-canvas-soft bg-canvas mt-2 hidden"></div>
+        <div>
+          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text" for="reporte-rapido-desc">¿Dónde y cuándo la viste? Detalles *</label>
+          <textarea 
+            x-model="reporteDesc" 
+            rows="3" 
+            class="textarea w-full font-uber-text uber-body-md" 
+            placeholder="Ej: La vi hoy a las 10am en el refugio del Polideportivo, vestía camisa azul... (mínimo 10 caracteres)"
+          ></textarea>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-bold text-mute uppercase tracking-wider mb-1 font-uber-text">Foto Evidencia * (Obligatoria)</label>
+          <div class="flex items-center gap-3 bg-canvas-soft border border-canvas-soft p-3 rounded-xl">
+            <input 
+              type="file" 
+              @change="uploadFotoReporte" 
+              accept="image/*" 
+              class="block w-full text-xs text-mute font-uber-text file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-black-elevated file:cursor-pointer" 
+            />
+          </div>
+          <div x-show="reporteFotoStatus" x-text="reporteFotoStatus" class="text-[10px] text-mute font-uber-text mt-1 italic"></div>
+        </div>
+
+        <!-- GPS Status Panel -->
+        <div class="p-3 bg-canvas-soft rounded-xl flex flex-col gap-1 border border-canvas-soft">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-semibold text-ink font-uber-text">📍 Ubicación del Avistamiento</span>
+            <button @click="obtenerGpsReporte()" type="button" class="btn btn-xs bg-primary text-white font-uber-text px-2 py-0.5 rounded-full text-[11px] cursor-pointer hover:bg-black-elevated">
+              Recargar GPS
+            </button>
+          </div>
+          <div x-text="reporteGpsStatus" class="text-xs text-mute font-uber-text italic">Iniciando búsqueda...</div>
+          <div id="reporte-rapido-gps-map" class="w-full h-36 rounded-lg overflow-hidden border border-canvas-soft bg-canvas mt-2"></div>
+        </div>
+
+        <!-- Checkbox de confirmación -->
+        <div class="flex items-start gap-2 pt-1">
+          <input 
+            type="checkbox" 
+            x-model="reporteConfirm" 
+            id="chk-reporte-rapido-confirmacion" 
+            class="w-4 h-4 rounded border-2 border-primary bg-canvas text-primary focus:ring-0 focus:ring-offset-0 mt-0.5 accent-black cursor-pointer" 
+            required 
+          />
+          <label for="chk-reporte-rapido-confirmacion" class="text-xs text-body font-uber-text select-none cursor-pointer">
+            Confirmo que esta información es verídica y autorizo que los familiares me contacten si es necesario.
+          </label>
+        </div>
       </div>
 
-      <!-- Checkbox de confirmación -->
-      <div class="flex items-start gap-2 pt-1">
-        <input 
-          type="checkbox" 
-          id="chk-reporte-rapido-confirmacion" 
-          class="w-4 h-4 rounded border-2 border-primary bg-canvas text-primary focus:ring-0 focus:ring-offset-0 mt-0.5 accent-black cursor-pointer" 
-          required 
-        />
-        <label for="chk-reporte-rapido-confirmacion" class="text-xs text-body font-uber-text select-none cursor-pointer">
-          Confirmo que esta información es verídica y autorizo que los familiares me contacten si es necesario.
-        </label>
+      <!-- Error message display -->
+      <div x-show="reporteErrorMsg" x-text="reporteErrorMsg" class="text-xs text-red-500 font-uber-text font-semibold italic"></div>
+
+      <div class="flex gap-2">
+        <button @click="enviarReporteRapido()" :disabled="reporteEnviando" class="btn bg-primary text-white flex-1 font-uber-text uber-body-md-strong rounded-full hover:bg-black-elevated cursor-pointer">
+          <span x-text="reporteEnviando ? 'Enviando...' : 'Enviar Reporte'">Enviar Reporte</span>
+        </button>
+        <button @click="cerrarModalReporte()" class="btn bg-canvas-soft text-ink flex-1 font-uber-text uber-body-md-strong rounded-full hover:bg-surface-pressed cursor-pointer">Cancelar</button>
       </div>
-    </div>
-
-    <!-- Error message display -->
-    <div id="reporte-rapido-error" class="hidden text-xs text-red-500 font-uber-text font-semibold italic"></div>
-
-    <div class="flex gap-2">
-      <button id="reporte-rapido-enviar" class="btn bg-primary text-white flex-1 font-uber-text uber-body-md-strong rounded-full hover:bg-black-elevated cursor-pointer">Enviar Reporte</button>
-      <button id="reporte-rapido-cancelar" class="btn bg-canvas-soft text-ink flex-1 font-uber-text uber-body-md-strong rounded-full hover:bg-surface-pressed cursor-pointer">Cancelar</button>
     </div>
   </div>
-</div>
 
-<!-- Modal de Compartir en Redes (Fallback para desktop y acceso rapido) -->
-<div id="modal-compartir-redes" class="fixed inset-0 z-[120] bg-black/60 flex items-center justify-center hidden" style="backdrop-filter:blur(4px)">
-  <div class="bg-canvas w-full max-w-sm rounded-2xl p-6 space-y-4 border border-canvas-soft shadow-xl mx-4">
-    <div class="flex justify-between items-center">
-      <h3 class="font-uber-display uber-display-sm text-ink">🔗 Compartir Reporte</h3>
-      <button id="modal-compartir-close" class="w-8 h-8 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors font-bold cursor-pointer">✕</button>
-    </div>
-    <p class="text-xs text-body font-uber-text">Elige dónde quieres difundir la información de búsqueda:</p>
-    <div class="grid grid-cols-2 gap-2 pt-2">
-      <a id="share-wa" target="_blank" rel="noopener" class="btn bg-[#25D366] text-white hover:opacity-90 font-uber-text text-sm flex items-center justify-center rounded-full py-3">
-        WhatsApp
-      </a>
-      <a id="share-fb" target="_blank" rel="noopener" class="btn bg-[#1877F2] text-white hover:opacity-90 font-uber-text text-sm flex items-center justify-center rounded-full py-3">
-        Facebook
-      </a>
-      <a id="share-x" target="_blank" rel="noopener" class="btn bg-black text-white hover:opacity-90 font-uber-text text-sm flex items-center justify-center rounded-full py-3">
-        Twitter / X
-      </a>
-      <button id="share-copy" class="btn bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text text-sm flex items-center justify-center rounded-full py-3">
-        Copiar enlace
-      </button>
+  <!-- Modal de Compartir en Redes (Fallback para desktop y acceso rapido) -->
+  <div 
+    x-show="modalCompartirOpen" 
+    x-transition.opacity
+    class="fixed inset-0 z-[120] bg-black/60 flex items-center justify-center" 
+    style="backdrop-filter:blur(4px); display: none;"
+    @click.self="modalCompartirOpen = false"
+  >
+    <div class="bg-canvas w-full max-w-sm rounded-2xl p-6 space-y-4 border border-canvas-soft shadow-xl mx-4">
+      <div class="flex justify-between items-center">
+        <h3 class="font-uber-display uber-display-sm text-ink">🔗 Compartir Reporte</h3>
+        <button @click="modalCompartirOpen = false" class="w-8 h-8 rounded-full bg-canvas-soft flex items-center justify-center text-ink hover:bg-surface-pressed transition-colors font-bold cursor-pointer">✕</button>
+      </div>
+      <p class="text-xs text-body font-uber-text">Elige dónde quieres difundir la información de búsqueda:</p>
+      <div class="grid grid-cols-2 gap-2 pt-2">
+        <a 
+          id="share-wa" 
+          target="_blank" rel="noopener" 
+          :href="'https://api.whatsapp.com/send?text=' + encodeURIComponent(shareTexto + ' ' + shareUrl)"
+          class="btn bg-[#25D366] text-white hover:opacity-90 font-uber-text text-sm flex items-center justify-center rounded-full py-3"
+        >
+          WhatsApp
+        </a>
+        <a 
+          id="share-fb" 
+          target="_blank" rel="noopener" 
+          :href="'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(shareUrl)"
+          class="btn bg-[#1877F2] text-white hover:opacity-90 font-uber-text text-sm flex items-center justify-center rounded-full py-3"
+        >
+          Facebook
+        </a>
+        <a 
+          id="share-x" 
+          target="_blank" rel="noopener" 
+          :href="'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareTexto) + '&url=' + encodeURIComponent(shareUrl)"
+          class="btn bg-black text-white hover:opacity-90 font-uber-text text-sm flex items-center justify-center rounded-full py-3"
+        >
+          Twitter / X
+        </a>
+        <button 
+          id="share-copy" 
+          @click="copiarLink()"
+          class="btn bg-canvas-soft text-ink hover:bg-surface-pressed font-uber-text text-sm flex items-center justify-center rounded-full py-3"
+        >
+          Copiar enlace
+        </button>
+      </div>
     </div>
   </div>
-</div>
 
-<script src="../scripts/buscador.ts"></script>
+</div>

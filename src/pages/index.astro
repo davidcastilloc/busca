@@ -366,6 +366,7 @@ try {
                       alt={`Foto de ${r.nombre}`} 
                       class="w-full h-full object-cover"
                       loading="lazy"
+                      decoding="async"
                     />
                   </div>
                 ) : (
@@ -376,6 +377,7 @@ try {
                         alt={`Foto de ${r.nombre}`} 
                         class="w-full h-full object-cover"
                         loading="lazy"
+                        decoding="async"
                       />
                     </div>
                   </template>
@@ -608,6 +610,8 @@ try {
                 src="/SCOUTS.webp" 
                 alt="Scouts Voluntarios" 
                 class="relative w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-full drop-shadow-lg transition-transform duration-300 hover:scale-105"
+                loading="lazy"
+                decoding="async"
               />
             </div>
             <span class="text-[10px] font-uber-text text-mute uppercase tracking-wider font-semibold bg-canvas-soft px-3 py-1 rounded-full shadow-sm text-center">
@@ -771,67 +775,6 @@ try {
   const marcadores = new Map<string, any>();
   let userMarker: any = null;
   let esVoluntario = false;
-  const ITEM_MAP: Record<string, string> = {
-    agua_potable: "Agua potable embotellada",
-    botellones_agua: "Botellones (Para cocina o hidratación masiva)",
-    pastillas_potabilizadoras: "Pastillas Potabilizadoras",
-    cloro_potabilizacion: "Cloro Líquido / Pastillas de Cloro (Para desinfección)",
-    tanques_envases: "Tanques / Envases Vacíos",
-    alimentos_enlatados: "Alimentos enlatados (atún, sardina, granos)",
-    arroz_harina: "Carbohidratos Secos (arroz, pasta, harina de maíz)",
-    pasta_granos: "Granos y Legumbres (caraotas, lentejas, arvejas)",
-    leche_polvo: "Proteína en Polvo / Larga Duración (Leche en polvo, embutidos)",
-    comida_lista: "Comida Lista para Consumo (Galletas, barras, frutos secos)",
-    aceite_comestible: "Aceite comestible",
-    azucar_sal: "Azúcar / Sal",
-    papillas_adultos_mayores: "Papillas y comida líquida para adultos mayores",
-    jabon_champu: "Jabón de baño / Champú",
-    crema_cepillo: "Crema dental / Cepillo de dientes",
-    papel_higienico: "Papel higiénico",
-    toallas_sanitarias: "Toallas sanitarias / Tampón",
-    desodorante: "Desodorante (unisex)",
-    toallitas_humedas: "Toallitas húmedas",
-    detergente_jabon: "Detergente para ropa / Jabón de platos",
-    cloro_desinfectante: "Desinfectante / Limpiador de pisos",
-    bolsas_basura: "Bolsas para basura de alta resistencia",
-    alcohol_oxigenada: "Alcohol / Agua oxigenada",
-    gasas_vendas: "Gasas / Vendas / Adhesivos médicos",
-    analgesicos: "Analgésicos (Paracetamol, Ibuprofeno)",
-    antialergicos: "Antialérgicos (Loratadina)",
-    medicos_cronicos: "Medicamentos crónicos (Presión, Diabetes)",
-    antibioticos: "Antibióticos de amplio espectro",
-    suero_hidratacion: "Suero de hidratación oral",
-    tapabocas_guantes: "Tapabocas / Guantes desechables",
-    termometros: "Termómetros",
-    agujas_inyectadoras: "Agujas / Inyectadoras",
-    panales_bebe: "Pañales desechables para bebés",
-    leche_formula: "Leche de fórmula infantil",
-    biberones: "Teteros / Biberones limpios",
-    papillas_compotas: "Papillas / Compotas",
-    ropa_bebe: "Ropa de bebé",
-    champu_jabon_bebe: "Champú y jabón especial para bebé",
-    pomadas_antipanalitis: "Pomadas antipañalitis",
-    corrales_cunas: "Cunas de viaje / Corrales plegables",
-    colchonetas_esterillas: "Colchonetas / Esterillas",
-    mantas_cobijas: "Mantas / Cobijas / Sábanas",
-    linternas_velas: "Linternas con pilas / Velas",
-    baterias_powerbanks: "Baterías portátiles (Powerbanks)",
-    repelente_mosquitos: "Repelente de mosquitos",
-    herramientas_basicas: "Kit de herramientas básicas",
-    fosforos_encendedores: "Fósforos / Encendedores",
-    toldos_carpas: "Toldos / Carpas / Lonas plásticas",
-    ropa_abrigo: "Ropa abrigada / Impermeables",
-    brazaletes_identificadores: "Brazaletes identificadores",
-    pulseras_gps: "Pulseras GPS",
-    papeleria: "Papelería (bolígrafos, cuadernos, marcadores)",
-    silbatos_pitos: "Silbatos y pitos",
-    comida_mascotas: "Comida para mascotas (Perros/Gatos)",
-    medicinas_mascotas: "Medicinas / Insumos veterinarios básicos",
-    entretenimiento_infantil: "Entretenimiento infantil",
-    actividades_culturales: "Actividades culturales",
-    baile_musica: "Baile y música",
-    veterinario: "Atención Veterinaria"
-  };
 
   document.addEventListener('astro:page-load', () => {
     // Limpieza de mapas e instancias previas
@@ -948,7 +891,7 @@ try {
           <div class="p-3 space-y-2 max-w-[240px] font-uber-text">
             ${fotos.length > 0 ? `
               <div class="w-full h-24 rounded-lg overflow-hidden border border-canvas-soft bg-surface-pressed mb-1">
-                <img src="/api/upload?key=${fotos[0]}" class="w-full h-full object-cover" />
+                <img src="/api/upload?key=${fotos[0]}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
               </div>
             ` : ''}
             <div class="flex items-center gap-1.5">

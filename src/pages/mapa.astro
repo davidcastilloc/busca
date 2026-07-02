@@ -17,7 +17,7 @@ const isDev = import.meta.env.DEV;
 
 
   <!-- Leaflet Heatmap Plugin -->
-  <script is:inline src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+  <script is:inline defer src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
   <!-- BARRA SUPERIOR DE BÚSQUEDA Y CAPAS -->
   <div id="map-top-bar" class="fixed top-0 left-0 right-0 z-[1000] bg-canvas/95 backdrop-blur-xl border-b border-canvas-soft shadow-sm">
@@ -457,11 +457,11 @@ const isDev = import.meta.env.DEV;
 
   // Esperar Leaflet
   function waitForLeaflet(cb: () => void) {
-    if (typeof (window as any).L !== "undefined" && typeof (window as any).L.markerClusterGroup === "function") {
+    if (typeof (window as any).L !== "undefined" && typeof (window as any).L.markerClusterGroup === "function" && typeof (window as any).L.heatLayer === "function") {
       cb();
     } else {
       const iv = setInterval(() => {
-        if (typeof (window as any).L !== "undefined" && typeof (window as any).L.markerClusterGroup === "function") {
+        if (typeof (window as any).L !== "undefined" && typeof (window as any).L.markerClusterGroup === "function" && typeof (window as any).L.heatLayer === "function") {
           clearInterval(iv);
           cb();
         }
@@ -1268,7 +1268,7 @@ const isDev = import.meta.env.DEV;
           <div class="flex gap-2 overflow-x-auto no-scrollbar py-2">
             ${r.fotos.map((f: string) => `
               <div class="w-40 h-28 shrink-0 rounded-xl overflow-hidden bg-canvas-soft border border-canvas-soft">
-                <img src="/api/upload?key=${f}" class="w-full h-full object-cover" />
+                <img src="/api/upload?key=${f}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
               </div>
             `).join("")}
           </div>

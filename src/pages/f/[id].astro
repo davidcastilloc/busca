@@ -237,7 +237,7 @@ const ogDesc = shareText.replace(flyerUrl, "").trim();
                   <span>más info o</span>
                   <span>compartir</span>
                 </div>
-                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${encodeURIComponent(url.href)}`} alt="QR Code" class="w-12 h-12 border border-canvas-soft p-0.5 rounded-sm" crossorigin="anonymous" />
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=${encodeURIComponent(url.href)}`} alt="QR Code" class="w-12 h-12 border border-canvas-soft p-0.5 rounded-sm" crossorigin="anonymous" loading="lazy" decoding="async" />
               </div>
             </div>
             <div class="text-[8px] text-body mt-2 flex justify-between font-uber-text">

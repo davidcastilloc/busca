@@ -126,6 +126,8 @@ const descripcion = `${tipoLabel} en ${r.direccion || "Venezuela"}. Ayuda a difu
             alt={`Ficha de ${r.nombre}`} 
             class="max-w-full h-auto rounded-lg border border-canvas-soft shadow-sm"
             loading="eager"
+            fetchpriority="high"
+            decoding="async"
           />
         </div>
         

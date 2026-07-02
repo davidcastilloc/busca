@@ -1,13 +1,4 @@
 // Utilidades de búsqueda unificada para dondeestan.org
-
-/** Mapa de caracteres acentuados → sin acento */
-const ACENTOS: Record<string, string> = {
-  'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
-  'ü': 'u', 'ñ': 'n',
-  'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u',
-  'Ü': 'u', 'Ñ': 'n',
-};
-
 /**
  * Normaliza texto para matching fuzzy:
  * minúsculas, sin acentos, sin espacios extra
@@ -15,7 +6,8 @@ const ACENTOS: Record<string, string> = {
 export function normalizarTexto(texto: string): string {
   return texto
     .toLowerCase()
-    .replace(/[áéíóúüñÁÉÍÓÚÜÑ]/g, (c) => ACENTOS[c] || c)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, ' ')
     .trim();
 }

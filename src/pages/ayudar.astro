@@ -237,7 +237,7 @@ const formatFecha = (fechaStr: string) => {
       </div>
     ) : (
       // Vista de Registro / Ingreso
-      <div class="space-y-6">
+      <div class="space-y-6" x-data="{ tab: 'login' }">
         <div class="text-center">
           <span class="text-3xl">🤝</span>
           <h1 class="font-uber-display text-2xl text-ink tracking-tight mt-2">
@@ -251,17 +251,32 @@ const formatFecha = (fechaStr: string) => {
         <!-- Selector de Pestañas Registro / Login -->
         {!isTelegramRegister && (
           <div class="flex gap-1 bg-canvas-soft p-1 rounded-xl">
-            <button id="tab-login" class="flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-primary text-white border-none cursor-pointer">
+            <button 
+              id="tab-login" 
+              @click="tab = 'login'"
+              :class="tab === 'login' ? 'bg-primary text-white' : 'bg-transparent text-ink'"
+              class="flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg border-none cursor-pointer"
+            >
               Iniciar Sesión
             </button>
-            <button id="tab-register" class="flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-transparent text-ink border-none cursor-pointer">
+            <button 
+              id="tab-register" 
+              @click="tab = 'register'"
+              :class="tab === 'register' ? 'bg-primary text-white' : 'bg-transparent text-ink'"
+              class="flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg border-none cursor-pointer"
+            >
               Registrarse
             </button>
           </div>
         )}
 
         {/* Flujo Normal - Login */}
-        <form id="form-login" class={`space-y-4 bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm ${isTelegramRegister ? 'hidden' : ''}`}>
+        <form 
+          id="form-login" 
+          x-show="tab === 'login'" 
+          class="space-y-4 bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm"
+          style={isTelegramRegister ? "display: none;" : ""}
+        >
           <h3 class="text-sm font-bold text-ink uppercase tracking-wider font-uber-text">Ingresar a tu cuenta</h3>
           
           <TelegramLoginWidget 
@@ -308,7 +323,12 @@ const formatFecha = (fechaStr: string) => {
         </form>
 
         <!-- Formulario Registro Normal -->
-        <form id="form-register" class="space-y-4 bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm hidden">
+        <form 
+          id="form-register" 
+          x-show="tab === 'register'" 
+          class="space-y-4 bg-canvas border border-canvas-soft p-6 rounded-xl shadow-sm"
+          style="display: none;"
+        >
           <h3 class="text-sm font-bold text-ink uppercase tracking-wider font-uber-text">Crear cuenta voluntario</h3>
 
           <div>
@@ -462,27 +482,9 @@ const formatFecha = (fechaStr: string) => {
       }
     });
 
-    // Manejo de Pestañas (Ingreso / Registro)
-    const tabLogin = document.getElementById("tab-login");
-    const tabRegister = document.getElementById("tab-register");
+    // Envío Formulario Login
     const formLogin = document.getElementById("form-login");
     const formRegister = document.getElementById("form-register");
-
-    tabLogin?.addEventListener("click", () => {
-      tabLogin.className = "flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-primary text-white border-none cursor-pointer";
-      if (tabRegister) tabRegister.className = "flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-transparent text-ink border-none cursor-pointer";
-      formLogin?.classList.remove("hidden");
-      formRegister?.classList.add("hidden");
-    });
-
-    tabRegister?.addEventListener("click", () => {
-      tabRegister.className = "flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-primary text-white border-none cursor-pointer";
-      if (tabLogin) tabLogin.className = "flex-1 text-center py-2 px-3 text-xs font-semibold font-uber-text rounded-lg bg-transparent text-ink border-none cursor-pointer";
-      formRegister?.classList.remove("hidden");
-      formLogin?.classList.add("hidden");
-    });
-
-    // Envío Formulario Login
     formLogin?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const telefono = (document.getElementById("login-telefono") as HTMLInputElement).value;
